@@ -1,0 +1,8 @@
+web/fireside_jam.wasm
+*.pdb
+*.exe
+*.wasm
+*.rdi
+*.sublime-workspace
+*.o
+.DS_Store

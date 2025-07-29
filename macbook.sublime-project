@@ -1,0 +1,19 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+		},
+		// Macbook
+		{
+			"path": "/Users/mal/odin",
+			"file_include_patterns": ["*.odin"],
+		},
+		{
+			"path": "/Users/mal/Library/Application Support/Sublime Text/Packages/User",
+		},
+		{
+			"path": "/Users/mal/GitHub/darwodin/darwodin-macos-lite/darwodin"
+		},
+	],
+}

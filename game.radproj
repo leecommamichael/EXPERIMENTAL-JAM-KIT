@@ -1,0 +1,19 @@
+// raddbg 0.9.20 project file
+
+recent_file: path: "src/main.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
+recent_file: path: "src/nord_gl/loader_desktop.odin"
+recent_file: path: "src/nord_gl/impl_desktop.odin"
+recent_file: path: "src/ren.odin"
+target:
+{
+  executable: "game.exe"
+  working_directory: ""
+  enabled: 1
+}
+breakpoint:
+{
+  source_location: "src/nord_gl/impl_desktop.odin:94:1"
+  hit_count: 0
+}

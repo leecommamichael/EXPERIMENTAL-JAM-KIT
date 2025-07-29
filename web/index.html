@@ -1,0 +1,17 @@
+<head>
+	<script type="text/javascript" src="odin.js"></script>
+</head>
+<body style="background-color: antiquewhite;">
+	<canvas id="the_canvas"
+		width="640"
+		height="480"
+		></canvas>
+	<pre id="the_output"
+		style="background-color: white;"
+		width="640"
+		height="200"
+		></pre>
+	<script defer type="text/javascript">
+		odin.runWasm("fireside_jam.wasm", document.getElementById("the_output"));
+	</script>
+</body>

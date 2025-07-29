@@ -1,0 +1,8 @@
+// raddbg 0.9.20 project file
+
+target:
+{
+  executable: "game.exe"
+  working_directory: ""
+  enabled: 1
+}
