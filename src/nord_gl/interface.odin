@@ -1,6 +1,33 @@
 package nord_gl
 
 import "core:log"
+import "core:fmt"
+import "base:intrinsics"
+
+// If enabled: the package will call glGetError after relevant gl procedures.
+NGL_VALIDATE :: #config(NGL_VALIDATE, ODIN_DEBUG)
+
+// If enabled: the package will emit a debug trap on errors.
+NGL_DEBUG :: #config(NGL_DEBUG, ODIN_DEBUG)
+
+when NGL_DEBUG {
+	#assert(NGL_VALIDATE, "Can't debug_trap if we aren't checking errors.")
+}
+
+validate :: proc () -> Error {
+	when NGL_VALIDATE {
+		err := cast(Error) GetError()
+		when NGL_DEBUG {
+			if err != Error.NO_ERROR {
+				intrinsics.debug_trap()
+				fmt.printfln("debug_trap emitted.")
+			}
+		}
+		return err
+	} else {
+		return .NO_ERROR
+	}
+}
 
 ////////////////////////////////////////////////////////////////////// 
 // GLES Types

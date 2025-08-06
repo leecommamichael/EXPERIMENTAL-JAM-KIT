@@ -141,7 +141,7 @@ foreign webgl {
 	@(link_name="Enable")
 	glEnable                  :: proc(cap: uint) ---
 	@(link_name="EnableVertexAttribArray")
-	glEnableVertexAttribArray :: proc(index: int) ---
+	glEnableVertexAttribArray :: proc(index: uint) ---
 	@(link_name="Finish")
 	glFinish                  :: proc() ---
 	@(link_name="Flush")
@@ -262,7 +262,7 @@ foreign webgl {
 	@(link_name="VertexAttrib4f")
 	glVertexAttrib4f      :: proc(index: int, x, y, z, w: GLfloat) ---
 	@(link_name="VertexAttribPointer")
-	glVertexAttribPointer :: proc(index: int, size: int, type: uint, normalized: bool, stride: int, ptr: uintptr) ---
+	glVertexAttribPointer :: proc(index: uint, size: int, type: uint, normalized: bool, stride: int, ptr: uintptr) ---
 	
 	@(link_name="Viewport")
 	glViewport :: proc(x, y, w, h: int) ---
@@ -274,6 +274,8 @@ foreign webgl {
 	glUniformMatrix4fv :: proc "contextless" (location: int, value: [^]GLfloat) ---
 	@(link_name="GetShaderiv")
 	glGetShaderiv :: proc "contextless" (shader: Shader, pname: uint, p: ^int) ---
+	@(link_name="GetProgramiv")
+	glGetProgramiv :: proc "contextless" (shader: Program, pname: uint, p: ^int) --- // TODO: just here to get log length for now.
 	@(link_name="GetProgramInfoLog")
 	glGetProgramInfoLog :: proc "contextless" (program: Program, buf: []byte, length: ^int) ---
 	@(link_name="GetShaderInfoLog")
@@ -315,17 +317,8 @@ foreign webgl {
 // }
 
 
-// GetProgramInfoLog :: proc "contextless" (program: Program, buf: []byte) -> string {
-// 	length: int
-// 	glGetProgramInfoLog(program, buf, &length)
-// 	return string(buf[:length])
-// }
 
-// GetShaderInfoLog :: proc "contextless" (shader: Shader, buf: []byte) -> string {
-// 	length: int
-// 	glGetShaderInfoLog(shader, buf, &length)
-// 	return string(buf[:length])
-// }
+
 
 // WebGL2 Start //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -418,7 +411,7 @@ foreign webgl2 {
 	@(link_name="VertexAttribI4ui")
 	glVertexAttribI4ui     :: proc(index: int, x, y, z, w: uint) ---
 	@(link_name="VertexAttribIPointer")
-	glVertexAttribIPointer :: proc(index: int, size: int, type: uint, stride: int, offset: uintptr) ---
+	glVertexAttribIPointer :: proc(index: uint, size: int, type: uint, stride: int, offset: uintptr) ---
 	
 	/* Writing to the drawing buffer */
 	@(link_name="VertexAttribDivisor")
@@ -499,13 +492,13 @@ foreign webgl2 {
 	glResumeTransformFeedback   :: proc() ---
 	
 	@(link_name="BindBufferBase")
-	glBindBufferBase            :: proc(target: uint, index: int, buffer: Buffer) ---
+	glBindBufferBase            :: proc(target: uint, index: uint, buffer: Buffer) ---
 	@(link_name="BindBufferRange")
-	glBindBufferRange           :: proc(target: uint, index: int, buffer: Buffer, offset: int, size: int) ---
+	glBindBufferRange           :: proc(target: uint, index: uint, buffer: Buffer, offset: int, size: int) ---
 	@(link_name="GetUniformBlockIndex")
-	glGetUniformBlockIndex      :: proc(program: Program, uniformBlockName: string) -> int ---
+	glGetUniformBlockIndex      :: proc(program: Program, uniformBlockName: string) -> uint ---
 	@(link_name="UniformBlockBinding")
-	glUniformBlockBinding       :: proc(program: Program, uniformBlockIndex: int, uniformBlockBinding: int) ---
+	glUniformBlockBinding       :: proc(program: Program, uniformBlockIndex: uint, uniformBlockBinding: uint) ---
 	
 	@(link_name="CreateVertexArray")
 	glCreateVertexArray :: proc() -> VertexArrayObject ---

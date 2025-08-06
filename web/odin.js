@@ -646,6 +646,9 @@ class WebGLInterface {
 			GetProgramParameter: (program, pname) => {
 				return this.ctx.getProgramParameter(this.programs[program], pname)
 			},
+			GetShaderParameter: (shader, pname) => {
+				return this.ctx.getShaderParameter(this.shaders[shader], pname);
+			},
 			GetProgramInfoLog: (program, buf_ptr, buf_len, length_ptr) => {
 				let log = this.ctx.getProgramInfoLog(this.programs[program]);
 				if (log === null) {
@@ -670,6 +673,19 @@ class WebGLInterface {
 					this.mem.loadBytes(buf_ptr, buf_len).set(new TextEncoder().encode(log))
 
 					this.mem.storeInt(length_ptr, n);
+				}
+			},
+			GetProgramiv: (program, pname, p) => {
+				if (p) {
+					if (pname == 35716) {
+						let log = this.ctx.getProgramInfoLog(this.programs[program]);
+						if (log === null) {
+							log = "(unknown error)";
+						}
+						this.mem.storeInt(p, log.length+1);
+					} else {
+						this.mem.storeInt(p, 0);
+					}
 				}
 			},
 			GetShaderiv: (shader, pname, p) => {
@@ -1999,6 +2015,18 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement, memory) {
 			device_pixel_ratio: () => {
 				return window.devicePixelRatio;
 			},
+
+			set_pointer_capture: (id_ptr, id_len, pointer_device) => {
+				let id = wasmMemoryInterface.loadString(id_ptr, id_len);
+				let element = getElement(id);
+				element.setPointerCapture(pointer_device);
+			},
+
+			release_pointer_capture: (id_ptr, id_len, pointer_device) => {
+				let id = wasmMemoryInterface.loadString(id_ptr, id_len);
+				let element = getElement(id);
+				element.releasePointerCapture(pointer_device)
+			}
 
 		},
 

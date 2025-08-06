@@ -3,22 +3,6 @@ package nord_gl
 
 import "base:intrinsics"
 import "core:strings"
-import "core:fmt"
-
-validate :: proc () -> Error {
-	when NGL_VALIDATE {
-		err := cast(Error) glGetError()
-		when NGL_DEBUG {
-			if err != .NO_ERROR {
-				intrinsics.debug_trap()
-				fmt.printfln("debug_trap emitted.")
-			}
-		}
-		return err
-	} else {
-		return .NO_ERROR
-	}
-}
 
 BufferData :: proc {
 	Buffer_Data_Many,
@@ -122,12 +106,12 @@ GenVertexArrays :: proc {
 	GenVertexArraysOne, 
 }
 
-GenVertexArraysMany :: proc (out: []Buffer) -> (err: Error = .NO_ERROR) {
+GenVertexArraysMany :: proc (out: []VertexArrayObject) -> (err: Error = .NO_ERROR) {
 	glGenVertexArrays(cast(int)len(out), cast([^]uint)raw_data(out))
 	when NGL_VALIDATE { return validate() } else { return }
 }
 
-GenVertexArraysOne :: proc (out: ^Buffer) -> (err: Error = .NO_ERROR) {
+GenVertexArraysOne :: proc (out: ^VertexArrayObject) -> (err: Error = .NO_ERROR) {
 	glGenVertexArrays(1, cast(^uint)out)
 	when NGL_VALIDATE { return validate() } else { return }
 }
@@ -153,7 +137,6 @@ BindBufferBase :: proc (target, index: uint, buffer: Buffer) -> (err: Error = .N
 
 
 
-
 BindBufferRange :: proc (
 	target, index: uint,
 	buffer: Buffer,
@@ -165,8 +148,7 @@ BindBufferRange :: proc (
 
 
 
-
-BindVertexArray :: proc (vao: Buffer) -> (err: Error = .NO_ERROR) {
+BindVertexArray :: proc (vao: VertexArrayObject) -> (err: Error = .NO_ERROR) {
 	glBindVertexArray(cast(uint) vao)
 	when NGL_VALIDATE { return validate() } else { return }
 }
@@ -306,13 +288,24 @@ UseProgram :: proc (program: Program) -> (err: Error = .NO_ERROR) {
 
 
 
-// These aren't on Web
-GetProgramInfoLog :: proc (program: uint, bufSize: int, length: ^int, infoLog: [^]u8) {
-	glGetProgramInfoLog(program, bufSize, length, infoLog)
+
+GetProgramInfoLog :: proc (program: uint) -> string {
+	log_length: int
+	GetProgramiv(program, cast(uint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
+	log_bytes := make([]u8, log_length)
+	glGetProgramInfoLog(program, log_length, &log_length, raw_data(log_bytes))
+	return string(log_bytes[:log_length])
 }
 
-GetShaderInfoLog :: proc (shader: uint, bufSize: int, length: ^int, infoLog: [^]u8) {
-	glGetShaderInfoLog(shader, bufSize, length, infoLog)
+
+
+
+GetShaderInfoLog :: proc (shader: uint) -> string {
+	log_length: int
+	GetShaderiv(shader, cast(uint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
+	log_bytes := make([]u8, log_length)
+	glGetShaderInfoLog(shader, log_length, &log_length, raw_data(log_bytes))
+	return string(log_bytes[:log_length])
 }
 
 
@@ -421,5 +414,5 @@ Viewport :: proc (x: int, y: int, width: int, height: int) {
 	glViewport(x, y, width, height)
 }
 
-
+GetError :: glGetError
 

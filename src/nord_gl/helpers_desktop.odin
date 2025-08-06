@@ -51,7 +51,7 @@ when NGL_DEBUG {
 	check_error :: proc(
 		id: uint, type: EShader_Type, status: uint,
 		iv_func: proc (uint, uint, [^]int),
-		log_func: proc (uint, int, ^int, [^]u8), 
+		log_func: proc (uint) -> string, 
 		loc := #caller_location,
 	) -> (success: bool) {
 		result, info_log_length: int
@@ -64,7 +64,7 @@ when NGL_DEBUG {
 				last_compile_error_message = make([]byte, info_log_length)
 				last_compile_error_type = type
 
-				log_func(id, int(info_log_length), nil, raw_data(last_compile_error_message))
+				log_func(id)
 				fmt.printf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]));
 			} else {
 
@@ -72,7 +72,7 @@ when NGL_DEBUG {
 				last_link_error_message = make([]byte, info_log_length)
 				last_compile_error_type = type
 
-				log_func(id, int(info_log_length), nil, raw_data(last_link_error_message))
+				log_func(id)
 				fmt.printf("Error in %v:\n%s", type, string(last_link_error_message[0:len(last_link_error_message)-1]));
 			}
 
@@ -86,7 +86,7 @@ when NGL_DEBUG {
 	check_error :: proc(
 		id: uint, type: EShader_Type, status: uint,
 		iv_func: proc (uint, uint, [^]int),
-		log_func: proc (uint, int, ^int, [^]u8),
+		log_func: proc (uint) -> string,
 	) -> (success: bool) {
 		result, info_log_length: int
 		iv_func(id, status, &result)
@@ -98,14 +98,14 @@ when NGL_DEBUG {
 				last_compile_error_message = make([]u8, info_log_length)
 				last_link_error_type = type
 
-				log_func(id, int(info_log_length), nil, raw_data(last_compile_error_message))
+				log_func(id)
 				fmt.eprintf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]))
 			} else {
 				delete(last_link_error_message)
 				last_link_error_message = make([]u8, info_log_length)
 				last_link_error_type = type
 
-				log_func(id, int(info_log_length), nil, raw_data(last_link_error_message))
+				log_func(id)
 				fmt.eprintf("Error in %v:\n%s", type, string(last_link_error_message[0:len(last_link_error_message)-1]))
 
 			}

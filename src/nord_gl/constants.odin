@@ -1,15 +1,5 @@
 package nord_gl
 
-// If enabled: the package will call glGetError after relevant gl procedures.
-NGL_VALIDATE :: #config(NGL_VALIDATE, ODIN_DEBUG)
-
-// If enabled: the package will emit a debug trap on errors.
-NGL_DEBUG :: #config(NGL_DEBUG, ODIN_DEBUG)
-
-when NGL_DEBUG {
-	#assert(NGL_VALIDATE, "Can't debug_trap if we aren't checking errors.")
-}
-
 /* ClearBufferMask */
 DEPTH_BUFFER_BIT               :: GLenum(0x00000100)
 STENCIL_BUFFER_BIT             :: GLenum(0x00000400)

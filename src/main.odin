@@ -180,13 +180,22 @@ GL_Standard :: struct {
 	MAX_UNIFORM_BLOCK_SIZE: i64
 }
 
+g_ent: ^Entity
+
 // This is an entry-point, and so all game data must be globally visible for Web support.
 @export
 step :: proc(dt: f64) -> bool {
+	if sugar.platform_calls_step {
+		#partial switch sugar.poll_events() {
+		case .Resized:
+			resolution_changed(sugar.g_state.resolution)
+		}
+	}
+
 	if !game_initialized {
 		game_initialized = true
 		init_gl_constants :: proc () {
-			assert(gl.glGetIntegerv != nil, "GL not loaded.")
+			assert(gl.GetIntegerv != nil, "GL not loaded.")
 			globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT = gl.GetIntegerv(.UNIFORM_BUFFER_OFFSET_ALIGNMENT)
 			globals.gl_standard.MAX_UNIFORM_BLOCK_SIZE          = gl.GetInteger64v(.MAX_UNIFORM_BLOCK_SIZE)
 			log.infof("OpenGL Platform Constants ---\n" +
@@ -217,9 +226,9 @@ step :: proc(dt: f64) -> bool {
 		ren_init(globals.ren)
 		v,i := make_circle_2D(44.0)
 		asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
-		ent := make_entity()
-		ent._asset = asset
-		ent.position = Vec3{88,88, 0}
+		g_ent = make_entity()
+		g_ent._asset = asset
+		g_ent.position = Vec3{88,88, 0}
 
 		// 2. Init Inputs //////////////////////////////////////////////////////////
 		globals.quit = sugar.Button_Action {
@@ -236,7 +245,7 @@ step :: proc(dt: f64) -> bool {
 		}
 	}
 
-	// 2. Simulate //////////////////////////////////////////////////////////// 
+	// 3. Fill Caches //////////////////////////////////////////////////////////// 
 	clear(&globals.entities)
 	clear(&globals.game_entities)
 	clear(&globals.ui_entities)
@@ -245,11 +254,15 @@ step :: proc(dt: f64) -> bool {
 			append(&globals.entities, &e)
 		}
 	}
+	// 4. Simulate /////////////////////////////////////////////////////////////// 
 
 	if sugar.on_release(&globals.quit) {
 		return false // stop the app
 	}
+
+	g_ent.position = vec3(sugar.g_state.input.mouse.window)
 	
+	// 5. Prepare Frame and Draw /////////////////////////////////////////////////
 	finalize_simulation_frame :: proc () {
 		for &entity in globals.entities {
 			if entity.hidden {

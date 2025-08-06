@@ -10,7 +10,7 @@ import ngl "nord_gl"
 
 Ren :: struct {
 	program:      ngl.Program,
-	VAO:          ngl.Buffer,
+	VAO:          ngl.VertexArrayObject,
 	frame_UBO:    ngl.Buffer,
 	instance_UBO: ngl.Buffer,           // constant
 	programs: [Game_Shader]ngl.Program, // constant
@@ -44,7 +44,7 @@ ren_init :: proc (ren: ^Ren) {
 
 	ngl.Enable(.DEPTH_TEST)
 	// ngl.ClearDepthf(1)
-	ngl.DepthRange(f64(1), f64(-1))
+	// ngl.DepthRange(f64(1), f64(-1))
 	// ngl.DepthFunc(ngl.GEQUAL)
 
 	ngl.Enable(.CULL_FACE)
@@ -147,7 +147,7 @@ Ren_Vertex_Base :: struct {
 
 Ren_Asset :: struct {
 	program:     ngl.Program,
-	VAO:         ngl.Buffer,
+	VAO:         ngl.VertexArrayObject,
 	index_count: int,
 	mode:        Ren_Mode,
 	// vertices:    []Ren_Vertex_Base,
@@ -157,7 +157,7 @@ Ren_Asset :: struct {
 ren_make_asset :: proc (
 	ren: ^Ren,
 	program: ngl.Program,
-	VAO:     ngl.Buffer,
+	VAO:     ngl.VertexArrayObject,
 	inputs: []Shader_Input,
 	index_count: int,
 ) -> Ren_Asset {
@@ -364,8 +364,8 @@ ren_make_basic_asset :: proc (
 	indices:  []u32,
 	instance_buffer: ngl.Buffer,
 ) -> Ren_Asset {
-	VAO: ngl.Buffer
-	ngl.GenVertexArrays(&VAO);
+	VAO: ngl.VertexArrayObject
+	ngl.GenVertexArrays(&VAO)
 	ngl.BindVertexArray(VAO)
 
 	// Create Vertex Buffer
