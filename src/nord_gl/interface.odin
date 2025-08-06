@@ -5,36 +5,43 @@ import "core:log"
 ////////////////////////////////////////////////////////////////////// 
 // GLES Types
 ////////////////////////////////////////////////////////////////////// 
+// TODO: when 64bit {f64} else f32 (GL has flexible float widths.)
 GLboolean :: bool
 GLbyte :: i8
 GLubyte :: u8 
 GLchar :: u8  // Spec: "Characters making up strings"
 GLshort :: i16
 GLushort :: u16
-GLint :: i32
-GLuint :: u32
+GLint :: int
+GLuint :: uint
 GLint64 :: i64
 GLuint64 :: u64
-GLsizei :: i32 // Spec: Non-negative binary integer size
-GLenum :: u32 // Spec: Enumerated binary integer value
-GLbitfield :: u32
-GLhalf :: f16
+GLsizei :: int // Spec: Non-negative binary integer size
+GLenum :: uint // Spec: Enumerated binary integer value
+GLbitfield :: uint
 GLfloat :: f32
 GLclampf :: f32 // float clamped to [0,1]
-// GLfixed :: 
-GLintptr :: int
-// GLsizeiptr :: uint
-// GLsync :: uint
+GLintptr :: i64
+GLsizeiptr :: uint
+// GLhalf :: f16 // Spec: Doesn't exist in WebGL
+// GLfixed ::  // not in web
+// GLsync :: uint // not in web
 
 ////////////////////////////////////////////////////////////////////// 
 // WebGL Types
 ////////////////////////////////////////////////////////////////////// 
-Buffer       :: distinct u32
-Framebuffer  :: distinct u32
-Program      :: distinct u32
-Renderbuffer :: distinct u32
-Shader       :: distinct u32
-Texture      :: distinct u32
+Buffer       :: distinct uint
+Framebuffer  :: distinct uint
+Program      :: distinct uint
+Renderbuffer :: distinct uint
+Shader       :: distinct uint
+Texture      :: distinct uint
+// WebGL2 Types
+Query             :: distinct uint
+Sampler           :: distinct uint
+Sync              :: distinct uint
+TransformFeedback :: distinct uint
+VertexArrayObject :: distinct uint
 
 ////////////////////////////////////////////////////////////////////// 
 Buffer_Binding_Target :: enum GLenum {

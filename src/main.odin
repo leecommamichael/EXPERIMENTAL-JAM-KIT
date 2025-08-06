@@ -176,7 +176,7 @@ main :: proc() {
 
 
 GL_Standard :: struct {
-	UNIFORM_BUFFER_OFFSET_ALIGNMENT: i32,
+	UNIFORM_BUFFER_OFFSET_ALIGNMENT: int,
 	MAX_UNIFORM_BLOCK_SIZE: i64
 }
 
@@ -186,7 +186,7 @@ step :: proc(dt: f64) -> bool {
 	if !game_initialized {
 		game_initialized = true
 		init_gl_constants :: proc () {
-			assert(gl.impl_GetIntegerv != nil, "GL not loaded.")
+			assert(gl.glGetIntegerv != nil, "GL not loaded.")
 			globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT = gl.GetIntegerv(.UNIFORM_BUFFER_OFFSET_ALIGNMENT)
 			globals.gl_standard.MAX_UNIFORM_BLOCK_SIZE          = gl.GetInteger64v(.MAX_UNIFORM_BLOCK_SIZE)
 			log.infof("OpenGL Platform Constants ---\n" +

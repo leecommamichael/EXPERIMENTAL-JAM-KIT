@@ -1,6 +1,6 @@
 package nord_gl
 
-Clear_Buffer_Mask :: distinct bit_set[Clearable_Buffer; u32]
+Clear_Buffer_Mask :: distinct bit_set[Clearable_Buffer; uint]
 Clearable_Buffer :: enum GLenum {
 	DEPTH_BUFFER_BIT = 8,
 	STENCIL_BUFFER_BIT = 10,

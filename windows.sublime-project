@@ -6,7 +6,7 @@
 		},
 		{
 			"path": "C:\\Users\\thatl\\usr\\Applications (Compilers)\\odin",
-			"file_include_patterns": ["*.odin"],
+			"file_include_patterns": ["*.odin", "*.js"],
 		},
 		{
 			"path": "C:\\Users\\thatl\\usr\\Applications\\sublime_text\\Data\\Packages\\User",

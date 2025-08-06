@@ -11,7 +11,7 @@ import "base:runtime"
 //         well, perhaps it doesn't harm it, I'm just afraid making a dynarray is heavier.
 Geom_Mesh :: struct {
   vertices: [dynamic]Vec3,
-  indices:  [dynamic]u32,
+  indices:  [dynamic]uint,
   texcoord: [dynamic]Vec2,
 }
 
@@ -78,9 +78,9 @@ geom_make_ring :: proc (
 
 // start_of_mesh is both the center-point, and first vertex.
 geom_make_cap_indices :: proc (
-  indices: ^[dynamic]u32,
-  start_of_mesh: u32,
-  sides_in_mesh: u32,
+  indices: ^[dynamic]uint,
+  start_of_mesh: uint,
+  sides_in_mesh: uint,
 ) {
   // first, create the last triangle.
   append(indices, start_of_mesh + 1)
@@ -98,10 +98,10 @@ geom_make_cap_indices :: proc (
 // Visualize this as creating faces between walls of a wheel.
 // Or circumscribing polygons top-down, and connecting corresponding points.
 geom_make_faces_between_rings :: proc (
-  indices: ^[dynamic]u32,
-  start_of_mesh1: u32,
-  start_of_mesh2: u32,
-  sides_in_meshes: u32,
+  indices: ^[dynamic]uint,
+  start_of_mesh1: uint,
+  start_of_mesh2: uint,
+  sides_in_meshes: uint,
 ) {
   // first, create the last triangle.
   mesh1_1 := start_of_mesh1 + sides_in_meshes
@@ -165,11 +165,11 @@ using glsl
   mesh: [dynamic]vec3 = make([dynamic]vec3)
   geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
   geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
-  verts_per_mesh: u32 : CYLINDER_SIDES + 1 // plus center-point
+  verts_per_mesh: uint : CYLINDER_SIDES + 1 // plus center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32)
+  indices: [dynamic]uint = make([dynamic]uint)
   geom_make_cap_indices(&indices, 0, CYLINDER_SIDES)
   geom_make_cap_indices(&indices, verts_per_mesh, CYLINDER_SIDES)
   geom_make_faces_between_rings(&indices, 0, verts_per_mesh, CYLINDER_SIDES)
@@ -181,11 +181,11 @@ geom_make_pillar :: proc (size: Vec3) -> Geom_Mesh {
   verts: [dynamic]Vec3 = make([dynamic]Vec3)
   geom_make_pillar_cap(&verts, size, true)
   geom_make_pillar_cap(&verts, size, false)
-  VERTS_PER_CAP: u32 : 9 // plus center-point
+  VERTS_PER_CAP: uint : 9 // plus center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32)
+  indices: [dynamic]uint = make([dynamic]uint)
   EDGE_SEGMENTS :: 8 // segments along the subdivided rect
   geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
   geom_make_cap_indices(&indices, VERTS_PER_CAP, EDGE_SEGMENTS)
@@ -206,7 +206,7 @@ using glsl
   BR :: Vec3{  p,-p, 0, }
   m: Geom_Mesh
   m.vertices = make([dynamic]vec3, 4)
-  m.indices = make([dynamic]u32, 6)
+  m.indices = make([dynamic]uint, 6)
   m.vertices[0] = { TL.x * size.x , TL.y * size.y , 0 }
   m.vertices[1] = { TR.x * size.x , TR.y * size.y , 0 }
   m.vertices[2] = { BL.x * size.x , BL.y * size.y , 0 }

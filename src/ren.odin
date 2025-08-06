@@ -148,9 +148,9 @@ Ren_Vertex_Base :: struct {
 Ren_Asset :: struct {
 	program:     ngl.Program,
 	VAO:         ngl.Buffer,
-	index_count: i32,
+	index_count: int,
 	mode:        Ren_Mode,
-	vertices:    []Ren_Vertex_Base,
+	// vertices:    []Ren_Vertex_Base,
 	VBO:         ngl.Buffer,
 }
 
@@ -159,7 +159,7 @@ ren_make_asset :: proc (
 	program: ngl.Program,
 	VAO:     ngl.Buffer,
 	inputs: []Shader_Input,
-	index_count: i32,
+	index_count: int,
 ) -> Ren_Asset {
 	assert(GLES_MAX_BINDINGS > len(inputs), "GLSL shaders only have 16 slots.")
 
@@ -170,7 +170,7 @@ ren_make_asset :: proc (
 	obj.VAO = VAO
 
 	// Enable inputs
-	next_location: u32 = 0
+	next_location: uint = 0
 	for &input in inputs {
 		input.location = next_location
 		next_location += slots_used_by_type(input.type)
@@ -203,16 +203,16 @@ ren_make_asset :: proc (
 	ngl.BindVertexArray(obj.VAO)
 
 	for input in inputs {
-		divisor: u32 = 0 if input.rate == .Vertex else 1
+		divisor: uint = 0 if input.rate == .Vertex else 1
 		slots := slots_used_by_type(input.type)
 		ngl.BindBuffer(.ARRAY_BUFFER, input.buffer.id)
 		for slot_num in 0..<slots {
 			index := input.location + slot_num
-			num_components := input.value_count / cast(i32) slots
+			num_components := input.value_count / cast(int) slots
 			// WARNING:
 			// This size_of in here is a little forceful.
 			// But usually if you've got a multi-slot it's an f32 matrix.
-			offset := input.field_offset + cast(uintptr) (cast(u32) num_components * slot_num * size_of(f32))
+			offset := input.field_offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
 			if glsl_attrib_is_int(input.type) {
 				ngl.VertexAttribIPointer(
 					index      = index,
@@ -252,7 +252,7 @@ glsl_attrib_is_int :: proc (type: GLSL_Attribute_Type) -> bool {
 	return type >= .i32
 }
 
-slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> u32 {
+slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
 	if type == .mat4 {
 		return 4
 	}
@@ -280,14 +280,14 @@ Shader_Input :: struct {
 	field_offset:  uintptr,
 	buffer:        Ren_Buffer,
 	// These are really just caches.
-	location:      u32,
-	value_count:   i32,
+	location:      uint,
+	value_count:   int,
 	ngl_type:      ngl.Data_Type
 }
 
 Ren_Buffer :: struct {
 	id:            ngl.Buffer,
-	element_size:  i32,
+	element_size:  int,
 }
 
 GLES_MAX_BINDINGS :: 16 // per spec
@@ -361,7 +361,7 @@ basic_fragment_shader_source :: fragment_preamble + `
 ren_make_basic_asset :: proc (
 	ren: ^Ren,
 	vertices: []Ren_Vertex_Base,
-	indices:  []u32,
+	indices:  []uint,
 	instance_buffer: ngl.Buffer,
 ) -> Ren_Asset {
 	VAO: ngl.Buffer
@@ -378,7 +378,7 @@ ren_make_basic_asset :: proc (
 	ngl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	// Create Index Buffer
-	index_count := cast(i32) len(indices)
+	index_count := len(indices)
 	index_buffer_id: ngl.Buffer
 	ngl.GenBuffers(&index_buffer_id)
 	ngl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
@@ -432,15 +432,15 @@ make_circle_cap_2D :: proc (
   }
 }
 
-make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u32) {
+make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []uint) {
   verts := make([dynamic]Ren_Vertex_Base)
   make_circle_cap_2D(&verts, sides, radius)
-  VERTS_PER_CAP: u32 = cast(u32) sides + 1 // counting center-point
+  VERTS_PER_CAP: uint = cast(uint) sides + 1 // counting center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32)
-  EDGE_SEGMENTS: u32 = cast(u32) sides
+  indices: [dynamic]uint = make([dynamic]uint)
+  EDGE_SEGMENTS: uint = cast(uint) sides
   geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
   geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
 

@@ -10,7 +10,7 @@ _ :: fmt
 _ :: runtime
 
 
-EShader_Type :: enum i32 {
+EShader_Type :: enum int {
 	NONE = 0x0000,
 	FRAGMENT_SHADER        = 0x8B30,
 	VERTEX_SHADER          = 0x8B31,
@@ -49,14 +49,14 @@ INFO_LOG_LENGTH :: 0x8B84
 when NGL_DEBUG {
 	@private
 	check_error :: proc(
-		id: u32, type: EShader_Type, status: u32,
-		iv_func: proc "c" (u32, u32, [^]i32, runtime.Source_Code_Location),
-		log_func: proc "c" (u32, i32, ^i32, [^]u8, runtime.Source_Code_Location), 
+		id: uint, type: EShader_Type, status: uint,
+		iv_func: proc (uint, uint, [^]int),
+		log_func: proc (uint, int, ^int, [^]u8), 
 		loc := #caller_location,
 	) -> (success: bool) {
-		result, info_log_length: i32
-		iv_func(id, status, &result, loc)
-		iv_func(id, INFO_LOG_LENGTH, &info_log_length, loc)
+		result, info_log_length: int
+		iv_func(id, status, &result)
+		iv_func(id, INFO_LOG_LENGTH, &info_log_length)
 
 		if result == 0 {
 			if log_func == GetShaderInfoLog {
@@ -64,7 +64,7 @@ when NGL_DEBUG {
 				last_compile_error_message = make([]byte, info_log_length)
 				last_compile_error_type = type
 
-				log_func(id, i32(info_log_length), nil, raw_data(last_compile_error_message), loc)
+				log_func(id, int(info_log_length), nil, raw_data(last_compile_error_message))
 				fmt.printf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]));
 			} else {
 
@@ -72,7 +72,7 @@ when NGL_DEBUG {
 				last_link_error_message = make([]byte, info_log_length)
 				last_compile_error_type = type
 
-				log_func(id, i32(info_log_length), nil, raw_data(last_link_error_message), loc)
+				log_func(id, int(info_log_length), nil, raw_data(last_link_error_message))
 				fmt.printf("Error in %v:\n%s", type, string(last_link_error_message[0:len(last_link_error_message)-1]));
 			}
 
@@ -84,11 +84,11 @@ when NGL_DEBUG {
 } else {
 	@private
 	check_error :: proc(
-		id: u32, type: EShader_Type, status: u32,
-		iv_func: proc "c" (u32, u32, [^]i32),
-		log_func: proc "c" (u32, i32, ^i32, [^]u8),
+		id: uint, type: EShader_Type, status: uint,
+		iv_func: proc (uint, uint, [^]int),
+		log_func: proc (uint, int, ^int, [^]u8),
 	) -> (success: bool) {
-		result, info_log_length: i32
+		result, info_log_length: int
 		iv_func(id, status, &result)
 		iv_func(id, INFO_LOG_LENGTH, &info_log_length)
 
@@ -98,14 +98,14 @@ when NGL_DEBUG {
 				last_compile_error_message = make([]u8, info_log_length)
 				last_link_error_type = type
 
-				log_func(id, i32(info_log_length), nil, raw_data(last_compile_error_message))
+				log_func(id, int(info_log_length), nil, raw_data(last_compile_error_message))
 				fmt.eprintf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]))
 			} else {
 				delete(last_link_error_message)
 				last_link_error_message = make([]u8, info_log_length)
 				last_link_error_type = type
 
-				log_func(id, i32(info_log_length), nil, raw_data(last_link_error_message))
+				log_func(id, int(info_log_length), nil, raw_data(last_link_error_message))
 				fmt.eprintf("Error in %v:\n%s", type, string(last_link_error_message[0:len(last_link_error_message)-1]))
 
 			}
@@ -123,7 +123,7 @@ compile_shader_from_source :: proc(shader_data: string, shader_type: EShader_Typ
 	ShaderSource(shader_id, shader_data)
 	CompileShader(shader_id)
 
-	check_error(cast(u32)shader_id, shader_type, COMPILE_STATUS, GetShaderiv, GetShaderInfoLog) or_return
+	check_error(cast(uint)shader_id, shader_type, COMPILE_STATUS, GetShaderiv, GetShaderInfoLog) or_return
 	ok = true
 	return
 }
@@ -136,7 +136,7 @@ create_and_link_program :: proc(shader_ids: []Shader) -> (program_id: Program, o
 	}
 	LinkProgram(program_id)
 
-	check_error(cast(u32)program_id, EShader_Type.SHADER_LINK, LINK_STATUS, GetProgramiv, GetProgramInfoLog) or_return
+	check_error(cast(uint)program_id, EShader_Type.SHADER_LINK, LINK_STATUS, GetProgramiv, GetProgramInfoLog) or_return
 	ok = true
 	return
 }

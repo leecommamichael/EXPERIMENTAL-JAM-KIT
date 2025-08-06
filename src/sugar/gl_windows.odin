@@ -42,7 +42,7 @@ load_gl :: proc (window_size: [2]int) -> bool {
   no_ctx := win.nonzero(windows.wglMakeCurrent(g_dc, nil)) or_return
   modern_ctx_is_current := win.nonzero(windows.wglMakeCurrent(g_dc, modern_ctx)) or_return
   windows.wglDeleteContext(dummy_ctx)
-  actual_version: [2]i32
+  actual_version: [2]int
 
   g_context = modern_ctx
   gl.load_up_to(CONTEXT_MAJOR, CONTEXT_MINOR, windows.gl_set_proc_address)
@@ -75,5 +75,5 @@ resize_viewport :: proc () {
   got_rect := windows.GetClientRect(g_window, &sized_rect)
   assert(cast(bool) got_rect)
   g_state.resolution = { cast(int) sized_rect.right, cast(int) sized_rect.bottom }
-  gl.Viewport(0,0, cast(i32)g_state.resolution.x, cast(i32)g_state.resolution.y)
+  gl.Viewport(0,0, g_state.resolution.x, g_state.resolution.y)
 }
