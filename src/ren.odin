@@ -361,7 +361,7 @@ basic_fragment_shader_source :: fragment_preamble + `
 ren_make_basic_asset :: proc (
 	ren: ^Ren,
 	vertices: []Ren_Vertex_Base,
-	indices:  []uint,
+	indices:  []u32,
 	instance_buffer: ngl.Buffer,
 ) -> Ren_Asset {
 	VAO: ngl.Buffer
@@ -432,15 +432,15 @@ make_circle_cap_2D :: proc (
   }
 }
 
-make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []uint) {
+make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u32) {
   verts := make([dynamic]Ren_Vertex_Base)
   make_circle_cap_2D(&verts, sides, radius)
-  VERTS_PER_CAP: uint = cast(uint) sides + 1 // counting center-point
+  VERTS_PER_CAP: u32 = cast(u32) sides + 1 // counting center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]uint = make([dynamic]uint)
-  EDGE_SEGMENTS: uint = cast(uint) sides
+  indices: [dynamic]u32 = make([dynamic]u32)
+  EDGE_SEGMENTS: u32 = cast(u32) sides
   geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
   geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
 
