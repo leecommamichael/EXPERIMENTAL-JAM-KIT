@@ -224,7 +224,7 @@ step :: proc(dt: f64) -> bool {
 		globals.entities = slice.into_dynamic(entities)
 		globals.ren = ren_make()	
 		ren_init(globals.ren)
-		v,i := make_circle_2D(44.0)
+		v,i := make_triangle_2D()
 		asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
 		g_ent = make_entity()
 		g_ent._asset = asset

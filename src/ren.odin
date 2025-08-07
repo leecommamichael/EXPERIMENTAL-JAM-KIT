@@ -49,7 +49,7 @@ ren_init :: proc (ren: ^Ren) {
 
 	ngl.Enable(.CULL_FACE)
 	ngl.CullFace(.BACK)
-	ngl.FrontFace(.CCW)
+	ngl.FrontFace(.CW)
 	// ngl.PolygonMode(ngl.FRONT_AND_BACK, ngl.LINE);
 }
 
@@ -83,7 +83,7 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 		index  = INSTANCE_UNIFORM_INDEX,
 		buffer = ren.instance_UBO,
 		offset = instance_index * globals.instances.stride,
-		size = globals.instances.stride
+		size = size_of(Ren_Instance)
 	)
 	asset := entity._asset
 	if ren.program != asset.program {
@@ -110,7 +110,7 @@ ren_draw :: proc (ren: ^Ren) {
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STREAM_DRAW)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
-	ngl.BufferData(.Uniforms, globals.instances.data[:], .STREAM_DRAW)
+	ngl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:], .STREAM_DRAW)
 
 	for entity in globals.game_entities {
 		ren_draw_entity(ren, entity)
@@ -444,5 +444,17 @@ make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u
   geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
   //geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
 
+  return verts[:], indices[:]
+}
+
+make_triangle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
+  verts := make([dynamic]Ren_Vertex_Base)
+  append(&verts, Ren_Vertex_Base{position = Vec3{0,0,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{440,0,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{0,440,0}})
+  indices: [dynamic]u32 = make([dynamic]u32)
+  append(&indices, 0)
+  append(&indices, 1)
+  append(&indices, 2)
   return verts[:], indices[:]
 }
