@@ -414,5 +414,7 @@ Viewport :: proc (x: int, y: int, width: int, height: int) {
 	glViewport(x, y, width, height)
 }
 
-GetError :: glGetError
+GetError :: proc () -> GLenum {
+	return glGetError()
+}
 
