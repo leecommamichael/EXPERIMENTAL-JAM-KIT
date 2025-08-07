@@ -119,7 +119,7 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.projection = globals.ui_orthographic
 	globals.uniforms.view = globals.ui_view
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.glBufferData(ngl.UNIFORM_BUFFER, size_of(Uniforms), &globals.uniforms, ngl.STREAM_DRAW)
+	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STREAM_DRAW)
 	for entity in globals.ui_entities {
 		ren_draw_entity(ren, entity)
 	}
@@ -335,7 +335,7 @@ basic_vertex_inputs :: `
 basic_vertex_shader_source :: vertex_preamble +
 basic_vertex_inputs +
 `
-	flat out vec4 io_color;
+	out vec4 io_color;
 
 	void main() {
 		io_color = instance.color;
@@ -374,7 +374,7 @@ ren_make_basic_asset :: proc (
 	}
 	ngl.GenBuffers(&vertex_buffer.id)
 	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
-	ngl.BufferData(.ARRAY_BUFFER, vertices)
+	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
 	ngl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	// Create Index Buffer
@@ -442,7 +442,7 @@ make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u
   indices: [dynamic]u32 = make([dynamic]u32)
   EDGE_SEGMENTS: u32 = cast(u32) sides
   geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
-  geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
+  //geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
 
   return verts[:], indices[:]
 }

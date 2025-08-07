@@ -205,7 +205,7 @@ foreign webgl {
 	@(link_name="Scissor")
 	glScissor             :: proc(x, y, width, height: int) ---
 	@(link_name="ShaderSource")
-	glShaderSource        :: proc(shader: Shader, strings: []string) ---
+	glShaderSource        :: proc(shader: Shader, string: string) ---
 	
 	@(link_name="StencilFunc")
 	glStencilFunc         :: proc(func: uint, ref: int, mask: uint) ---

@@ -25,10 +25,7 @@ make_aligned_array :: proc (
 	alignment: int,
 ) -> Aligned_Array(T) {
 	element_size :: size_of(T)
-	assert(element_size < alignment, "TODO: This needs rework (including align_up to find stride).")
-	leftover_size := alignment - element_size
-	// store stride and use it to maintain alignment when subscripting
-	stride := element_size + leftover_size
+	stride := cast(int) align_up(element_size, cast(uint)alignment)
 	buffer_size := cap * stride
 
 	// make byte buffer which starts on the proper alignment.
@@ -39,6 +36,11 @@ make_aligned_array :: proc (
 		stride = stride,
 		alignment = alignment
 	}
+}
+
+align_up :: proc(x, align: uint) -> (aligned: uint) {
+	assert(0 == (align & (align - 1)), "must align to a power of two")
+	return (x + (align - 1)) &~ (align - 1)
 }
 
 subscript_aligned_array :: proc (buffer: ^Aligned_Array($T), index: int) -> ^T {

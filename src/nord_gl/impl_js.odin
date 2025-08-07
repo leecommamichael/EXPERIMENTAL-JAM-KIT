@@ -344,7 +344,7 @@ DeleteShader :: proc (s: Shader) {
 
 // This temporary array is actually due to a bug in odin.js (their spec is wrong)
 ShaderSource :: proc (s: Shader, src: string) {
-	glShaderSource(s, []string{src})
+	glShaderSource(s, src)
 }
 
 
