@@ -45,6 +45,46 @@ Buffer_Data_One :: #force_inline proc (
 
 
 
+BufferSubData :: proc {
+	Buffer_SubData_Many,
+	Buffer_SubData_One,
+}
+
+Buffer_SubData_Many :: #force_inline proc (
+	target: Buffer_Binding_Target,
+	offset: uintptr,
+	src: []$T, 
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
+	when NGL_DEBUG {
+		if len(src) == 0 {
+			_bad_input("BufferSubData called with no data.", _loc)
+			return
+		}
+	}
+	glBufferSubData(cast(uint) target, cast(int) offset, size_of(T) * len(src), raw_data(src))
+	when NGL_VALIDATE { return validate() } else { return }
+}
+
+Buffer_SubData_One :: #force_inline proc (
+	target: Buffer_Binding_Target,
+	offset: uintptr,
+	src: ^$T,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
+	when NGL_DEBUG {
+		if src == nil {
+			_bad_input("BufferSubData called with nil.", _loc)
+			return
+		}
+	}
+	glBufferSubData(cast(uint) target, cast(int) offset, size_of(T), src)
+	when NGL_VALIDATE { return validate() } else { return }
+}
+
+
+
+
 // @Experts: As you can see, offset is not a rawptr to CPU memory. For WebGL2 compatibility.
 DrawElementsInstanced :: #force_inline proc (
 	mode:   Primitive_Mode,

@@ -26,10 +26,11 @@ ren_make :: proc () -> ^Ren {
 
 	ngl.GenBuffers(&ren.frame_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STREAM_DRAW)
+	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
 
 	ngl.GenBuffers(&ren.instance_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
+	ngl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:])
 
 	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 
@@ -108,9 +109,9 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.projection = globals.game_camera
 	globals.uniforms.view = globals.game_view
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STREAM_DRAW)
+	ngl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:], .STREAM_DRAW)
+	ngl.BufferSubData(.UNIFORM_BUFFER, 0, globals.instances.data[:])
 
 	for entity in globals.game_entities {
 		ren_draw_entity(ren, entity)
@@ -119,7 +120,7 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.projection = globals.ui_orthographic
 	globals.uniforms.view = globals.ui_view
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STREAM_DRAW)
+	ngl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	for entity in globals.ui_entities {
 		ren_draw_entity(ren, entity)
 	}
@@ -135,7 +136,7 @@ Ren_Instance :: struct {
 	color:           Vec4,
 }
 
-Uniforms :: struct {
+Uniforms :: struct #align(16) {
 	view:       Mat4,
 	projection: Mat4,
 }
@@ -300,14 +301,14 @@ precision_defaults :: `
 `
 
 frame_uniforms :: `
-	uniform Frame_Uniforms {
+	layout(std140) uniform Frame_Uniforms {
 		mat4 view;       // where the camera is
 		mat4 projection; // camera lens
 	} frame;
 `
 
 instance_uniforms :: `
-	uniform Instance_Uniforms {
+	layout(std140) uniform Instance_Uniforms {
 		mat4 model_mat;
 		vec4 uv_xform;
 		vec4 color;
@@ -337,8 +338,47 @@ basic_vertex_inputs +
 `
 	out vec4 io_color;
 
+	const vec4 nan_color = vec4(1,0,0,1);
+	const vec4 inf_color = vec4(0,0,1,1);
+	const vec4 zero_color = vec4(1,0,1,1); // todo compute random over time.
+
+	vec4 float_to_color(float f) {
+		if (isnan(f)) {
+			return nan_color;
+		} else if (isinf(f)) {
+			return inf_color;
+		} else {
+			return vec4(f);
+		}
+	}
+
+	vec4 mat4_to_color(mat4 m) {
+		bool has_nan = isnan(m[0][0]) || isnan(m[1][1]) || isnan(m[2][2]);
+		if (has_nan) {
+			return nan_color;
+		}
+		bool has_inf = isinf(m[0][0]) || isinf(m[1][1]) || isinf(m[2][2]);
+		if (has_inf) {
+			return inf_color;
+		}
+		vec4 xx = float_to_color(m[0][0]);
+		vec4 yy = float_to_color(m[1][1]);
+		vec4 zz = float_to_color(m[2][2]);
+		float channel_sum = xx[0] + yy[0] + zz[0];
+		if (channel_sum == 0.0) {
+			return zero_color;
+		}
+		return vec4(xx.x/channel_sum,yy.y/channel_sum,zz.z/channel_sum, 1.0);
+	}
+
+// Desktop: frame.projection is cyan, but is zero-color on Web
+// Desktop: frame.view         is OK
+// Desktop: instance model_mat is OK
+
 	void main() {
 		io_color = instance.color;
+		// io_color = mat4_to_color(frame.projection);
+		// gl_Position = vec4(v_position, 1);
 		mat4 mvp = frame.projection * frame.view * instance.model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
 	}
@@ -449,9 +489,9 @@ make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u
 
 make_triangle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
   verts := make([dynamic]Ren_Vertex_Base)
-  append(&verts, Ren_Vertex_Base{position = Vec3{0,0,0}})
-  append(&verts, Ren_Vertex_Base{position = Vec3{440,0,0}})
-  append(&verts, Ren_Vertex_Base{position = Vec3{0,440,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{-1,1,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{1,1,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{0,-1,0}})
   indices: [dynamic]u32 = make([dynamic]u32)
   append(&indices, 0)
   append(&indices, 1)

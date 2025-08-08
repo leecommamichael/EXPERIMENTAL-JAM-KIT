@@ -1,6 +1,7 @@
 package main
 
 import "base:intrinsics"
+import "base:runtime"
 import "core:time"
 import "core:log"
 import "core:slice"
@@ -184,7 +185,7 @@ g_ent: ^Entity
 
 // This is an entry-point, and so all game data must be globally visible for Web support.
 @export
-step :: proc(dt: f64) -> bool {
+step :: proc (dt: f64) -> bool {
 	if sugar.platform_calls_step {
 		#partial switch sugar.poll_events() {
 		case .Resized:
@@ -193,6 +194,12 @@ step :: proc(dt: f64) -> bool {
 	}
 
 	if !game_initialized {
+		when ODIN_OS == .JS {
+			runtime.default_context_ptr().logger = log.create_console_logger(
+				lowest = log.Level.Debug,
+				opt = { .Level, } 
+			)
+		}
 		game_initialized = true
 		init_gl_constants :: proc () {
 			assert(gl.GetIntegerv != nil, "GL not loaded.")
@@ -224,7 +231,7 @@ step :: proc(dt: f64) -> bool {
 		globals.entities = slice.into_dynamic(entities)
 		globals.ren = ren_make()	
 		ren_init(globals.ren)
-		v,i := make_triangle_2D()
+		v,i := make_circle_2D(44.0)
 		asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
 		g_ent = make_entity()
 		g_ent._asset = asset

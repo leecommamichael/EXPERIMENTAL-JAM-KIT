@@ -10,7 +10,6 @@ platform_calls_step :: true
 Window :: int // TODO
 
 g_window: Window
-g_window_resized: bool // set in wndproc, unset in message queue reader
 
 canvas_id :: "the_canvas"
 
@@ -28,7 +27,8 @@ create_window :: proc (
 	  }
 	  assert(ctx, "WebGL2 unsupported.")
 	}
-
+	// ok := js.add_resize_observer(canvas_id, on_canvas_resize)
+	// assert(ok, "failed to add resize observer")
 	js.add_event_listener(canvas_id, .Pointer_Move, user_data = nil, callback = js_on_canvas_event)
 	js.add_event_listener(canvas_id, .Pointer_Up,   user_data = nil, callback = js_on_canvas_event)
 	js.add_event_listener(canvas_id, .Pointer_Down, user_data = nil, callback = js_on_canvas_event)
@@ -61,8 +61,14 @@ set_cursor_visible :: proc (show: bool) {
 }
 
 js_should_resize: bool = false
-on_resize :: proc () {
-	// TODO: https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
+@export
+canvas_resize_callback :: proc (w,h: f64) {
+	log.infof("resized: %v,%v", w, h)
+	js_should_resize = true
+	pixels_per_css_pixel := js.device_pixel_ratio()
+	wpx := cast(int) (pixels_per_css_pixel * w)
+	hpx := cast(int) (pixels_per_css_pixel * h)
+	g_state.resolution = {wpx, hpx}
 }
 
 // Convert callback to pollable structure.
