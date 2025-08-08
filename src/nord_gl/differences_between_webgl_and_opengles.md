@@ -1,5 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // SECTION: Differences Between WebGL and OpenGL ES 2.0 
+// 
+// WebGL 1.0 Specification
+// Editor's Draft Fri Feb 7 11:45:36 2025 -0800
 ////////////////////////////////////////////////////////////////////////////////
 This section describes changes made to the WebGL API relative to the OpenGL ES 2.0 API to improve portability across various operating systems and devices.
 
@@ -362,6 +365,9 @@ utilize the current program generate an INVALID_OPERATION error.
 
 ////////////////////////////////////////////////////////////////////////////////
 // SECTION: Differences Between WebGL and OpenGL ES 3.0
+//
+// WebGL 2.0 Specification
+// Editor's Draft Fri Feb 7 11:45:36 2025 -0800        
 ////////////////////////////////////////////////////////////////////////////////
 This section describes changes made to the WebGL API relative to the OpenGL ES 3.0 API to improve portability across various operating
 systems and devices.
