@@ -1,6 +1,7 @@
 // raddbg 0.9.20 project file
 
 recent_file: path: "src/main.odin"
+recent_file: path: "src/geom.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/nord_gl/impl_desktop.odin"
 recent_file: path: "src/ren_util.odin"
@@ -15,13 +16,13 @@ target:
 }
 use_default_ue_type_views: 0
 use_default_stl_type_views: 0
-type_view:
+breakpoint:
 {
-  type: "[]?"
-  expr: "slice($)"
+  source_location: "src/main.odin:233:1"
+  hit_count: 1
 }
 breakpoint:
 {
-  source_location: "src/main.odin:281:1"
-  hit_count: 6
+  source_location: "src/geom.odin:261:1"
+  hit_count: 0
 }

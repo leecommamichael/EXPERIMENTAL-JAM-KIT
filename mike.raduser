@@ -11,11 +11,16 @@ window:
     {
       0.337979:
       {
-        selected
-        watch: selected expression: ""
+        watch:
+        {
+          expression: ""
+          watch: x
+          watch: z
+        }
         watch: expression: "query:types"
         watch:
         {
+          selected
           expression: "query:locals"
           normal: 0.350000 0.400000 0.250000
         }
@@ -40,10 +45,9 @@ window:
       }
       0.346286:
       {
-        watch: expression: "query:call_stack"
+        watch: selected expression: "query:call_stack"
         disasm:
         {
-          selected
           expression: ""
           query: input: ""
         }
@@ -52,6 +56,7 @@ window:
     }
     0.592988:
     {
+      selected
       getting_started
       text:
       {
@@ -69,19 +74,19 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 281
+        cursor_line: 233
         cursor_column: 1
-        mark_line: 281
+        mark_line: 233
         mark_column: 1
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/nord_gl/impl_desktop.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/geom.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 96
+        cursor_line: 261
         cursor_column: 1
-        mark_line: 96
+        mark_line: 261
         mark_column: 1
       }
     }

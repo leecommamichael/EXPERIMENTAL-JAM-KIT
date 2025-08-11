@@ -4,15 +4,17 @@ import "core:math"
 import "core:math/linalg/glsl"
 import "base:runtime"
 
+// RATIONALE: I'm using u32 because OpenGL doesn't use 64bit index buffers.
 
-// **TODO: make these slices, not dynamic arrays?
-//         can still use dyanmic arrays to create the data.
-//         it just doesn't help the interface, right?
-//         well, perhaps it doesn't harm it, I'm just afraid making a dynarray is heavier.
 Geom_Mesh :: struct {
   vertices: [dynamic]Vec3,
   indices:  [dynamic]u32,
   texcoord: [dynamic]Vec2,
+}
+
+Geom_Mesh2 :: struct {
+  vertices: [dynamic]Ren_Vertex_Base,
+  indices:  [dynamic]u32,
 }
 
 // Order of vertices of a pillar cap.
@@ -196,7 +198,7 @@ geom_make_pillar :: proc (size: Vec3) -> Geom_Mesh {
 
 // On the XY plane
 geom_make_quad :: proc (
-  size: glsl.vec2,
+  size: Vec2,
 ) -> Geom_Mesh {
 using glsl
   p :: 0.5
@@ -205,8 +207,8 @@ using glsl
   BL :: Vec3{ -p,-p, 0, }
   BR :: Vec3{  p,-p, 0, }
   m: Geom_Mesh
-  m.vertices = make([dynamic]vec3, 4)
-  m.indices = make([dynamic]u32, 6)
+  m.vertices = make([dynamic]vec3, 0, 4)
+  m.indices = make([dynamic]u32, 0, 6)
   m.vertices[0] = { TL.x * size.x , TL.y * size.y , 0 }
   m.vertices[1] = { TR.x * size.x , TR.y * size.y , 0 }
   m.vertices[2] = { BL.x * size.x , BL.y * size.y , 0 }
@@ -218,10 +220,69 @@ using glsl
   m.indices[4] = 1 // TR
   m.indices[5] = 2 // BL
 
-  m.texcoord = make([dynamic]vec2, 4)
+  m.texcoord = make([dynamic]vec2, 0, 4)
   m.texcoord[0] = { 0 , 0 } // TL
   m.texcoord[1] = { 1 , 0 } // TR
   m.texcoord[2] = { 0 , 1 } // BL
   m.texcoord[3] = { 1 , 1 } // BR 
   return m
 }
+
+// A grid of points along the XZ plane.
+//
+// 6----7----8
+// |    |    |
+// 3----4----5  Tri 0A: 3, 0, 4
+// |    |    |  Tri 0B: 1, 4, 0
+// 0----1----2
+//
+//
+// We know the names of points, as labeled above. (indexes)
+// The only task is to ensure inserting them in that order.
+geom_make_xz_plane :: proc (
+  plane_size:       f32, // size of grid (affects size of grid-squares)
+  squares_per_axis: u32
+) -> (result: Geom_Mesh2) {
+  half_size := plane_size / 2
+  assert(is_real(half_size))
+
+  axis_vert_count: u32 = (squares_per_axis+1)
+  axis_vert_count_squared := axis_vert_count * axis_vert_count
+  result.vertices = make([dynamic]Ren_Vertex_Base, 0, axis_vert_count_squared)
+  indices_per_square :: 6
+  indices_needed := squares_per_axis * squares_per_axis * indices_per_square
+  result.indices = make([dynamic]u32, 0, indices_needed)
+
+  square_size_step := plane_size / f32(squares_per_axis)
+  z: u32 = 0
+  // 0 1 2 3 4 5
+  // X X X x x x
+  //     z     Z
+  for i in 0 ..< axis_vert_count_squared {
+    x := i % axis_vert_count
+    z := i / axis_vert_count
+    append(&result.vertices, Ren_Vertex_Base{
+      position = Vec3{
+        (square_size_step * f32(x)) - half_size,
+        0,
+        (square_size_step * f32(z)) - half_size,
+      } 
+    })
+
+    if (x+1) == axis_vert_count \
+    || (z+1) == axis_vert_count {
+      continue // If we keep going, rows wrap by indices.
+    }
+
+    BL:u32 = i
+    BR:u32 = i + 1
+    TL:u32 = i + axis_vert_count
+    TR:u32 = i + axis_vert_count + 1
+    append(&result.indices,
+      TL, BL, TR, // Triangle 1
+      BR, TR, BL) // Triangle 2
+
+  }
+  return
+}
+

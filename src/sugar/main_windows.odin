@@ -65,7 +65,7 @@ create_window :: proc (
     cbSize        = size_of(windows.WNDCLASSEXW),
     lpfnWndProc   = thread_wndproc,
     hInstance     = instance,
-    lpszClassName = class_name,
+    lpszClassName = cast(cstring16) class_name,
     style         = default_extras.style
   }
   class_atom : windows.ATOM = win.nonzero(windows.RegisterClassExW(&window_class)) or_return
@@ -75,7 +75,7 @@ create_window :: proc (
   g_window = win.nonzero(windows.CreateWindowExW(
     dwStyle      = default_extras.dwStyle,
     dwExStyle    = default_extras.dwExStyle,
-    lpClassName  = class_name,
+    lpClassName  = cast(cstring16) class_name,
     lpWindowName = window_title,
     X            = cast(windows.INT) desired_client_rect.left,
     Y            = cast(windows.INT) desired_client_rect.top,

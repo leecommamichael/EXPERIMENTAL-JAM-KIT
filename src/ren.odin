@@ -48,8 +48,8 @@ ren_init :: proc (ren: ^Ren) {
 	// ngl.DepthRange(f64(1), f64(-1))
 	// ngl.DepthFunc(ngl.GEQUAL)
 
-	ngl.Enable(.CULL_FACE)
-	ngl.CullFace(.BACK)
+	// ngl.Enable(.CULL_FACE)
+	// ngl.CullFace(.BACK)
 	ngl.FrontFace(.CW)
 	// ngl.PolygonMode(ngl.FRONT_AND_BACK, ngl.LINE);
 }

@@ -57,7 +57,7 @@ release_cursor :: proc () {
 
 set_cursor_visible :: proc (show: bool) {
 	value := "" if show else "none"
-	js.set_element_style(canvas_id, "style.cursor", value)
+	js.set_element_style(canvas_id, "cursor", value)
 }
 
 js_should_resize: bool = false

@@ -120,14 +120,13 @@ Globals :: struct {
 resolution_changed :: proc (res: [2]int) {
 	globals.aspect_ratio = cast(f32)res.x / cast(f32)res.y
 	globals.resolution = res
-
-	globals.game_camera = glsl.mat4Ortho3d(
-		left   = 0,
-		right  = cast(f32) res.x,
-		top    = 0,
-		bottom = cast(f32) res.y,
-		near   = -10,
-		far    = 1000
+	// linalg.matrix4_perspective
+	globals.game_camera = linalg.matrix4_perspective_f32(
+		fovy   = linalg.to_radians(f32(90.0)),
+		aspect = globals.aspect_ratio,
+		near   = .1,
+		far    = 1000,
+		flip_z_axis = false
 	)
 	globals.ui_orthographic = glsl.mat4Ortho3d(
 		left   = 0,
@@ -182,10 +181,12 @@ GL_Standard :: struct {
 }
 
 g_ent: ^Entity
-
+g_marker: ^Entity
+g_time: f32
 // This is an entry-point, and so all game data must be globally visible for Web support.
 @export
 step :: proc (dt: f64) -> bool {
+	g_time += f32(dt)
 	if sugar.platform_calls_step {
 		#partial switch sugar.poll_events() {
 		case .Resized:
@@ -221,7 +222,11 @@ step :: proc (dt: f64) -> bool {
 		)
 
 		// 1. Init Globals /////////////////////////////////////////////////////////
-		globals.game_view = 1
+		globals.game_view = glsl.mat4LookAt(
+			eye    = Vec3{ 0  , 5 , 0 } + Vec3{0.1, 0.1, 0.1},
+			centre = Vec3{ 0  , 5,  -5 },
+			up     = Vec3{ 0  , 1 , 0 }
+		)
 		globals.ui_view = 1
 		game_entities := make([]^Entity_Memory, max(Entity_ID))
 		globals.game_entities = slice.into_dynamic(game_entities)
@@ -231,11 +236,29 @@ step :: proc (dt: f64) -> bool {
 		globals.entities = slice.into_dynamic(entities)
 		globals.ren = ren_make()	
 		ren_init(globals.ren)
+		plane_mesh := geom_make_xz_plane(plane_size = 1024, squares_per_axis = 1024)
+		plane_asset := ren_make_basic_asset(globals.ren, plane_mesh.vertices[:], plane_mesh.indices[:], globals.ren.instance_UBO)
 		v,i := make_circle_2D(44.0)
-		asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
+		cursor_asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
+		vm,im := make_circle_2D(0.5)
+		marker_asset := ren_make_basic_asset(globals.ren, vm, im, globals.ren.instance_UBO)
+
+		plane_ent := make_entity()
+		plane_ent._asset = plane_asset
+		// plane_ent.rotation.x = linalg.to_radians(f32(90))
+		// plane_ent.rotation.y = linalg.to_radians(f32(45))
+		// plane_ent.rotation.z = linalg.to_radians(f32(-45))
+		// plane_ent._ui = true
+		plane_ent._asset.mode = .Line_Loop
+
 		g_ent = make_entity()
-		g_ent._asset = asset
+		g_ent._asset = cursor_asset
 		g_ent.position = Vec3{88,88, 0}
+		g_ent._ui = true
+
+		g_marker = make_entity()
+		g_marker._asset = marker_asset
+		g_marker.rotation.x = f32(linalg.PI/2)
 
 		// 2. Init Inputs //////////////////////////////////////////////////////////
 		globals.quit = sugar.Button_Action {
@@ -268,6 +291,18 @@ step :: proc (dt: f64) -> bool {
 	}
 
 	g_ent.position = vec3(sugar.g_state.input.mouse.window)
+
+	cost := glsl.cos(g_time * 4)
+	sint := glsl.sin(g_time * 4)
+	g_marker.position = vec3(1*cost, 0, 1*sint)
+	g_marker.position +=  vec3(0,0,8)
+	if (cost) > 0.99 {
+		g_marker.color = vec4(1,0,0,1)
+	} else if (sint) > 0.99 {
+		g_marker.color = vec4(0,0,1,1)
+	} else {
+		g_marker.color = vec4(0,0,0,1)
+	}
 	
 	// 5. Prepare Frame and Draw /////////////////////////////////////////////////
 	finalize_simulation_frame :: proc () {
