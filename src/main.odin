@@ -210,7 +210,7 @@ resolution_changed :: proc (res: [2]int) {
 	)
 }
 
-// I can flush about 4 million vertices each frame and _just_ hit 60fps.
+// I can flush about 4 million vertices each frame and _just_ hit 57-59 fps.
 // We can eliminate the data-transfer time by using a vertex shader.
 // Let's see the effect of that.
 

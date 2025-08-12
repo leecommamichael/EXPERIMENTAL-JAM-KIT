@@ -59,7 +59,7 @@ ren_make :: proc () -> ^Ren {
 
 	ngl.GenBuffers(&ren.frame_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .DYNAMIC_DRAW)
+	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
 
 	ngl.GenBuffers(&ren.instance_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
@@ -382,7 +382,7 @@ ren_make_basic_asset :: proc (
 	}
 	ngl.GenBuffers(&vertex_buffer.id)
 	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
-	ngl.BufferData(.ARRAY_BUFFER, vertices, .DYNAMIC_DRAW)
+	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
 	ngl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	// Create Index Buffer
