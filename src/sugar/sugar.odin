@@ -74,6 +74,9 @@ on_release :: proc (action: ^Button_Action) -> bool {
 //////////////////////////////////////////////////////////////////////
 begin_input_frame :: proc () {
 	g_state.input.tick = time.tick_now()
+}
+
+end_input_frame :: proc () {
 	g_state.input.mouse.delta = 0
 }
 

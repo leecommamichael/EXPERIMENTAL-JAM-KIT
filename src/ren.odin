@@ -1,32 +1,65 @@
 package main
 
+import "base:intrinsics"
 import "core:log"
 import "core:mem"
 import "core:math/linalg"
 import ngl "nord_gl"
+
+////////////////////////////////////////////////////////////////////////////////
+// Entity 
+////////////////////////////////////////////////////////////////////////////////
+
+init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
+	entity^ = {} // zero
+	entity._id = id
+	entity._used = true
+	entity.scale = 1
+	entity.instance = subscript_aligned_array(&globals.instances, cast(int) entity._id)
+	entity.instance^ = {} // zero
+	entity.instance.color.a = 1
+	entity.instance.uv_transform = {0,0,1,1}
+}
+
+make_entity :: proc {
+	make_entity_basic,
+	make_entity_variant
+}
+
+make_entity_basic :: proc () -> ^Entity {
+	return make_entity_variant(Entity)
+}
+
+make_entity_variant :: proc ($T: typeid) -> ^T
+where intrinsics.type_is_subtype_of(T, Entity) {
+	for &mem, i in globals._entity_storage {
+		if !mem._used {
+			init_entity_memory(&mem, cast(Entity_ID) i)
+			if T == X {
+				mem.x = {}
+				mem.tag = .X
+			} else if T == Entity {
+				mem.tag = .Entity
+			} else {
+				panic("Unimplemented Entity")
+			}
+			return transmute(^T) &mem
+		}
+	}
+	panic("Out of entities.")
+}
+
+
 //////////////////////////////////////////////////////////////////////
 // Section: Renderer
 //////////////////////////////////////////////////////////////////////
-
-Ren :: struct {
-	program:      ngl.Program,
-	VAO:          ngl.VertexArrayObject,
-	frame_UBO:    ngl.Buffer,
-	instance_UBO: ngl.Buffer,           // constant
-	programs: [Game_Shader]ngl.Program, // constant
-	instance_buffer: ngl.Buffer,        // union of all instances
-}
-
-	Game_Shader :: enum {
-		Basic,
-	}
 
 ren_make :: proc () -> ^Ren {
 	ren := new(Ren)
 
 	ngl.GenBuffers(&ren.frame_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
+	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .DYNAMIC_DRAW)
 
 	ngl.GenBuffers(&ren.instance_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
@@ -54,7 +87,6 @@ ren_init :: proc (ren: ^Ren) {
 	// ngl.PolygonMode(ngl.FRONT_AND_BACK, ngl.LINE);
 }
 
-// Ren: Drawing //////////////////////////////////////////////////////////////////////////
 FRAME_UNIFORM_INDEX :: 0
 INSTANCE_UNIFORM_INDEX :: 1
 
@@ -129,32 +161,7 @@ ren_draw :: proc (ren: ^Ren) {
 //////////////////////////////////////////////////////////////////////
 // Section: Shading & Asset
 //////////////////////////////////////////////////////////////////////
-
-Ren_Instance :: struct {
-	model_transform: Mat4,
-	uv_transform:    Vec4,
-	color:           Vec4,
-}
-
-Uniforms :: struct #align(16) {
-	view:       Mat4,
-	projection: Mat4,
-}
-
-Ren_Vertex_Base :: struct {
-	position: Vec3,
-	texcoord: Vec2,
-}
-
-Ren_Asset :: struct {
-	program:     ngl.Program,
-	VAO:         ngl.VertexArrayObject,
-	index_count: int,
-	mode:        Ren_Mode,
-	// vertices:    []Ren_Vertex_Base,
-	VBO:         ngl.Buffer,
-}
-
+GLES_MAX_BINDINGS :: 16 // per spec
 ren_make_asset :: proc (
 	ren: ^Ren,
 	program: ngl.Program,
@@ -242,13 +249,6 @@ ren_make_asset :: proc (
 	return obj
 }
 
-GLSL_Attribute_Type :: enum {
-	f32, vec2, vec3, vec4,
-	mat4,
-	i32, ivec2, ivec3, ivec4,
-	u32, uvec2, uvec3, uvec4,
-}
-
 glsl_attrib_is_int :: proc (type: GLSL_Attribute_Type) -> bool {
 	return type >= .i32
 }
@@ -260,38 +260,6 @@ slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
 	return 1
 }
 
-//  Shader_Input
-//  .field_offset indicates the offset of the attribute into the struct.
-//  .type         of vec2 == ngl.FLOAT ; vec3 = ngl.FLOAT ; i32 == ngl.INT ...
-//	.value_count  of vec2 == 2        ; f32 == 1        ; mat4 == 16 ...
-//  .location     is computed when the shader is created, based upon the order of
-//                inputs in the attribute slice and the # of slots their data types require.
-//   Example:
-//     The Bindings { {type=.mat4}, {type=.f32} } take up 5 slots.
-//     The first binding is a mat4 at location=0, and takes 4 slots.
-//     The second binding is an f32 at location=4, and takes up 1 slot.
-Shader_Input_Rate :: enum {
-	Vertex,
-	Instance,
-}
-
-Shader_Input :: struct {
-	type:          GLSL_Attribute_Type,
-	rate:          Shader_Input_Rate,
-	field_offset:  uintptr,
-	buffer:        Ren_Buffer,
-	// These are really just caches.
-	location:      uint,
-	value_count:   int,
-	ngl_type:      ngl.Data_Type
-}
-
-Ren_Buffer :: struct {
-	id:            ngl.Buffer,
-	element_size:  int,
-}
-
-GLES_MAX_BINDINGS :: 16 // per spec
 
 version :: "#version 300 es\n"
 
@@ -414,7 +382,7 @@ ren_make_basic_asset :: proc (
 	}
 	ngl.GenBuffers(&vertex_buffer.id)
 	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
-	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	ngl.BufferData(.ARRAY_BUFFER, vertices, .DYNAMIC_DRAW)
 	ngl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	// Create Index Buffer
@@ -498,3 +466,8 @@ make_triangle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
   append(&indices, 2)
   return verts[:], indices[:]
 }
+
+//////////////////////////////////////////////////////////////////////
+// Section: UI Nodes
+//////////////////////////////////////////////////////////////////////
+

@@ -1,6 +1,5 @@
 package main
 
-import "base:intrinsics"
 import "base:runtime"
 import "core:time"
 import "core:log"
@@ -10,134 +9,6 @@ import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 import sugar "sugar"
 
-Entity_ID :: u16
-
-// I've _prefixed anything that isn't for gameplay.
-Entity :: struct {
-	_id: Entity_ID, // index in storage.
-	_used: bool,
-	_ui:   bool, // 2D object anchored at origin in top-left (0,0)
-	_asset: Ren_Asset,
-	_distance_from_camera: f32,
-	//
-	position: Vec3,
-	rotation: Vec3,
-	scale:    f32, // PUNT nonuniform scale
-	hidden:   bool,
-	using instance: ^Ren_Instance,
-}
-
-X_Entity :: struct {
-	using entity: Entity,
-	using pillar: X
-}
-X :: struct {}
-
-// ASSUME: All variants are subtypes of Entity.
-Entity_Memory :: struct #packed {
-	using entity: Entity,
-	using variant: struct #raw_union {
-		x: X,
-	},
-	// Can Transmute to Variants if I keep this below.
-	tag: enum {
-		Entity,
-		X
-	},
-}
-
-init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
-	entity^ = {} // zero
-	entity._id = id
-	entity._used = true
-	entity.scale = 1
-	entity.instance = subscript_aligned_array(&globals.instances, cast(int) entity._id)
-	entity.instance^ = {} // zero
-	entity.instance.color.a = 1
-	entity.instance.uv_transform = {0,0,1,1}
-}
-
-make_entity :: proc {
-	make_entity_basic,
-	make_entity_variant
-}
-
-make_entity_basic :: proc () -> ^Entity {
-	return make_entity_variant(Entity)
-}
-
-make_entity_variant :: proc ($T: typeid) -> ^T
-where intrinsics.type_is_subtype_of(T, Entity) {
-	for &mem, i in globals._entity_storage {
-		if !mem._used {
-			init_entity_memory(&mem, cast(Entity_ID) i)
-			if T == X {
-				mem.x = {}
-				mem.tag = .X
-			} else if T == Entity {
-				mem.tag = .Entity
-			} else {
-				panic("Unimplemented Entity")
-			}
-			return transmute(^T) &mem
-		}
-	}
-	panic("Out of entities.")
-}
-
-game_initialized := false
-
-globals: Globals
-
-Globals :: struct {
-	// Engine Facilities
-	gl_standard:        GL_Standard,
-	ren:                ^Ren,
-	instances:          Aligned_Array(Ren_Instance),
-	_entity_storage:    [max(Entity_ID)]Entity_Memory,
-	entities:           [dynamic]^Entity_Memory,
-	game_entities:      [dynamic]^Entity_Memory,
-	ui_entities:        [dynamic]^Entity_Memory,
-	// Game State
-	// Controls
-	quit:               sugar.Button_Action,
-	left_click:         sugar.Button_Action,
-	right_click:        sugar.Button_Action,
-	space:              sugar.Button_Action,
-	// Coupled State
-	uniforms:           Uniforms,
-	// Window/Framebuffer
-	resolution:         [2]int,
-	aspect_ratio:       f32,
-	// Camera
-	game_camera:        Mat4,
-	ui_orthographic:    Mat4,
-	game_view:          Mat4,
-	ui_view:            Mat4,
-	camera:             Camera3D,
-}
-
-resolution_changed :: proc (res: [2]int) {
-	globals.aspect_ratio = cast(f32)res.x / cast(f32)res.y
-	globals.resolution = res
-	// linalg.matrix4_perspective
-	globals.game_camera = linalg.matrix4_perspective_f32(
-		fovy   = linalg.to_radians(f32(90.0)),
-		aspect = globals.aspect_ratio,
-		near   = .1,
-		far    = 1000,
-		flip_z_axis = false
-	)
-	globals.ui_orthographic = glsl.mat4Ortho3d(
-		left   = 0,
-		right  = cast(f32) res.x,
-		top    = 0,
-		bottom = cast(f32) res.y,
-		near   = -10,
-		far    = 1000
-	)
-}
-
 main :: proc() {
 	context.logger = log.create_console_logger(
 		lowest = log.Level.Debug,
@@ -145,8 +16,6 @@ main :: proc() {
 	)
 	x := 1920 + 400 when ODIN_OS == .Windows else 0
 	y := 400 when ODIN_OS == .Windows else 0
-	x = 400
-	y = 100
 	window_rect := [4]int{x,y, 900, 900}
 	ok := sugar.create_window(window_rect, "TCM", use_gl = true)
 	ensure(ok)
@@ -158,40 +27,29 @@ main :: proc() {
 	tick := time.tick_now()
 	dt: f64
 	frame_loop: for {
-		feedback := sugar.poll_events() // empties message queue.
-		if feedback == .Should_Exit {
-			break frame_loop
-		}
-		if feedback == .Resized {
-			resolution_changed(sugar.g_state.resolution)
-		}
-
 		dt = time.duration_seconds(time.tick_lap_time(&tick))
 		if !step(dt) {
 			break frame_loop
 		}
-		sugar.swap_buffers()
 	}
 }
 
-
-GL_Standard :: struct {
-	UNIFORM_BUFFER_OFFSET_ALIGNMENT: int,
-	MAX_UNIFORM_BLOCK_SIZE: i64
-}
-
-g_ent: ^Entity
-g_marker: ^Entity
-g_time: f32
 // This is an entry-point, and so all game data must be globally visible for Web support.
 @export
 step :: proc (dt: f64) -> bool {
-	g_time += f32(dt)
-	if sugar.platform_calls_step {
-		#partial switch sugar.poll_events() {
-		case .Resized:
-			resolution_changed(sugar.g_state.resolution)
-		}
+	globals.time += f32(dt)
+	globals.tau_time += f32(dt)
+	overflow := linalg.TAU - globals.tau_time
+	if overflow >= 0 {
+		globals.tau_time = overflow
+	}
+
+	switch sugar.poll_events() {
+	case .None:
+	case .Should_Exit:
+		return false
+	case .Resized:
+		resolution_changed(sugar.g_state.resolution)
 	}
 
 	if !game_initialized {
@@ -222,11 +80,8 @@ step :: proc (dt: f64) -> bool {
 		)
 
 		// 1. Init Globals /////////////////////////////////////////////////////////
-		globals.game_view = glsl.mat4LookAt(
-			eye    = Vec3{ 0  , 5 , 0 } + Vec3{0.1, 0.1, 0.1},
-			centre = Vec3{ 0  , 5,  -5 },
-			up     = Vec3{ 0  , 1 , 0 }
-		)
+		globals.camera.position.y = 5
+		globals.game_view = 1
 		globals.ui_view = 1
 		game_entities := make([]^Entity_Memory, max(Entity_ID))
 		globals.game_entities = slice.into_dynamic(game_entities)
@@ -236,29 +91,20 @@ step :: proc (dt: f64) -> bool {
 		globals.entities = slice.into_dynamic(entities)
 		globals.ren = ren_make()	
 		ren_init(globals.ren)
-		plane_mesh := geom_make_xz_plane(plane_size = 1024, squares_per_axis = 1024)
-		plane_asset := ren_make_basic_asset(globals.ren, plane_mesh.vertices[:], plane_mesh.indices[:], globals.ren.instance_UBO)
+		globals.plane_mesh = geom_make_xz_plane(plane_size = PLANE_SIZE, squares_per_axis = AXIS_SQUARES)
+		plane_asset := ren_make_basic_asset(globals.ren, globals.plane_mesh.vertices[:], globals.plane_mesh.indices[:], globals.ren.instance_UBO)
 		v,i := make_circle_2D(44.0)
 		cursor_asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
 		vm,im := make_circle_2D(0.5)
 		marker_asset := ren_make_basic_asset(globals.ren, vm, im, globals.ren.instance_UBO)
 
-		plane_ent := make_entity()
-		plane_ent._asset = plane_asset
-		// plane_ent.rotation.x = linalg.to_radians(f32(90))
-		// plane_ent.rotation.y = linalg.to_radians(f32(45))
-		// plane_ent.rotation.z = linalg.to_radians(f32(-45))
-		// plane_ent._ui = true
-		plane_ent._asset.mode = .Line_Loop
+		globals.water_plane = make_entity()
+		globals.water_plane._asset = plane_asset
+		globals.water_plane._asset.mode = .Line_Loop
 
-		g_ent = make_entity()
-		g_ent._asset = cursor_asset
-		g_ent.position = Vec3{88,88, 0}
-		g_ent._ui = true
-
-		g_marker = make_entity()
-		g_marker._asset = marker_asset
-		g_marker.rotation.x = f32(linalg.PI/2)
+		globals.marker = make_entity()
+		globals.marker._asset = marker_asset
+		globals.marker.rotation.x = f32(linalg.PI/2)
 
 		// 2. Init Inputs //////////////////////////////////////////////////////////
 		globals.quit = sugar.Button_Action {
@@ -285,30 +131,34 @@ step :: proc (dt: f64) -> bool {
 		}
 	}
 	// 4. Simulate /////////////////////////////////////////////////////////////// 
+	//////////////////////////////////////////////////////////////////////////////
+	globals.game_view = tick_mouse_camera(&globals.camera, f32(dt))
+	step_water(dt)
 
 	if sugar.on_release(&globals.quit) {
 		return false // stop the app
 	}
 
-	g_ent.position = vec3(sugar.g_state.input.mouse.window)
+	// globals.cursor.position = vec3(sugar.g_state.input.mouse.window)
 
-	cost := glsl.cos(g_time * 4)
-	sint := glsl.sin(g_time * 4)
-	g_marker.position = vec3(1*cost, 0, 1*sint)
-	g_marker.position +=  vec3(0,0,8)
+	cost := glsl.cos(globals.tau_time * 4)
+	sint := glsl.sin(globals.tau_time * 4)
+	globals.marker.position = vec3(1*cost, 0, 1*sint)
+	globals.marker.position +=  vec3(0,0,8)
 	if (cost) > 0.99 {
-		g_marker.color = vec4(1,0,0,1)
+		globals.marker.color = vec4(1,0,0,1)
 	} else if (sint) > 0.99 {
-		g_marker.color = vec4(0,0,1,1)
+		globals.marker.color = vec4(0,0,1,1)
 	} else {
-		g_marker.color = vec4(0,0,0,1)
+		globals.marker.color = vec4(0,0,0,1)
 	}
 	
+	////////////////////////////////////////////////////////////////////////////// 
 	// 5. Prepare Frame and Draw /////////////////////////////////////////////////
 	finalize_simulation_frame :: proc () {
 		for &entity in globals.entities {
 			if entity.hidden {
-				// INTENT: If an object is hidden, don't add it to render-lists.
+				// INTENT: If an object is hiddesugar.n, don't add it to render-lists.
 				continue
 			}
 
@@ -334,6 +184,49 @@ step :: proc (dt: f64) -> bool {
 	}
 	finalize_simulation_frame()
 	ren_draw(globals.ren)
-
+	sugar.end_input_frame()
+	sugar.swap_buffers()
 	return true // keep going
+}
+
+resolution_changed :: proc (res: [2]int) {
+	globals.aspect_ratio = cast(f32)res.x / cast(f32)res.y
+	globals.resolution = res
+	// linalg.matrix4_perspective
+	globals.game_camera = linalg.matrix4_perspective_f32(
+		fovy   = linalg.to_radians(f32(90.0)),
+		aspect = globals.aspect_ratio,
+		near   = .1,
+		far    = 1000,
+		flip_z_axis = false
+	)
+	globals.ui_orthographic = glsl.mat4Ortho3d(
+		left   = 0,
+		right  = cast(f32) res.x,
+		top    = 0,
+		bottom = cast(f32) res.y,
+		near   = -10,
+		far    = 1000
+	)
+}
+
+// I can flush about 4 million vertices each frame and _just_ hit 60fps.
+// We can eliminate the data-transfer time by using a vertex shader.
+// Let's see the effect of that.
+
+PLANE_SIZE    :: 256
+AXIS_SQUARES  :: 1400 // Squares per axis
+AXIS_POINTS   :: AXIS_SQUARES + 1
+PLANE_SQUARES :: AXIS_SQUARES * AXIS_SQUARES
+
+step_water :: proc (dt: f64) {
+	using globals
+	using glsl
+	for i in 0 ..< PLANE_SQUARES {
+		x := i / AXIS_POINTS
+		y := i % AXIS_POINTS
+		plane_mesh.vertices[(y*AXIS_POINTS)+x].position.y = 1.5 * sin((0.2*time) + f32(y))
+	}
+	gl.BindBuffer(.ARRAY_BUFFER, water_plane._asset.VBO)
+	gl.BufferSubData(.ARRAY_BUFFER, 0, plane_mesh.vertices[:])
 }

@@ -17,37 +17,6 @@ Geom_Mesh2 :: struct {
   indices:  [dynamic]u32,
 }
 
-// Order of vertices of a pillar cap.
-// 4     3     2
-//   ┌───┬───┐  
-//   │       │
-// 5 ├ ─ 0 ─ ┤ 1
-//   │       │
-//   └───┴───┘
-// 6     7     8
-geom_make_pillar_cap :: proc (
-  mesh: ^[dynamic]Vec3,
-  pillar_size: Vec3,
-  top: bool // or bottom face
-) {
-  // We want to center the prism around zero so it can be rotated easily.
-  // This means halving the input sizes to form the -min,max coordinates.
-  halves := pillar_size * 0.5
-  x := halves.x
-  y := halves.y if top else -halves.y
-  z := halves.z
-  assert(mesh != nil)
-  append(mesh, Vec3{ 0, y, 0}) // 0
-  append(mesh, Vec3{ x, y, 0}) // 1
-  append(mesh, Vec3{ x, y, z}) // 2
-  append(mesh, Vec3{ 0, y, z}) // 3
-  append(mesh, Vec3{-x, y, z}) // 4
-  append(mesh, Vec3{-x, y, 0}) // 5
-  append(mesh, Vec3{-x, y,-z}) // 6
-  append(mesh, Vec3{ 0, y,-z}) // 7
-  append(mesh, Vec3{ x, y,-z}) // 8
-}
-
 // Prior to transformation, points are:
 //  - a circle in the XZ plane
 //  - centered on the origin
@@ -177,23 +146,6 @@ using glsl
   geom_make_faces_between_rings(&indices, 0, verts_per_mesh, CYLINDER_SIDES)
 
   return { mesh, indices, {}, }
-}
-
-geom_make_pillar :: proc (size: Vec3) -> Geom_Mesh {
-  verts: [dynamic]Vec3 = make([dynamic]Vec3)
-  geom_make_pillar_cap(&verts, size, true)
-  geom_make_pillar_cap(&verts, size, false)
-  VERTS_PER_CAP: u32 : 9 // plus center-point
-
-  // Now that the geometry has been baked in position according to the transforms,
-  // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32)
-  EDGE_SEGMENTS :: 8 // segments along the subdivided rect
-  geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
-  geom_make_cap_indices(&indices, VERTS_PER_CAP, EDGE_SEGMENTS)
-  geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
-
-  return { verts, indices, {}, }
 }
 
 // On the XY plane
