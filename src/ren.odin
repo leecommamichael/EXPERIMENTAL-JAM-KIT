@@ -66,6 +66,7 @@ ren_make :: proc () -> ^Ren {
 	ngl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:])
 
 	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
+	ren.programs[.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
 
 	return ren
 }
@@ -83,7 +84,7 @@ ren_init :: proc (ren: ^Ren) {
 
 	// ngl.Enable(.CULL_FACE)
 	// ngl.CullFace(.BACK)
-	ngl.FrontFace(.CW)
+	ngl.FrontFace(.CCW)
 	// ngl.PolygonMode(ngl.FRONT_AND_BACK, ngl.LINE);
 }
 
@@ -272,6 +273,9 @@ frame_uniforms :: `
 	layout(std140) uniform Frame_Uniforms {
 		mat4 view;       // where the camera is
 		mat4 projection; // camera lens
+		float time;
+		float tau_time;
+		vec2  padding0; // extend to vec4
 	} frame;
 `
 
@@ -296,9 +300,14 @@ fragment_preamble ::
 	frame_uniforms +
 	instance_uniforms
 
+////////////////////////////////////////////////////////////////////////////////
+// Shaders /////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// Basic ///////////////////////////////////////////////////////////////////////
 basic_vertex_inputs :: `
 	layout (location = 0) in vec3 v_position;
 	layout (location = 1) in vec2 v_texcoord;
+	layout (location = 2) in vec3 v_normal;
 `
 
 basic_vertex_shader_source :: vertex_preamble +
@@ -306,47 +315,8 @@ basic_vertex_inputs +
 `
 	out vec4 io_color;
 
-	const vec4 nan_color = vec4(1,0,0,1);
-	const vec4 inf_color = vec4(0,0,1,1);
-	const vec4 zero_color = vec4(1,0,1,1); // todo compute random over time.
-
-	vec4 float_to_color(float f) {
-		if (isnan(f)) {
-			return nan_color;
-		} else if (isinf(f)) {
-			return inf_color;
-		} else {
-			return vec4(f);
-		}
-	}
-
-	vec4 mat4_to_color(mat4 m) {
-		bool has_nan = isnan(m[0][0]) || isnan(m[1][1]) || isnan(m[2][2]);
-		if (has_nan) {
-			return nan_color;
-		}
-		bool has_inf = isinf(m[0][0]) || isinf(m[1][1]) || isinf(m[2][2]);
-		if (has_inf) {
-			return inf_color;
-		}
-		vec4 xx = float_to_color(m[0][0]);
-		vec4 yy = float_to_color(m[1][1]);
-		vec4 zz = float_to_color(m[2][2]);
-		float channel_sum = xx[0] + yy[0] + zz[0];
-		if (channel_sum == 0.0) {
-			return zero_color;
-		}
-		return vec4(xx.x/channel_sum,yy.y/channel_sum,zz.z/channel_sum, 1.0);
-	}
-
-// Desktop: frame.projection is cyan, but is zero-color on Web
-// Desktop: frame.view         is OK
-// Desktop: instance model_mat is OK
-
 	void main() {
 		io_color = instance.color;
-		// io_color = mat4_to_color(frame.projection);
-		// gl_Position = vec4(v_position, 1);
 		mat4 mvp = frame.projection * frame.view * instance.model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
 	}
@@ -357,6 +327,57 @@ basic_fragment_shader_source :: fragment_preamble + `
 	out vec4 outColor;
 	void main() {
 		outColor = io_color;
+	}
+`
+
+// Basic: Water ////////////////////////////////////////////////////////////////
+water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
+`
+	out vec4 color;
+	out vec3 raw_surface_normal;
+	out vec3 world_position;
+
+	uniform sampler2D heightmap;
+
+	void main() {
+		vec2 heightmap_size   = vec2(textureSize(heightmap, 0));
+		vec2 heightmap_here   = v_position.xz / heightmap_size;
+		// vec2 heightmap_next_x = v_position.xz + vec2(1,0) / heightmap_size;
+		// vec2 heightmap_next_z = v_position.xz + vec2(0,1) / heightmap_size;
+		float height_here = texture(heightmap, heightmap_here).r;
+		// float height_next_x = texture(heightmap, heightmap_next_x).r;
+		// float height_next_z = texture(heightmap, heightmap_next_z).r;
+		color = instance.color;
+		raw_surface_normal = v_normal;
+
+		vec4 position4 = vec4(v_position, 1);
+		position4.y = height_here;
+		world_position = (instance.model_mat * position4).xyz;
+
+		mat4 mvp = frame.projection * frame.view * instance.model_mat;
+		gl_Position = mvp * position4;
+	}
+`
+
+water_fragment_shader_source :: fragment_preamble + `
+	in vec4 color;
+	in vec3 raw_surface_normal;
+	in vec3 world_position;
+
+	out vec4 outColor;
+	void main() {
+		float ambient_luminance = 0.1;
+		vec3 ambient_light = ambient_luminance * color.xyz;
+
+		vec3 surface_normal = normalize(raw_surface_normal);
+
+		surface_normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
+		vec3 surface_to_light = normalize(vec3(1, 10, 1) - world_position);
+		float diffuse_luminance = max(dot(surface_normal, surface_to_light), 0.0);
+		vec3 diffuse_light = diffuse_luminance * vec3(1,1,1);
+
+		vec3 light = (ambient_light + diffuse_light) * color.xyz;
+		outColor = vec4(light, 1.0);
 	}
 `
 
@@ -399,10 +420,12 @@ ren_make_basic_asset :: proc (
 	offsets: []uintptr = {
 		offset_of(Ren_Vertex_Base, position),
 		offset_of(Ren_Vertex_Base, texcoord),
+		offset_of(Ren_Vertex_Base, normal),
 	}
 	inputs: []Shader_Input = {
 		{ type = .vec3, rate=.Vertex,   field_offset = offsets[0], buffer = vertex_buffer },
 		{ type = .vec2, rate=.Vertex,   field_offset = offsets[1], buffer = vertex_buffer },
+		{ type = .vec3, rate=.Vertex,   field_offset = offsets[2], buffer = vertex_buffer },
 	}
 
 	asset := ren_make_asset(ren, ren.programs[.Basic], VAO, inputs, index_count)

@@ -23,7 +23,7 @@ Buffer_Data_Many :: #force_inline proc (
 		}
 	}
 	glBufferData(cast(uint) target, size_of(T) * len(src), raw_data(src), cast(uint) usage)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 Buffer_Data_One :: #force_inline proc (
@@ -39,7 +39,7 @@ Buffer_Data_One :: #force_inline proc (
 		}
 	}
 	glBufferData(cast(uint) target, size_of(T), src, cast(uint) usage)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -63,7 +63,7 @@ Buffer_SubData_Many :: #force_inline proc (
 		}
 	}
 	glBufferSubData(cast(uint) target, cast(int) offset, size_of(T) * len(src), raw_data(src))
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 Buffer_SubData_One :: #force_inline proc (
@@ -79,7 +79,7 @@ Buffer_SubData_One :: #force_inline proc (
 		}
 	}
 	glBufferSubData(cast(uint) target, cast(int) offset, size_of(T), src)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -91,7 +91,8 @@ DrawElementsInstanced :: #force_inline proc (
 	count:  int,
 	type:   Index_Type,
 	offset: int,
-	instance_count: int
+	instance_count: int,
+	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	offset := cast(rawptr) cast(uintptr) offset
 	glDrawElementsInstanced(
@@ -100,7 +101,7 @@ DrawElementsInstanced :: #force_inline proc (
 		cast(uint) type,
 		offset,
 		instance_count)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -111,13 +112,14 @@ DrawElements :: #force_inline proc (
 	count:  int,
 	type:   Index_Type,
 	indices: uintptr = 0,
+	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glDrawElements(
 		cast(uint) mode,
 		count,
 		cast(uint) type,
 		indices = cast(rawptr) indices)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -128,14 +130,20 @@ GenBuffers :: proc {
 	GenBuffersOne
 }
 
-GenBuffersMany :: proc (out: []Buffer) -> (err: Error = .NO_ERROR) {
+GenBuffersMany :: proc (
+	out: []Buffer,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glGenBuffers(cast(int)len(out), cast(^uint)&out[0])
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
-GenBuffersOne :: proc (out: ^Buffer) -> (err: Error = .NO_ERROR) {
+GenBuffersOne :: proc (
+	out: ^Buffer,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glGenBuffers(1, cast(^uint)out)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -146,32 +154,47 @@ GenVertexArrays :: proc {
 	GenVertexArraysOne, 
 }
 
-GenVertexArraysMany :: proc (out: []VertexArrayObject) -> (err: Error = .NO_ERROR) {
+GenVertexArraysMany :: proc (
+	out: []VertexArrayObject,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glGenVertexArrays(cast(int)len(out), cast([^]uint)raw_data(out))
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
-GenVertexArraysOne :: proc (out: ^VertexArrayObject) -> (err: Error = .NO_ERROR) {
+GenVertexArraysOne :: proc (
+	out: ^VertexArrayObject,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glGenVertexArrays(1, cast(^uint)out)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 
 // :: proc () -> (err: Error = .NO_ERROR)
-// when NGL_VALIDATE { return validate() } else { return }
-BindBuffer :: proc (target: Buffer_Type, buffer: Buffer) -> (err: Error = .NO_ERROR) {
+// when NGL_VALIDATE { return validate(_loc) } else { return }
+BindBuffer :: proc (
+	target: Buffer_Type,
+	buffer: Buffer,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glBindBuffer(cast(uint) target, cast(uint) buffer)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 
-BindBufferBase :: proc (target, index: uint, buffer: Buffer) -> (err: Error = .NO_ERROR) {
+BindBufferBase :: proc (
+	target,
+	index: uint,
+	buffer: Buffer,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glBindBufferBase(target, index, cast(uint)buffer)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -180,17 +203,22 @@ BindBufferBase :: proc (target, index: uint, buffer: Buffer) -> (err: Error = .N
 BindBufferRange :: proc (
 	target, index: uint,
 	buffer: Buffer,
-	offset, size: int) -> (err: Error = .NO_ERROR) {
+	offset, size: int,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glBindBufferRange(target, index, cast(uint)buffer, offset, size)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 
-BindVertexArray :: proc (vao: VertexArrayObject) -> (err: Error = .NO_ERROR) {
+BindVertexArray :: proc (
+	vao: VertexArrayObject,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glBindVertexArray(cast(uint) vao)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -210,10 +238,11 @@ VertexAttribPointer :: proc (
 	type: Data_Type,
 	normalized: bool,
 	stride: int,
-	offset: uintptr
+	offset: uintptr,
+	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glVertexAttribPointer(index, size, cast(uint)type, normalized, stride, offset)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 VertexAttribIPointer :: proc (
@@ -221,27 +250,35 @@ VertexAttribIPointer :: proc (
 	size: int,
 	type: Data_Type,
 	stride: int,
-	offset: uintptr
+	offset: uintptr,
+	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glVertexAttribIPointer(index, size, cast(uint)type, stride, offset)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 
 // WebGL mimics KHR_robust_access (bounds checking)
-EnableVertexAttribArray :: proc (index: uint) -> (err: Error = .NO_ERROR) {
+EnableVertexAttribArray :: proc (
+	index: uint,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glEnableVertexAttribArray(index)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 // Generates INVALID_VALUE if index > MAX_VERTEX_ATTRIBS
-VertexAttribDivisor :: proc (index, divisor: uint) -> (err: Error = .NO_ERROR) {
+VertexAttribDivisor :: proc (
+	index,
+	divisor: uint,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glVertexAttribDivisor(index, divisor)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -321,9 +358,12 @@ FrontFace :: proc (cw_or_ccw: Vertex_Winding_Order) {
 
 
 
-UseProgram :: proc (program: Program) -> (err: Error = .NO_ERROR) {
+UseProgram :: proc (
+	program: Program,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
 	glUseProgram(cast(uint) program)
-	when NGL_VALIDATE { return validate() } else { return }
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
@@ -432,6 +472,83 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 
 
 
+TexImage2D :: proc {
+	TexImage2D_One,
+	TexImage2D_Many
+}
+
+TexImage2D_One :: proc (
+	target: Texture_2D_Target,
+	level: int,
+	internalformat: int,
+	width, height: int,
+	format: uint, // TODO scoped enum
+	type: uint,
+	data: ^$T,
+	_loc := #caller_location
+) -> ( err: Error = .NO_ERROR ) {
+	glTexImage2D(
+		cast(GLenum) target,
+		level,
+		internalformat,
+		width, height,
+		0, // border
+		format,
+		type,
+		data)
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+TexImage2D_Many :: proc (
+	target: Texture_2D_Target,
+	level: int,
+	internalformat: int,
+	width, height: int,
+	format: uint, // TODO scoped enum
+	type: uint,
+	data: $Indistinct/[]$T,
+	_loc := #caller_location
+) -> ( err: Error = .NO_ERROR ) {
+	glTexImage2D(
+		cast(GLenum) target,
+		level,
+		internalformat,
+		width, height,
+		0, // border
+		format,
+		type,
+		raw_data(data))
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+
+
+// Desktop(target: uint, level: int, xoffset: int, yoffset: int, width: int, height: int, format: uint, type: uint,            pixels: rawptr)
+// JS     (target: uint, level: int, xoffset,      yoffset,      width,      height: int, format,       type: uint, size: int, data:   rawptr)
+TexSubImage2D :: proc (
+	target: Texture_2D_Target,
+	level: int,
+	xoffset, yoffset: int,
+	width, height: int,
+	format: uint, // TODO scoped enum
+	type: uint,
+	data: $Indistinct/[]$T,
+	_loc := #caller_location
+) -> ( err: Error = .NO_ERROR ) {
+	glTexSubImage2D(
+		cast(GLenum) target,
+		level,
+		xoffset, yoffset,
+		width, height,
+		format,
+		type,
+		raw_data(data))
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+//////////////////////////////////////////////////////////////////////
+// Platform-Specific Stuff Below
+//////////////////////////////////////////////////////////////////////
 // Not Web, need unified way of querying support.
 MAJOR_VERSION :: 0x821B
 MINOR_VERSION :: 0x821C

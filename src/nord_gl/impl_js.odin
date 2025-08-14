@@ -425,6 +425,32 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 
 
 
+TexImage2D :: proc (
+	target: Texture_2D_Target,
+	level: int,
+	internalformat: int,
+	width, height: int,
+	format,
+	type: uint,
+	data: $Indistinct/[]$T,
+	_loc := #caller_location
+) -> ( err: Error = .NO_ERROR ) {
+	glTexImage2D(
+		cast(GLenum) target,
+		level,
+		internalformat,
+		width, height,
+		0, // border
+		format,
+		type,
+		len(size) * size_of(T),
+		raw_data(data)
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+//////////////////////////////////////////////////////////////////////
+// Platform-Specific Stuff Below
+//////////////////////////////////////////////////////////////////////
 // Not Web, need unified way of querying support.
 GetParameter :: proc {
 	GetIntegerv,

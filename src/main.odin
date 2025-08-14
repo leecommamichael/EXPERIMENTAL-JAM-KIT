@@ -17,7 +17,8 @@ main :: proc() {
 	x := 1920 + 400 when ODIN_OS == .Windows else 0
 	y := 400 when ODIN_OS == .Windows else 0
 	window_rect := [4]int{x,y, 900, 900}
-	ok := sugar.create_window(window_rect, "TCM", use_gl = true)
+	ok := sugar.create_window(window_rect, "Wave Racer", use_gl = true)
+	if !ok { panic("idk") }
 	ensure(ok)
 	sugar.capture_cursor()
 	sugar.set_cursor_visible(false)
@@ -37,11 +38,11 @@ main :: proc() {
 // This is an entry-point, and so all game data must be globally visible for Web support.
 @export
 step :: proc (dt: f64) -> bool {
-	globals.time += f32(dt)
-	globals.tau_time += f32(dt)
-	overflow := linalg.TAU - globals.tau_time
+	globals.uniforms.time += f32(dt)
+	globals.uniforms.tau_time += f32(dt)
+	overflow := linalg.TAU - globals.uniforms.tau_time
 	if overflow >= 0 {
-		globals.tau_time = overflow
+		globals.uniforms.tau_time = overflow
 	}
 
 	switch sugar.poll_events() {
@@ -91,7 +92,7 @@ step :: proc (dt: f64) -> bool {
 		globals.entities = slice.into_dynamic(entities)
 		globals.ren = ren_make()	
 		ren_init(globals.ren)
-		globals.plane_mesh = geom_make_xz_plane(plane_size = PLANE_SIZE, squares_per_axis = AXIS_SQUARES)
+		globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
 		plane_asset := ren_make_basic_asset(globals.ren, globals.plane_mesh.vertices[:], globals.plane_mesh.indices[:], globals.ren.instance_UBO)
 		v,i := make_circle_2D(44.0)
 		cursor_asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
@@ -100,11 +101,44 @@ step :: proc (dt: f64) -> bool {
 
 		globals.water_plane = make_entity()
 		globals.water_plane._asset = plane_asset
-		globals.water_plane._asset.mode = .Line_Loop
+		globals.water_plane._asset.program = globals.ren.programs[.Water]
+		globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
+		// globals.water_plane._asset.mode = .Line_Loop
 
 		globals.marker = make_entity()
 		globals.marker._asset = marker_asset
 		globals.marker.rotation.x = f32(linalg.PI/2)
+		globals.marker.hidden = true
+
+		globals.water_heightmap = make([]f16, PLANE_POINTS)
+		tex: uint
+		gl.glGenTextures(1, &tex)
+		gl.glBindTexture(gl.TEXTURE_2D, tex)
+		gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, auto_cast gl.REPEAT)
+		gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, auto_cast gl.REPEAT)
+		gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, auto_cast gl.NEAREST)
+		gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, auto_cast gl.NEAREST)
+
+// 		TexImage2D_One :: proc (
+// 	target: Texture_2D_Target,
+// 	level: int,
+// 	internalformat: int,
+// 	width, height: int,
+// 	format: uint, // TODO scoped enum
+// 	type: uint,
+// 	data: ^$T,
+// )
+		gl.glPixelStorei(gl.UNPACK_ALIGNMENT,2)
+		gl.TexImage2D(
+			.TEXTURE_2D,
+			0, // LOD
+			cast(int) gl.R16F,
+			AXIS_POINTS,
+			AXIS_POINTS,
+			gl.RED,
+			gl.HALF_FLOAT,
+			globals.water_heightmap
+			)
 
 		// 2. Init Inputs //////////////////////////////////////////////////////////
 		globals.quit = sugar.Button_Action {
@@ -141,8 +175,8 @@ step :: proc (dt: f64) -> bool {
 
 	// globals.cursor.position = vec3(sugar.g_state.input.mouse.window)
 
-	cost := glsl.cos(globals.tau_time * 4)
-	sint := glsl.sin(globals.tau_time * 4)
+	cost := glsl.cos(globals.uniforms.tau_time * 4)
+	sint := glsl.sin(globals.uniforms.tau_time * 4)
 	globals.marker.position = vec3(1*cost, 0, 1*sint)
 	globals.marker.position +=  vec3(0,0,8)
 	if (cost) > 0.99 {
@@ -210,23 +244,55 @@ resolution_changed :: proc (res: [2]int) {
 	)
 }
 
+// (1400 x 1400 x 2) = 4 million
 // I can flush about 4 million vertices each frame and _just_ hit 57-59 fps.
 // We can eliminate the data-transfer time by using a vertex shader.
 // Let's see the effect of that.
-
-PLANE_SIZE    :: 256
-AXIS_SQUARES  :: 1400 // Squares per axis
+//
+// Sampling an f32 image bumps us up to 1650squared at the same rate (5,445,000) ~30% faster.
+// So what about f16? There's hardly a performance difference at all.
+//
+// What about 8 bits? That's certainly more involved.
+// The transfer time is still intense for such a massive map.
+//
+// Perhaps some SIMD can be done in computing the heightmap. I wonder what's in the profile.
+AXIS_SQUARES  :: 1700 // Squares per axis
 AXIS_POINTS   :: AXIS_SQUARES + 1
 PLANE_SQUARES :: AXIS_SQUARES * AXIS_SQUARES
+PLANE_POINTS :: AXIS_POINTS * AXIS_POINTS
 
 step_water :: proc (dt: f64) {
 	using globals
 	using glsl
-	for i in 0 ..< PLANE_SQUARES {
-		x := i / AXIS_POINTS
-		y := i % AXIS_POINTS
-		plane_mesh.vertices[(y*AXIS_POINTS)+x].position.y = 1.5 * sin((0.2*time) + f32(y))
+	// I can't use a loop var.
+	// I need to use the data of the buffer (vert positions) to derive x,y which derive Y.
+	for i in 0 ..< PLANE_POINTS {
+		pos := &plane_mesh.vertices[i].position
+		x := cast(int) pos.x
+		z := cast(int) pos.z
+		// derived_y := 1.5 * sin((0.2*uniforms.tau_time) + f32(x))
+		// plane_mesh.vertices[i].position.y = derived_y
+		height_func(x, z, cast(^f16) &water_heightmap[i])
 	}
-	gl.BindBuffer(.ARRAY_BUFFER, water_plane._asset.VBO)
-	gl.BufferSubData(.ARRAY_BUFFER, 0, plane_mesh.vertices[:])
+	// Sync Debug Mesh
+	// gl.BindBuffer(.ARRAY_BUFFER, water_plane._asset.VBO)
+	// gl.BufferSubData(.ARRAY_BUFFER, 0, plane_mesh.vertices[:])
+	// Sync 
+	gl.TexSubImage2D(
+		target  = .TEXTURE_2D,
+		level   = 0,
+		xoffset = 0,
+		yoffset = 0,
+		width  = AXIS_POINTS,
+		height = AXIS_POINTS,
+		format = gl.RED,
+		type   = gl.HALF_FLOAT,
+		data   = globals.water_heightmap)
+}
+
+height_func :: #force_inline proc (x, z: int, y: ^f16) {
+	using globals
+	using glsl
+	derived_y := 1.5 * sin((0.2*uniforms.tau_time) + f32(x))
+	y^ = cast(f16) derived_y
 }

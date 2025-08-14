@@ -221,7 +221,7 @@ foreign webgl {
 	glStencilOpSeparate   :: proc(face, fail, zfail, zpass: uint)	 ---
 	
 	@(link_name="TexImage2D")
-	glTexImage2D    :: proc(target: uint, level: int, internalformat: uint, width, height: int, border: int, format, type: uint, size: int, data: rawptr) ---
+	glTexImage2D    :: proc(target: uint, level: int, internalformat: int, width, height: int, border: int, format, type: uint, size: int, data: rawptr) ---
 	@(link_name="TexSubImage2D")
 	glTexSubImage2D :: proc(target: uint, level: int, xoffset, yoffset, width, height: int, format, type: uint, size: int, data: rawptr) ---
 	

@@ -1,6 +1,7 @@
 package main
 
 import "core:math"
+import "core:math/linalg"
 import "core:math/linalg/glsl"
 import "base:runtime"
 
@@ -192,12 +193,8 @@ using glsl
 // We know the names of points, as labeled above. (indexes)
 // The only task is to ensure inserting them in that order.
 geom_make_xz_plane :: proc (
-  plane_size:       f32, // size of grid (affects size of grid-squares)
   squares_per_axis: u32
 ) -> (result: Geom_Mesh2) {
-  half_size := plane_size / 2
-  assert(is_real(half_size))
-
   axis_vert_count: u32 = (squares_per_axis+1)
   axis_vert_count_squared := axis_vert_count * axis_vert_count
   result.vertices = make([dynamic]Ren_Vertex_Base, 0, axis_vert_count_squared)
@@ -205,7 +202,6 @@ geom_make_xz_plane :: proc (
   indices_needed := squares_per_axis * squares_per_axis * indices_per_square
   result.indices = make([dynamic]u32, 0, indices_needed)
 
-  square_size_step := plane_size / f32(squares_per_axis)
   z: u32 = 0
   // 0 1 2 3 4 5
   // X X X x x x
@@ -215,15 +211,18 @@ geom_make_xz_plane :: proc (
     z := i / axis_vert_count
     append(&result.vertices, Ren_Vertex_Base{
       position = Vec3{
-        (square_size_step * f32(x)) - half_size,
+        f32(x),
         0,
-        (square_size_step * f32(z)) - half_size,
+        f32(z),
       } 
     })
 
     if (x+1) == axis_vert_count \
     || (z+1) == axis_vert_count {
-      continue // If we keep going, rows wrap by indices.
+      // As we insert a new triangle's worth of indices every iteration;
+      // if we don't `continue`, the end of a row
+      // will be stitched to the beginning of the next row.
+      continue
     }
 
     BL:u32 = i
@@ -233,8 +232,8 @@ geom_make_xz_plane :: proc (
     append(&result.indices,
       TL, BL, TR, // Triangle 1
       BR, TR, BL) // Triangle 2
-
   }
+
   return
 }
 

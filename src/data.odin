@@ -31,8 +31,6 @@ Globals :: struct {
 	// Window/Framebuffer
 	resolution:      [2]int,
 	aspect_ratio:    f32,
-	time:            f32,
-	tau_time:        f32,
 
 	// Camera
 	game_camera:     Mat4,
@@ -52,6 +50,7 @@ Globals :: struct {
 
 	// Game State
 	water_plane: ^Entity,
+	water_heightmap: []f16,
 	marker:      ^Entity,
 	plane_mesh:  Geom_Mesh2
 }
@@ -118,6 +117,7 @@ Ren :: struct {
 
 Game_Shader :: enum {
 	Basic,
+	Water,
 }
 
 Ren_Instance :: struct {
@@ -129,11 +129,15 @@ Ren_Instance :: struct {
 Uniforms :: struct #align(16) {
 	view:       Mat4,
 	projection: Mat4,
+	time:     f32,
+	tau_time: f32,
+	padding0: Vec2, // std140
 }
 
 Ren_Vertex_Base :: struct {
 	position: Vec3,
 	texcoord: Vec2,
+	normal:   Vec3,
 }
 
 Ren_Asset :: struct {

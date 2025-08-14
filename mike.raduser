@@ -26,14 +26,14 @@ window:
         }
         watch: expression: "query:type_views"
       }
-      0.162021:
+      0.200441:
       {
         watch: expression: "query:threads"
-        watch: selected expression: "query:targets"
-        watch: expression: "query:breakpoints"
+        watch: expression: "query:targets"
+        watch: selected expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
       }
-      0.153714: text:
+      0.187332: text:
       {
         selected
         expression: "query:output"
@@ -43,11 +43,12 @@ window:
         mark_line: 1
         mark_column: 1
       }
-      0.346286:
+      0.274248:
       {
-        watch: selected expression: "query:call_stack"
+        watch: expression: "query:call_stack"
         disasm:
         {
+          selected
           expression: ""
           query: input: ""
         }
@@ -74,25 +75,15 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 233
-        cursor_column: 1
-        mark_line: 233
-        mark_column: 1
-      }
-      text:
-      {
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/geom.odin\".data"
-        auto: 1
-        query: input: ""
-        cursor_line: 261
-        cursor_column: 1
-        mark_line: 261
-        mark_column: 1
+        cursor_line: 278
+        cursor_column: 15
+        mark_line: 278
+        mark_column: 15
       }
     }
   }
   split_x
-  pos: 2193 54
+  pos: 1353 54
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0

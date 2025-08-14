@@ -14,13 +14,14 @@ when NGL_DEBUG {
 	#assert(NGL_VALIDATE, "Can't debug_trap if we aren't checking errors.")
 }
 
-validate :: proc () -> Error {
+validate :: proc (src_loc: runtime.Source_Code_Location) -> Error {
 	when NGL_VALIDATE {
 		err := cast(Error) GetError()
 		when NGL_DEBUG {
 			if err != Error.NO_ERROR {
+				message := fmt.tprintf("%v: debug_trap emitted.", err)
+				_bad_input(message, src_loc)
 				intrinsics.debug_trap()
-				fmt.printfln("debug_trap emitted.")
 			}
 		}
 		return err
