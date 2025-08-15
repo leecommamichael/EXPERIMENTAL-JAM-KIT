@@ -8,7 +8,7 @@ import win "../windows"
 
 // A virtual key code. Suitable for games if users have the same
 // keyboard layout. e.g. QWERTY, AZERTY, etc
-Key :: enum {
+Button :: enum {
 	Escape      = windows.VK_ESCAPE,
 	Left_Mouse  = windows.VK_LBUTTON,
 	Right_Mouse = windows.VK_RBUTTON,
@@ -27,25 +27,25 @@ Key :: enum {
 @private
 on_key_down :: proc (message: windows.MSG) {
 	if message.wParam < windows.VK_LBUTTON || message.wParam > windows.VK_OEM_CLEAR { return }
-	virtual_keycode := cast(Key) message.wParam
+	virtual_keycode := cast(Button) message.wParam
 	down := win.Key_LPARAM(message.lParam)
 	// Don't process key repeats. Those are for text editing, not games.
 	if down.was_down { return }
 
-	press_key(virtual_keycode)
+	press_button(virtual_keycode)
 }
 
 @private
 on_key_up :: proc (message: windows.MSG) {
 	if message.wParam < windows.VK_LBUTTON || message.wParam > windows.VK_OEM_CLEAR { return }
-	virtual_keycode := cast(Key) message.wParam
-	release_key(virtual_keycode)
+	virtual_keycode := cast(Button) message.wParam
+	release_button(virtual_keycode)
 }
 
 @private
 on_mousemove :: proc (message: windows.MSG) {
-	g_state.input.mouse.window.x = cast(f32) windows.GET_X_LPARAM(message.lParam)
-	g_state.input.mouse.window.y = cast(f32) windows.GET_Y_LPARAM(message.lParam)
+	mouse_position.x = cast(f32) windows.GET_X_LPARAM(message.lParam)
+	mouse_position.y = cast(f32) windows.GET_Y_LPARAM(message.lParam)
 }
 
 // With the exception of "Should_Exit" you don't need to handle these.
@@ -79,8 +79,8 @@ poll_events :: proc () -> (feedback: Feedback) {
 			// WARN: The message array can be heterogeneous.
 			//       Don't request more than mouse input as raw input.
 			mouse := messages[i].data.mouse
-			g_state.input.mouse.delta.x += f32(mouse.lLastX)
-			g_state.input.mouse.delta.y += f32(mouse.lLastY)
+			mouse_delta.x += f32(mouse.lLastX)
+			mouse_delta.y += f32(mouse.lLastY)
 		}
 	}
 	get_raw_input()
@@ -100,12 +100,10 @@ poll_events :: proc () -> (feedback: Feedback) {
   	case windows.WM_KEYDOWN: on_key_down(message)
   	case windows.WM_KEYUP:   on_key_up(message)
   	case windows.WM_MOUSEMOVE: on_mousemove(message)
-  	case windows.WM_LBUTTONDOWN:        // TODO: KILLME (dedupe with on_ handlers)
-			g_state.input.keys[.Left_Mouse].is_pressed = true
-			g_state.input.keys[.Left_Mouse].prev_press = g_state.input.tick
-  	case windows.WM_LBUTTONUP:        // TODO: KILLME
-			g_state.input.keys[.Left_Mouse].is_pressed = false
-			g_state.input.keys[.Left_Mouse].prev_release = g_state.input.tick
+  	case windows.WM_LBUTTONDOWN:
+			press_button(.Left_Mouse)
+  	case windows.WM_LBUTTONUP:
+  		release_button(.Left_Mouse)
     }
     if g_window_resized {
     	g_window_resized = false

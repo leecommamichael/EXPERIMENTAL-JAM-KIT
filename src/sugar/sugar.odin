@@ -2,90 +2,104 @@ package sugar
 
 import "core:time"
 
-g_state: State
-
-State :: struct {
-	input: Input_Frame,
-	resolution: [2]int,
-}
-
 //////////////////////////////////////////////////////////////////////
-// Input Interface
+// Common/Easy Interface
 //////////////////////////////////////////////////////////////////////
 
-Input_Frame :: struct {
-	tick: time.Tick,
-	keys: #sparse[Key]Button,
-	mouse: Mouse,
+viewport_size:  [2]int
+mouse_position: [2]f32
+mouse_delta:    [2]f32
+
+is_pressed :: #force_inline proc (button: Button) -> bool {
+	return input.buttons[button].is_pressed
 }
 
-Mouse :: struct {
-	window: [2]f32,
-	delta:  [2]f32,
-}
-
-Button :: struct {
-	is_pressed: bool,
-	prev_press:   time.Tick,
-	prev_release: time.Tick,
-}
-
-Button_Action :: struct {
-	button:       ^Button,
-	debounce:      time.Duration,
-	last_trigger:  time.Tick,
-}
-
-time_since_last_trigger :: proc (action: ^Button_Action) -> time.Duration {
-	return time.tick_diff(action.last_trigger, g_state.input.tick)
-}
-
-// Instantly fires if pressed, but cannot refire without both of:
+// Instantly fires when pressed, but cannot refire without both of:
 // - The debounce elapsing
-// - The Button releasing and re-pressing.
-// GOTCHA:
-//   You can't write if(action) {}; if (action) {}; and expect both to run.
-//   EXPERIMENT: Write it as if that's not needed. Lift out to state if necessary.
-//               e.g. "switch_mode: bool" so many places in the app can respond.
-on_press :: proc (action: ^Button_Action) -> bool {
-	button := action.button
-	can_fire := button.is_pressed &&
-	            time.tick_diff(action.last_trigger, button.prev_release) >= 0 &&
-	            action.debounce < time_since_last_trigger(action)
+// - The Button_State releasing and re-pressing. (lmk if you want on_press_and_repeat())
+on_press :: proc (button: Button, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
+	state: ^Button_State = &input.buttons[button]
+	if state.pending_trigger { return true }
+
+	can_fire := state.is_pressed &&
+	            time.tick_diff(state.last_trigger, state.prev_release) >= 0 &&
+	            debounce <= time_since_action_triggered(state)
 	if can_fire {
-		action.last_trigger = g_state.input.tick
+		state.pending_trigger = true
 	}
 	return can_fire
 }
 
-on_release :: proc (action: ^Button_Action) -> bool {
-	button := action.button
-	can_fire := !button.is_pressed &&
-	             time.tick_diff(action.last_trigger, button.prev_press) > 0 &&
-	             action.debounce < time_since_last_trigger(action)
+// Fires when releasing the button after a debounce interval.
+on_release :: proc (button: Button, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
+	state: ^Button_State = &input.buttons[button]
+	if state.pending_trigger { return true }
+
+	can_fire := !state.is_pressed &&
+	             time.tick_diff(state.last_trigger, state.prev_press) > 0 && // > not >=
+	             debounce <= time_since_action_triggered(state)
 	if can_fire {
-		action.last_trigger = g_state.input.tick
+		state.pending_trigger = true
 	}
 	return can_fire
 }
 
 //////////////////////////////////////////////////////////////////////
-// Input Implementation
+// The rest of the interface
 //////////////////////////////////////////////////////////////////////
+
+// The world record is 16 button-presses in one second.
+// This allows 20 presses per second and prevents spamming without feeling shoddy.
+DEFAULT_DEBOUNCE :: 50.0 * time.Millisecond
+
+// This isn't really necessary to use, since procs exist to use its data idiomatically.
+input: Input_Frame
+
+// Polling for events yields an updated Input_Frame. 
+// There's only ever one frame in memory. The `tick` field uniquely identifies 
+// this frame; and is written only once when polling.
+Input_Frame :: struct {
+	tick:     time.Tick,
+	buttons: #sparse[Button]Button_State,
+}
+
 begin_input_frame :: proc () {
-	g_state.input.tick = time.tick_now()
+	input.tick = time.tick_now()
 }
 
 end_input_frame :: proc () {
-	g_state.input.mouse.delta = 0
+	mouse_delta = 0
+
+	for &button in input.buttons {
+		// Allows sugar.on_press(.Space) to return true more than once per frame,
+		//   but not more often than the debounce.
+		if button.pending_trigger {
+			button.last_trigger = input.tick
+			button.pending_trigger = false
+		}
+	}
 }
 
-press_key :: proc (key: Key) {
-	g_state.input.keys[key].is_pressed = true
-	g_state.input.keys[key].prev_press = g_state.input.tick
+Button_State :: struct {
+	is_pressed:   bool,
+	prev_press:   time.Tick,
+	prev_release: time.Tick,
+	// Fields below are used by interface procs to enable debounce.
+	last_trigger:    time.Tick,
+	pending_trigger: bool,
 }
 
-release_key :: proc (key: Key) {
-	g_state.input.keys[key].is_pressed = false
-	g_state.input.keys[key].prev_release = g_state.input.tick
+time_since_action_triggered :: proc (action: ^Button_State) -> time.Duration {
+	return time.tick_diff(action.last_trigger, input.tick)
+}
+
+// Procs below may be used to simulate input events coming from the OS.
+press_button :: proc (button: Button) {
+	input.buttons[button].is_pressed = true
+	input.buttons[button].prev_press = input.tick
+}
+
+release_button :: proc (button: Button) {
+	input.buttons[button].is_pressed = false
+	input.buttons[button].prev_release = input.tick
 }

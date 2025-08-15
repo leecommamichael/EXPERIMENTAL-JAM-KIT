@@ -7,7 +7,7 @@ import "core:math/linalg"
 
 // TODO: This is API-surface, but I don't think people would expect mouse-buttons
 //       to be a "Key". Either rename "Button" or move to Pointer-API on all platforms.
-Key :: enum {
+Button :: enum {
 	None,
 
 	Escape,
@@ -24,7 +24,7 @@ Key :: enum {
 	D,
 }
 
-js_key_from_code :: proc (key: string) -> Key {
+js_key_from_code :: proc (key: string) -> Button {
 	switch key {
 	case "Escape":    return .Escape
 	case "ArrowLeft": return .Left_Arrow
@@ -40,7 +40,7 @@ js_key_from_code :: proc (key: string) -> Key {
 	return .None
 }
 
-js_mouse_button_from_event :: proc (event: js.Event) -> Key {
+js_mouse_button_from_event :: proc (event: js.Event) -> Button {
 	switch event.mouse.button {
 	case 0: return .Left_Mouse
 	// case 1: Wheel_Button,
@@ -66,9 +66,9 @@ on_key_up :: proc (event: js.Event) {
 }
 
 on_pointer_move :: proc (event: js.Event) {
-	g_state.input.mouse.window = linalg.array_cast(event.mouse.offset, f32)
+	mouse_position = linalg.array_cast(event.mouse.offset, f32)
 	// Deltas are zeroed each input frame.
-	g_state.input.mouse.delta += linalg.array_cast(event.mouse.movement, f32)
+	mouse_delta += linalg.array_cast(event.mouse.movement, f32)
 }
 
 on_pointer_up :: proc (event: js.Event) {

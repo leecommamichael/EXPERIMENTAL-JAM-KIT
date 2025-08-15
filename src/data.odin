@@ -6,7 +6,6 @@ import ngl "nord_gl"
 //////////////////////////////////////////////////////////////////////
 // Section: Global Data
 //////////////////////////////////////////////////////////////////////
-game_initialized := false
 globals: Globals
 
 // I was thinking of tossing in a `time:f32`
@@ -41,12 +40,6 @@ Globals :: struct {
 
 	// Editor
 	gizmo_asset:     Ren_Asset,
-
-	// Controls
-	quit:        sugar.Button_Action,
-	left_click:  sugar.Button_Action,
-	right_click: sugar.Button_Action,
-	space:       sugar.Button_Action,
 
 	// Game State
 	water_plane: ^Entity,

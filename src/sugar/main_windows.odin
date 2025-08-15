@@ -46,7 +46,7 @@ create_window :: proc (
     dwStyle = windows.WS_OVERLAPPEDWINDOW
   }
   ////////////////////////////////////////////////////////////////////// 
-  g_state.resolution = { rect[2], rect[3] }
+  viewport_size = { rect[2], rect[3] }
   uses_menu: windows.BOOL : false
   desired_client_rect: windows.RECT = {
     cast(i32) rect[0],
@@ -108,7 +108,7 @@ create_window :: proc (
 
   // Now let's deal with graphics.
   if use_gl {
-    gl_ok := load_gl(g_state.resolution)
+    gl_ok := load_gl(viewport_size)
     if !gl_ok {
       log.debug("Failed to initialize GL when creating a window.")
       return false

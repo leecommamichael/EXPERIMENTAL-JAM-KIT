@@ -16,15 +16,15 @@ window:
           expression: ""
           watch: x
           watch: z
+          watch: input
         }
         watch: expression: "query:types"
         watch:
         {
-          selected
           expression: "query:locals"
           normal: 0.350000 0.400000 0.250000
         }
-        watch: expression: "query:type_views"
+        watch: selected expression: "query:type_views"
       }
       0.200441:
       {
@@ -64,21 +64,21 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 119
-        cursor_column: 1
-        mark_line: 119
-        mark_column: 1
+        cursor_line: 99
+        cursor_column: 37
+        mark_line: 99
+        mark_column: 37
       }
       text:
       {
         selected
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 278
-        cursor_column: 15
-        mark_line: 278
-        mark_column: 15
+        cursor_line: 13
+        cursor_column: 1
+        mark_line: 13
+        mark_column: 1
       }
     }
   }

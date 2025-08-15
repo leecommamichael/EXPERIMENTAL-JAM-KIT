@@ -4,7 +4,7 @@ import NS "../../darwodin/darwodin-macos-lite/darwodin/AppKit"
 import CG "../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
 import NSF "../../darwodin/darwodin-macos-lite/darwodin/Foundation"
 
-Key :: enum {
+Button :: enum {
 	Escape      =0,
 	Left_Mouse  =1,
 	Right_Mouse =2,

@@ -1,5 +1,8 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/main_entrypoint.odin"
+recent_file: path: "src/main_app.odin"
+recent_file: path: "src/sugar/sugar.odin"
 recent_file: path: "src/main.odin"
 recent_file: path: "src/sugar/main_windows.odin"
 recent_file: path: "src/sugar/gl_windows.odin"
@@ -21,11 +24,21 @@ use_default_ue_type_views: 0
 use_default_stl_type_views: 0
 breakpoint:
 {
-  source_location: "src/main.odin:131:1"
+  source_location: "src/main.odin:153:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main.odin:156:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main_entrypoint.odin:13:1"
   hit_count: 1
 }
 breakpoint:
 {
-  source_location: "src/main.odin:275:1"
-  hit_count: 1
+  source_location: "src/main_entrypoint.odin:29:1"
+  hit_count: 0
 }

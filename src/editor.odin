@@ -10,7 +10,7 @@ import "core:log"
 // Returns the position of the cursor, and its direction thru the camera frustum.
 // e.g. cursor_in_world, cursor_direction := cursor_direction_in_world()
 cursor_direction_in_world :: proc () -> (Vec3, Vec3) {
-	ndc := pixel_to_ndc(sugar.g_state.input.mouse.window)
+	ndc := pixel_to_ndc(sugar.mouse_position)
 	return camera_clip_coord_direction(&globals.game_camera, &globals.game_view, ndc)
 }
 
@@ -18,8 +18,8 @@ cursor_direction_in_world :: proc () -> (Vec3, Vec3) {
 // LIMIT: 32 bit floats have no gaps up to 16384 2^14, so screen resolution.
 pixel_to_ndc :: proc (offset: [2]f32) -> [2]f32 {
 	res: Vec2 = {
-		cast(f32)sugar.g_state.resolution.x,
-		cast(f32)sugar.g_state.resolution.y,
+		cast(f32)sugar.viewport_size.x,
+		cast(f32)sugar.viewport_size.y,
 	}
 	ndc: Vec2 = {
 		 (2*offset.x / res.x) - 1,

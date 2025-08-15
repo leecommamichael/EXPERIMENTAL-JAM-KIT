@@ -74,6 +74,6 @@ resize_viewport :: proc () {
   sized_rect: windows.RECT
   got_rect := windows.GetClientRect(g_window, &sized_rect)
   assert(cast(bool) got_rect)
-  g_state.resolution = { cast(int) sized_rect.right, cast(int) sized_rect.bottom }
-  gl.Viewport(0,0, g_state.resolution.x, g_state.resolution.y)
+  viewport_size = { cast(int) sized_rect.right, cast(int) sized_rect.bottom }
+  gl.Viewport(0,0, viewport_size.x, viewport_size.y)
 }
