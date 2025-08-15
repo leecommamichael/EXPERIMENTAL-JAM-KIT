@@ -1,5 +1,7 @@
 package main
 
+// Purpose: This file is the integration of various platforms and Odin.
+
 import "core:time"
 import "core:log"
 import sugar "sugar"
@@ -17,7 +19,8 @@ main :: proc() {
 	ok := sugar.create_window([4]int{0,0, 900, 900}, "Wave Racer", use_gl = true)
 	if !ok { panic("Window creation failed.") }
 
-	app_init()
+	framework_init()
+
 	sugar.capture_cursor()
 	sugar.set_cursor_visible(false)
 
@@ -46,7 +49,7 @@ step :: proc (dt: f64) -> bool {
 		return false
 	}
 
-	app_step(dt)
+	framework_step(dt)
 
 	sugar.end_input_frame()
 	return true

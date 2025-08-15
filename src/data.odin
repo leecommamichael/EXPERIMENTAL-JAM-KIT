@@ -1,5 +1,8 @@
 package main
 
+// Purpose: This file is a non-comprehensive overview of
+//          data which crosses layer-boundaries in the program.
+
 import sugar "sugar"
 import ngl "nord_gl"
 
