@@ -6,3 +6,4 @@ web/fireside_jam.wasm
 *.sublime-workspace
 *.o
 .DS_Store
+*.spall
