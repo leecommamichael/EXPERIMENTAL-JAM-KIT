@@ -35,18 +35,23 @@ where intrinsics.type_is_subtype_of(T, Entity) {
 	for &mem, i in globals._entity_storage {
 		if !mem._used {
 			init_entity_memory(&mem, cast(Entity_ID) i)
-			if T == X {
-				mem.x = {}
-				mem.tag = .X
+			if T == Text {
+				mem.variant = {}
+				mem.tag = Entity_Variant.Text
 			} else if T == Entity {
-				mem.tag = .Entity
+				mem.tag = Entity_Variant.None
 			} else {
-				panic("Unimplemented Entity")
+				panic("Unimplemented Entity Variant")
 			}
 			return transmute(^T) &mem
 		}
 	}
 	panic("Out of entities.")
+}
+
+free_entity :: proc (entity: ^$T)
+where intrinsics.type_is_subtype_of(T, Entity) {
+	entity._used = false
 }
 
 
@@ -135,10 +140,14 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 		indices = cast(uintptr) 0,
 	)
 }
-// ASSUME: data is sorted.
-// TODO: Render opaque Near to Far and figure out fragment discard.
-ren_draw :: proc (ren: ^Ren) {
+
+ren_clear :: proc () {
 	ngl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT})
+}
+
+// ASSUME: data is sorted.
+// TODO: Render opaque Near to Far and do fragment discard.
+ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.projection = globals.game_camera
 	globals.uniforms.view = globals.game_view
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)

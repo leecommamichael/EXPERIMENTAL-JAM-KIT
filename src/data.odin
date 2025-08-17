@@ -5,46 +5,35 @@ package main
 
 import sugar "sugar"
 import ngl "nord_gl"
+import stbtt "vendor:stb/truetype"
 
 //////////////////////////////////////////////////////////////////////
-// Section: Global Data
+// Section: Framework + App Data
 //////////////////////////////////////////////////////////////////////
 globals: Globals
 
-// I was thinking of tossing in a `time:f32`
-// and got worried it'd lose precision so fast.
-// 
-// I usually use it for trig. I wonder if it's not just better
-// To wrap an f32 from 0 to pi continuously. Plenty of precision there.
-//
-// That's an angle integrated over time. dtheta
 Globals :: struct {
-	// Engine
-	gl_standard:     GL_Standard,
-	ren:             ^Ren,
-	instances:       Aligned_Array(Ren_Instance),
+	// Render Service
+	gl_standard: GL_Standard,
+	ren:         ^Ren,
+	// Entity Service
 	_entity_storage: [max(Entity_ID)]Entity_Memory,
 	entities:        [dynamic]^Entity_Memory,
 	game_entities:   [dynamic]^Entity_Memory,
 	ui_entities:     [dynamic]^Entity_Memory,
-	// Coupled State (between Engine and Renderer)
+	// Render+Entity Integration
+	instances:       Aligned_Array(Ren_Instance),
 	uniforms:        Uniforms,
-
-	// Window/Framebuffer
-	resolution:      [2]int,
-	aspect_ratio:    f32,
-
-	// Camera
 	game_camera:     Mat4,
 	ui_orthographic: Mat4,
 	game_view:       Mat4,
 	ui_view:         Mat4,
+	// Entity:Text Data
+	fonts: Fonts,
+	// TODO: make this var an interface to modify the above
 	camera:          Camera3D,
 
-	// Editor
-	gizmo_asset:     Ren_Asset,
-
-	// Game State
+	// App Data
 	water_plane: ^Entity,
 	water_heightmap: []f16,
 	marker:      ^Entity,
@@ -79,27 +68,32 @@ Entity :: struct {
 	using instance: ^Ren_Instance,
 }
 
-X_Entity :: struct {
-	using entity: Entity,
-	using pillar: X
+Text_Entity :: struct {
+	using entity:  Entity,
+	using variant: Text,
 }
-X :: struct {}
+Text :: struct {
+	text: string,
+	font: Font,
+}
 
 // ASSUME: All variants are subtypes of Entity.
 Entity_Memory :: struct #packed {
 	using entity: Entity,
 	using variant: struct #raw_union {
-		x: X,
+		text: Text_Entity,
 	},
 	// Can Transmute to Variants if I keep this below.
-	tag: enum {
-		Entity,
-		X
-	},
+	tag: Entity_Variant
+}
+
+Entity_Variant :: enum {
+	None,
+	Text
 }
 
 //////////////////////////////////////////////////////////////////////
-// Section: Renderer
+// Section: Render
 //////////////////////////////////////////////////////////////////////
 
 Ren :: struct {
@@ -180,4 +174,26 @@ GLSL_Attribute_Type :: enum {
 	mat4,
 	i32, ivec2, ivec3, ivec4,
 	u32, uvec2, uvec3, uvec4,
+}
+
+//////////////////////////////////////////////////////////////////////
+// Section: Text
+//////////////////////////////////////////////////////////////////////
+
+// What you need to render text.
+Font :: struct {
+	name:      string,
+	info:      stbtt.fontinfo,
+	bitmap:    rawptr,
+	height_px: f32,
+}
+
+// What you need to render _styled_ text.
+Font_Family :: [Font_Variant]Font
+
+Font_Variant :: enum {
+	regular,
+	bold,
+	italic,
+	bold_italic
 }

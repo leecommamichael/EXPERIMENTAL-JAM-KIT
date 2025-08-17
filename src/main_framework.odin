@@ -43,11 +43,13 @@ framework_init :: proc () {
 	globals.entities = slice.into_dynamic(entities)
 	globals.ren = ren_make()	
 	ren_init(globals.ren)
+	ren_text_init()
 	game_init()
 }
 
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
+	ren_clear()
 	globals.uniforms.tau_time += f32(dt)
 	overflow := linalg.TAU - globals.uniforms.tau_time
 	if overflow >= 0 {
@@ -103,11 +105,10 @@ framework_step :: proc (dt: f64) {
 // TODO: Read various data from Globals such that the game
 //       can program the camera simply by setting parameters.
 resolution_changed :: proc (res: [2]int) {
-	globals.aspect_ratio = cast(f32)res.x / cast(f32)res.y
-	globals.resolution = res
+	aspect_ratio := cast(f32)res.x / cast(f32)res.y
 	globals.game_camera = linalg.matrix4_perspective_f32(
 		fovy   = linalg.to_radians(f32(90.0)),
-		aspect = globals.aspect_ratio,
+		aspect = aspect_ratio,
 		near   = .1,
 		far    = 1000,
 		flip_z_axis = false

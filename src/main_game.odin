@@ -9,7 +9,6 @@ import "base:runtime"
 import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
-import sugar "sugar"
 
 game_init :: proc () {
 	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
