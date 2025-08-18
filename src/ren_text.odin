@@ -36,7 +36,7 @@ text :: proc (
 	variant: Font_Variant = .regular,
 ) -> ^Text_Entity {
 	entity: ^Text_Entity = make_entity(Text_Entity)
-	entity.font = globals.fonts[usage][variant]
+	entity.font = &globals.fonts[usage][variant]
 	return entity
 }
 
@@ -49,7 +49,7 @@ do_text :: proc (
 	variant:  Font_Variant = .regular,
 ) {
 	entity: ^Text_Entity = make_entity(Text_Entity)
-	entity.font = globals.fonts[usage][variant]
+	entity.font = &globals.fonts[usage][variant]
 	ren_draw_entity(globals.ren, entity)
 	free_entity(entity)
 }

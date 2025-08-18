@@ -11,13 +11,15 @@ window:
     {
       0.337979:
       {
-        selected
         watch:
         {
+          selected
           expression: ""
           watch: x
           watch: z
           watch: input
+          watch: globals
+          watch: "&globals"
         }
         watch: expression: "query:types"
         watch:
@@ -25,7 +27,7 @@ window:
           expression: "query:locals"
           normal: 0.350000 0.400000 0.250000
         }
-        watch: selected expression: "query:type_views"
+        watch: expression: "query:type_views"
       }
       0.200441:
       {
@@ -58,6 +60,7 @@ window:
     }
     0.592988:
     {
+      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
@@ -84,9 +87,9 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 29
+        cursor_line: 35
         cursor_column: 1
-        mark_line: 29
+        mark_line: 35
         mark_column: 1
       }
       text:

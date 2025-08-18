@@ -74,7 +74,7 @@ Text_Entity :: struct {
 }
 Text :: struct {
 	text: string,
-	font: Font,
+	font: ^Font,
 }
 
 // ASSUME: All variants are subtypes of Entity.
@@ -86,6 +86,17 @@ Entity_Memory :: struct #packed {
 	// Can Transmute to Variants if I keep this below.
 	tag: Entity_Variant
 }
+
+// This enables a safe specializing cast to a variant.
+#assert(offset_of(Entity_Memory, variant) > 
+	offset_of(Entity_Memory, entity))
+#assert(offset_of(Entity_Memory, tag) > 
+	offset_of(Entity_Memory, variant))
+
+// I think ASAN implicated the wrong line of code, BUT:
+// When I had Font as a non-pointer the program crashed.
+// So here's an assert that serves as a reminder to keep variants small.
+#assert(size_of(Entity_Memory) < 256)
 
 Entity_Variant :: enum {
 	None,
