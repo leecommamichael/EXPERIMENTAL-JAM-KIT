@@ -34,10 +34,10 @@ Globals :: struct {
 	camera:          Camera3D,
 
 	// App Data
-	water_plane: ^Entity,
+	water_plane:     ^Entity,
 	water_heightmap: []f32,
-	marker:      ^Entity,
-	plane_mesh:  Geom_Mesh2
+	marker:          ^Entity,
+	plane_mesh:      Geom_Mesh2
 }
 
 GL_Standard :: struct {                 // RTX-4070 ,          ,
@@ -45,6 +45,7 @@ GL_Standard :: struct {                 // RTX-4070 ,          ,
 	MAX_UNIFORM_BLOCK_SIZE: i64,          // 65536 web, same  win,
 	MAX_TEXTURE_SIZE: i64,                // 16384 web, 32768 win,
 }
+// Looks like 16K textures is standard for the past decade.
 
 //////////////////////////////////////////////////////////////////////
 // Section: Entities
