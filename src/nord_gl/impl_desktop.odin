@@ -125,56 +125,61 @@ DrawElements :: #force_inline proc (
 
 
 
-GenBuffers :: proc {
-	GenBuffersMany,
-	GenBuffersOne
-}
-
-GenBuffersMany :: proc (
-	out: []Buffer,
+GenBuffers :: proc (
+	len: int,
+	out: [^]Buffer,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenBuffers(cast(int)len(out), cast(^uint)&out[0])
+	glGenBuffers(len, cast([^]uint) out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
-GenBuffersOne :: proc (
-	out: ^Buffer,
+CreateBuffer :: proc (
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR, buffer: Buffer) {
+	glGenBuffers(1, cast(^uint)&buffer)
+	when NGL_VALIDATE { err = validate(_loc); return } else { return }
+}
+
+
+
+
+GenVertexArrays :: proc (
+	len: int,
+	out: [^]VertexArrayObject,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenBuffers(1, cast(^uint)out)
+	glGenVertexArrays(len, cast([^]uint)out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
-
-
-
-GenVertexArrays :: proc {
-	GenVertexArraysMany,
-	GenVertexArraysOne, 
+CreateVertexArray :: proc (
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR, vao: VertexArrayObject) {
+	glGenVertexArrays(1, cast(^uint)&vao)
+	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
-GenVertexArraysMany :: proc (
-	out: []VertexArrayObject,
+
+
+
+GenTextures :: proc (
+	len: int,
+	out: [^]Texture,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenVertexArrays(cast(int)len(out), cast([^]uint)raw_data(out))
+	glGenTextures(len, cast([^]uint) out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
-GenVertexArraysOne :: proc (
-	out: ^VertexArrayObject,
+CreateTexture :: proc (
 	_loc := #caller_location
-) -> (err: Error = .NO_ERROR) {
-	glGenVertexArrays(1, cast(^uint)out)
-	when NGL_VALIDATE { return validate(_loc) } else { return }
+) -> (err: Error = .NO_ERROR, tex: Texture) {
+	glGenTextures(1, cast(^uint)&tex)
+	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
 
-
-
-// :: proc () -> (err: Error = .NO_ERROR)
-// when NGL_VALIDATE { return validate(_loc) } else { return }
 BindBuffer :: proc (
 	target: Buffer_Type,
 	buffer: Buffer,
@@ -472,34 +477,7 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 
 
 
-TexImage2D :: proc {
-	TexImage2D_One,
-	TexImage2D_Many
-}
-
-TexImage2D_One :: proc (
-	target: Texture_2D_Target,
-	level: int,
-	internalformat: int,
-	width, height: int,
-	format: uint, // TODO scoped enum
-	type: uint,
-	data: ^$T,
-	_loc := #caller_location
-) -> ( err: Error = .NO_ERROR ) {
-	glTexImage2D(
-		cast(GLenum) target,
-		level,
-		internalformat,
-		width, height,
-		0, // border
-		format,
-		type,
-		data)
-	when NGL_VALIDATE { return validate(_loc) } else { return }
-}
-
-TexImage2D_Many :: proc (
+TexImage2D :: proc (
 	target: Texture_2D_Target,
 	level: int,
 	internalformat: int,
@@ -548,6 +526,48 @@ TexSubImage2D :: proc (
 
 
 
+
+BindTexture :: proc (binding: uint, tex: Texture) {
+	glBindTexture(binding, auto_cast tex)
+}
+
+
+
+
+// Swizzling not present in WebGL
+Set_Texture_Base_Level   :: proc (target: Texture_Parameter_Target, param: uint) {
+	glTexParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
+}
+Set_Texture_Max_Level    :: proc (target: Texture_Parameter_Target, param: uint) {
+	glTexParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
+}
+Set_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
+	glTexParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
+}
+Set_Texture_Max_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
+	glTexParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
+}
+Set_Texture_Mag_Filter   :: proc (target: Texture_Parameter_Target, param: Texture_Mag_Filter) {
+	glTexParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
+}
+Set_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target, param: Texture_Min_Filter) {
+	glTexParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
+}
+Set_Texture_Compare_Func :: proc (target: Texture_Parameter_Target, param: Compare_Func) {
+	glTexParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
+}
+Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Compare_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
+}
+Set_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
+}
+Set_Texture_Wrap_T       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
+}
+Set_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
+}
 //////////////////////////////////////////////////////////////////////
 // Platform-Specific Stuff Below
 //////////////////////////////////////////////////////////////////////

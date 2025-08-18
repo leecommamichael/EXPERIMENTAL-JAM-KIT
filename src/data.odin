@@ -40,10 +40,10 @@ Globals :: struct {
 	plane_mesh:  Geom_Mesh2
 }
 
-GL_Standard :: struct {
-	UNIFORM_BUFFER_OFFSET_ALIGNMENT: int,
-	MAX_UNIFORM_BLOCK_SIZE: i64,
-	MAX_TEXTURE_SIZE: i64,
+GL_Standard :: struct {                 // RTX-4070 ,          ,
+	UNIFORM_BUFFER_OFFSET_ALIGNMENT: int, // 256   web, same  win,
+	MAX_UNIFORM_BLOCK_SIZE: i64,          // 65536 web, same  win,
+	MAX_TEXTURE_SIZE: i64,                // 16384 web, 32768 win,
 }
 
 //////////////////////////////////////////////////////////////////////

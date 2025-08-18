@@ -62,11 +62,12 @@ where intrinsics.type_is_subtype_of(T, Entity) {
 ren_make :: proc () -> ^Ren {
 	ren := new(Ren)
 
-	ngl.GenBuffers(&ren.frame_UBO)
+	err: ngl.Error
+	err, ren.frame_UBO = ngl.CreateBuffer()
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
 
-	ngl.GenBuffers(&ren.instance_UBO)
+	err = ngl.GenBuffers(1, &ren.instance_UBO)
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
 	ngl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:])
 
@@ -399,14 +400,14 @@ ren_make_basic_asset :: proc (
 	instance_buffer: ngl.Buffer,
 ) -> Ren_Asset {
 	VAO: ngl.VertexArrayObject
-	ngl.GenVertexArrays(&VAO)
+	ngl.GenVertexArrays(1, &VAO)
 	ngl.BindVertexArray(VAO)
 
 	// Create Vertex Buffer
 	vertex_buffer := Ren_Buffer {
 		element_size = size_of(Ren_Vertex_Base)
 	}
-	ngl.GenBuffers(&vertex_buffer.id)
+	ngl.GenBuffers(1, &vertex_buffer.id)
 	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
 	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
 	ngl.BindBuffer(.ARRAY_BUFFER, 0)
@@ -414,7 +415,7 @@ ren_make_basic_asset :: proc (
 	// Create Index Buffer
 	index_count := len(indices)
 	index_buffer_id: ngl.Buffer
-	ngl.GenBuffers(&index_buffer_id)
+	ngl.GenBuffers(1, &index_buffer_id)
 	ngl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
 	ngl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 

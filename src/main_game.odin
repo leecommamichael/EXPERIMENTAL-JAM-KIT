@@ -31,8 +31,7 @@ game_init :: proc () {
 	globals.marker.hidden = true
 
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
-	tex: gl.Texture
-	gl.GenTexturesOne(&tex)
+	err, tex := gl.CreateTexture()
 	gl.BindTexture(gl.TEXTURE_2D, tex)
 	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .REPEAT)
 	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .REPEAT)
