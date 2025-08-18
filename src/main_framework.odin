@@ -43,7 +43,7 @@ framework_init :: proc () {
 	globals.entities = slice.into_dynamic(entities)
 	globals.ren = ren_make()	
 	ren_init(globals.ren)
-	ren_text_init()
+	// ren_text_init()
 	game_init()
 }
 

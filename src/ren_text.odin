@@ -80,25 +80,24 @@ bake_font :: proc (font: ^Font, new_height_px: f32) {
   scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
 
   // Get the font's line height
-  ascent, descent, line_gap: c.int;
-  stbtt.GetFontVMetrics(&font.info, &ascent, &descent, &line_gap);
+  ascent, descent, line_gap: f32;
+  stbtt.GetFontVMetrics(&font.info, cast(^c.int)&ascent, cast(^c.int)&descent, cast(^c.int)&line_gap);
   font.ascent   = ascent  * scale;
   font.descent  = descent * scale;
   font.line_gap = line_gap * scale;
   font.line_height = font.ascent - font.descent + font.line_gap;
 
   // Get the monospace character width
-  _lsb, monospace_advance: c.int = 0;
-  stbtt.GetCodepointHMetrics(&font.info, ' ', &monospace_advance, &_lsb);
+  _lsb, monospace_advance: f32;
+  stbtt.GetCodepointHMetrics(&font.info, ' ', cast(^c.int)&monospace_advance, cast(^c.int)&_lsb);
   font.monospace_advance = monospace_advance * scale;
 
-  stbtt.BakeFontBitmap(font.file_bytes,
-  	offset = 0,
+  stbtt.BakeFontBitmap(
+  	&font.file_bytes[0],  offset=0,
     pixel_height = new_height_px,
-    pixels = raw_data(font.bitmap), pw = 512, ph = 512,
-    first_char = 32,
-    num_chars = 96,
-    chardata = raw_data(font.chars)) // no guarantee font fits!
+    pixels = &font.bitmap[0],  pw=512,  ph=512,
+    first_char=32,  num_chars=96,
+    chardata = &font.baked_chars[0]) // no guarantee font fits!
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -109,7 +108,7 @@ import "core:strings"
 // TODO: Introduce a stbtt.font_info cache so it doesn't parse the file so much.
 ren_text_init :: proc () {
 	for asset_file in asset_files {
-		splits := strings.split(asset_file.name, "-", context.temp_allocator)
+		splits := strings.split(asset_file.name, "-")
 		if len(splits) > 1 {
 			variant_name := splits[1]
 			variant: Font_Variant
@@ -146,7 +145,7 @@ ren_text_init :: proc () {
 			}
 			for usage in usages {
 				height_px := height_px_for_usage[usage]
-				font_from_ttf(asset_file.data, height_px, &globals.fonts[usage][variant])
+				font_from_ttf(font_name, asset_file.data, height_px, &globals.fonts[usage][variant])
 				log.debugf(" OK: Loaded Font %v", asset_file.name)
 			}
 		}

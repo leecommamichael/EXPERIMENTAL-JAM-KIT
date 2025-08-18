@@ -11,6 +11,7 @@ window:
     {
       0.337979:
       {
+        selected
         watch:
         {
           expression: ""
@@ -57,27 +58,45 @@ window:
     }
     0.592988:
     {
-      selected
-      getting_started
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 99
-        cursor_column: 37
-        mark_line: 99
-        mark_column: 37
+        cursor_line: 28
+        cursor_column: 1
+        mark_line: 28
+        mark_column: 1
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
         cursor_line: 13
         cursor_column: 1
         mark_line: 13
+        mark_column: 1
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query: input: ""
+        cursor_line: 29
+        cursor_column: 1
+        mark_line: 29
+        mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/ren_util.odin\".data"
+        auto: 1
+        query: input: ""
+        cursor_line: 34
+        cursor_column: 1
+        mark_line: 34
         mark_column: 1
       }
     }
