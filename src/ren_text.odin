@@ -6,6 +6,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:slice"
 import "core:log"
+import "core:c"
 
 //////////////////////////////////////////////////////////////////////
 // Interface
@@ -61,12 +62,14 @@ scale_font :: bake_font
 //////////////////////////////////////////////////////////////////////
 
 font_from_ttf :: proc (
+	name: string,
 	file_bytes: []byte,
 	height_px: f32,
 	out_font: ^Font,
 ) -> (ok: bool) {
+	out_font.name = name
+	out_font.file_bytes = file_bytes
 	ok = cast(bool) stbtt.InitFont(&out_font.info, raw_data(file_bytes), offset = 0)
-	// TODO pull metrics
 	bake_font(out_font, height_px)
 	return
 }
@@ -74,7 +77,28 @@ font_from_ttf :: proc (
 // Bakes the bitmap and scales metrics.
 // Call this on a font to re-scale it.
 bake_font :: proc (font: ^Font, new_height_px: f32) {
-	// TODO scale metrics
+  scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
+
+  // Get the font's line height
+  ascent, descent, line_gap: c.int;
+  stbtt.GetFontVMetrics(&font.info, &ascent, &descent, &line_gap);
+  font.ascent   = ascent  * scale;
+  font.descent  = descent * scale;
+  font.line_gap = line_gap * scale;
+  font.line_height = font.ascent - font.descent + font.line_gap;
+
+  // Get the monospace character width
+  _lsb, monospace_advance: c.int = 0;
+  stbtt.GetCodepointHMetrics(&font.info, ' ', &monospace_advance, &_lsb);
+  font.monospace_advance = monospace_advance * scale;
+
+  stbtt.BakeFontBitmap(font.file_bytes,
+  	offset = 0,
+    pixel_height = new_height_px,
+    pixels = raw_data(font.bitmap), pw = 512, ph = 512,
+    first_char = 32,
+    num_chars = 96,
+    chardata = raw_data(font.chars)) // no guarantee font fits!
 }
 
 //////////////////////////////////////////////////////////////////////

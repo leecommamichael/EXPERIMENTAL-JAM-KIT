@@ -443,8 +443,8 @@ TexImage2D :: proc (
 		0, // border
 		format,
 		type,
-		len(size) * size_of(T),
-		raw_data(data)
+		len(data) * size_of(T),
+		raw_data(data))
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 

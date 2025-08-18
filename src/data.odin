@@ -183,9 +183,19 @@ GLSL_Attribute_Type :: enum {
 // What you need to render text.
 Font :: struct {
 	name:      string,
-	info:      stbtt.fontinfo,
-	bitmap:    rawptr,
 	height_px: f32,
+	bitmap:    [512*512]u8,
+	scale:     f32,
+	is_monospace: bool, // otherwise proportional
+	// stb related data
+	info:   stbtt.fontinfo,
+	baked_chars:  stbtt.bakedchar[96], // ASCII 32..126 is 95 glyphs
+  // Scaled metrics
+  monospace_advance: f32,
+  ascent:      f32,
+  descent:     f32,
+  line_height: f32,
+  line_gap:    f32,
 }
 
 // What you need to render _styled_ text.
