@@ -83,14 +83,10 @@ ren_init :: proc (ren: ^Ren) {
 	ngl.BlendFunc(.SRC_ALPHA, .ONE_MINUS_SRC_ALPHA)
 
 	ngl.Enable(.DEPTH_TEST)
-	// ngl.ClearDepthf(1)
-	// ngl.DepthRange(f64(1), f64(-1))
-	// ngl.DepthFunc(ngl.GEQUAL)
 
 	// ngl.Enable(.CULL_FACE)
 	// ngl.CullFace(.BACK)
 	ngl.FrontFace(.CCW)
-	// ngl.PolygonMode(ngl.FRONT_AND_BACK, ngl.LINE);
 }
 
 FRAME_UNIFORM_INDEX :: 0

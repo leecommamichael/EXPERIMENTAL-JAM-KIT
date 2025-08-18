@@ -30,16 +30,16 @@ game_init :: proc () {
 	globals.marker.rotation.x = f32(linalg.PI/2)
 	globals.marker.hidden = true
 
-	globals.water_heightmap = make([]f16, PLANE_POINTS)
-	tex: uint
-	gl.glGenTextures(1, &tex)
-	gl.glBindTexture(gl.TEXTURE_2D, tex)
-	gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, auto_cast gl.REPEAT)
-	gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, auto_cast gl.REPEAT)
-	gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, auto_cast gl.NEAREST)
-	gl.glTexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, auto_cast gl.NEAREST)
+	globals.water_heightmap = make([]f32, PLANE_POINTS)
+	tex: gl.Texture
+	gl.GenTexturesOne(&tex)
+	gl.BindTexture(gl.TEXTURE_2D, tex)
+	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .REPEAT)
+	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .REPEAT)
+	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .NEAREST)
+	gl.Set_Texture_Mag_Filter(.TEXTURE_2D, .NEAREST)
 
-	gl.glPixelStorei(gl.UNPACK_ALIGNMENT,2)
+	// gl.glPixelStorei(gl.UNPACK_ALIGNMENT,2)
 	gl.TexImage2D(
 		.TEXTURE_2D,
 		0, // LOD
@@ -47,7 +47,7 @@ game_init :: proc () {
 		AXIS_POINTS,
 		AXIS_POINTS,
 		gl.RED,
-		gl.HALF_FLOAT,
+		gl.FLOAT,
 		globals.water_heightmap)
 }
 
@@ -86,7 +86,7 @@ step_water :: proc (dt: f64) {
 		z := cast(int) pos.z
 		// derived_y := 1.5 * sin((0.2*uniforms.tau_time) + f32(x))
 		// plane_mesh.vertices[i].position.y = derived_y
-		height_func(x, z, cast(^f16) &water_heightmap[i])
+		height_func(x, z, cast(^f32) &water_heightmap[i])
 	}
 	// Sync Debug Mesh
 	// gl.BindBuffer(.ARRAY_BUFFER, water_plane._asset.VBO)
@@ -100,13 +100,13 @@ step_water :: proc (dt: f64) {
 		width  = AXIS_POINTS,
 		height = AXIS_POINTS,
 		format = gl.RED,
-		type   = gl.HALF_FLOAT,
+		type   = gl.FLOAT,
 		data   = globals.water_heightmap)
 }
 
-height_func :: #force_inline proc (x, z: int, y: ^f16) {
+height_func :: #force_inline proc (x, z: int, y: ^f32) {
 	using globals
 	using glsl
 	derived_y := 1.5 * sin((0.2*uniforms.tau_time) + f32(x))
-	y^ = cast(f16) derived_y
+	y^ = cast(f32) derived_y
 }

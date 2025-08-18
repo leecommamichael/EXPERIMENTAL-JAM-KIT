@@ -57,12 +57,12 @@ on_key_down :: proc (event: js.Event) {
 	// Don't process key repeats. Those are for text editing, not games.
 	if event.key.repeat { return }
 
-	press_key(virtual_keycode)
+	press_button(virtual_keycode)
 }
 
 on_key_up :: proc (event: js.Event) {
 	virtual_keycode := js_key_from_code(event.key.code)
-	release_key(virtual_keycode)
+	release_button(virtual_keycode)
 }
 
 on_pointer_move :: proc (event: js.Event) {
@@ -72,11 +72,11 @@ on_pointer_move :: proc (event: js.Event) {
 }
 
 on_pointer_up :: proc (event: js.Event) {
-	release_key(js_mouse_button_from_event(event))
+	release_button(js_mouse_button_from_event(event))
 }
 
 on_pointer_down :: proc (event: js.Event) {
-	press_key(js_mouse_button_from_event(event))
+	press_button(js_mouse_button_from_event(event))
 }
 
 

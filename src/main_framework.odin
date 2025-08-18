@@ -17,12 +17,8 @@ framework_init :: proc () {
 		assert(gl.GetIntegerv != nil, "GL not loaded.")
 		globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT = gl.GetIntegerv(.UNIFORM_BUFFER_OFFSET_ALIGNMENT)
 		globals.gl_standard.MAX_UNIFORM_BLOCK_SIZE          = gl.GetInteger64v(.MAX_UNIFORM_BLOCK_SIZE)
-		log.infof("OpenGL Platform Constants ---\n" +
-			"  MAX_UNIFORM_BLOCK_SIZE:          %v Bytes\n" +
-			"  UNIFORM_BUFFER_OFFSET_ALIGNMENT: %v Bytes",
-			globals.gl_standard.MAX_UNIFORM_BLOCK_SIZE,
-			globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT
-		)
+		globals.gl_standard.MAX_TEXTURE_SIZE                = gl.GetInteger64v(.MAX_TEXTURE_SIZE)
+		log.infof("OpenGL Platform Constants ---\n%#v", globals.gl_standard)
 	}
 	init_gl_constants()
 	#assert(size_of(Ren_Instance) < (1 << 14), "Instances may not fit in one Uniform Block")

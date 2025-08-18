@@ -35,14 +35,15 @@ Globals :: struct {
 
 	// App Data
 	water_plane: ^Entity,
-	water_heightmap: []f16,
+	water_heightmap: []f32,
 	marker:      ^Entity,
 	plane_mesh:  Geom_Mesh2
 }
 
 GL_Standard :: struct {
 	UNIFORM_BUFFER_OFFSET_ALIGNMENT: int,
-	MAX_UNIFORM_BLOCK_SIZE: i64
+	MAX_UNIFORM_BLOCK_SIZE: i64,
+	MAX_TEXTURE_SIZE: i64,
 }
 
 //////////////////////////////////////////////////////////////////////

@@ -145,6 +145,7 @@ GenVertexArrays :: proc {
 }
 
 GenVertexArraysMany :: proc (out: []VertexArrayObject) -> (err: Error = .NO_ERROR) {
+	out := out
 	for &buffer in out {
 		buffer = glCreateVertexArray()
 	}
@@ -160,8 +161,28 @@ GenVertexArraysOne :: proc (out: ^VertexArrayObject) -> (err: Error = .NO_ERROR)
 
 
 
-// :: proc () -> (err: Error = .NO_ERROR)
-// when NGL_VALIDATE { return validate() } else { return }
+GenTextures :: proc {
+	GenTexturesMany,
+	GenVertexArraysOne, 
+}
+
+GenTexturesMany :: proc (out: []Texture) -> (err: Error = .NO_ERROR) {
+	out := out
+	for &tex in out {
+		tex = glCreateTexture()
+	}
+	when NGL_VALIDATE { return validate() } else { return }
+}
+
+GenTexturesOne :: proc (out: ^Texture) -> (err: Error = .NO_ERROR) {
+	out := out
+	out^ = glCreateTexture()
+	when NGL_VALIDATE { return validate() } else { return }
+}
+
+
+
+
 BindBuffer :: proc (target: Buffer_Type, buffer: Buffer) -> (err: Error = .NO_ERROR) {
 	glBindBuffer(cast(uint) target, buffer)
 	when NGL_VALIDATE { return validate() } else { return }
@@ -447,6 +468,85 @@ TexImage2D :: proc (
 		raw_data(data))
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
+
+
+
+
+TexSubImage2D :: proc (
+	target: Texture_2D_Target,
+	level: int,
+	xoffset, yoffset: int,
+	width, height: int,
+	format: uint, // TODO scoped enum
+	type: uint,
+	data: $Indistinct/[]$T,
+	_loc := #caller_location
+) -> ( err: Error = .NO_ERROR ) {
+	glTexSubImage2D(
+		cast(GLenum) target,
+		level,
+		xoffset, yoffset,
+		width, height,
+		format,
+		type,
+		len(data) * size_of(T),
+		raw_data(data))
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+
+
+
+BindTexture :: proc (binding: uint, tex: Texture) {
+	glBindTexture(binding, tex)
+}
+
+// Swizzling not present in WebGL
+Set_Texture_Base_Level   :: proc (target: Texture_Parameter_Target, param: uint) {
+	glTexParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
+}
+Set_Texture_Max_Level    :: proc (target: Texture_Parameter_Target, param: uint) {
+	glTexParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
+}
+Set_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
+	glTexParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
+}
+Set_Texture_Max_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
+	glTexParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
+}
+Set_Texture_Mag_Filter   :: proc (target: Texture_Parameter_Target, param: Texture_Mag_Filter) {
+	glTexParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
+}
+Set_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target, param: Texture_Min_Filter) {
+	glTexParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
+}
+Set_Texture_Compare_Func :: proc (target: Texture_Parameter_Target, param: Compare_Func) {
+	glTexParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
+}
+Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Compare_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
+}
+Set_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
+}
+Set_Texture_Wrap_T       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
+}
+Set_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
+	glTexParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
+}
+
+// Get_Texture_Base_Level   :: proc (target: Texture_Parameter_Target) -> uint {}
+// Get_Texture_Max_Level    :: proc (target: Texture_Parameter_Target) -> uint {}
+// Get_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target) -> f32 {}
+// Get_Texture_Max_LOD      :: proc (target: Texture_Parameter_Target) -> f32 {}
+// Get_Texture_Mag_Filter   :: proc (target: Texture_Parameter_Target) -> Texture_Mag_Filter {}
+// Get_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target) -> Texture_Min_Filter {}
+// Get_Texture_Compare_Func :: proc (target: Texture_Parameter_Target) -> Compare_Func {}
+// Get_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target) -> Compare_Mode {}
+// Get_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target) -> Texture_Wrap_Mode {}
+// Get_Texture_wrap_T       :: proc (target: Texture_Parameter_Target) -> Texture_Wrap_Mode {}
+// Get_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target) -> Texture_Wrap_Mode {}
 
 //////////////////////////////////////////////////////////////////////
 // Platform-Specific Stuff Below

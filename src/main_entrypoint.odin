@@ -2,9 +2,10 @@ package main
 
 // Purpose: This file is the integration of various platforms and Odin.
 
+import "base:runtime"
 import "core:time"
 import "core:log"
-import sugar "sugar"
+import "sugar"
 
 create_sublime_text_logger :: proc () -> log.Logger {
 		return log.create_console_logger(lowest = log.Level.Debug, opt = { .Level, })
@@ -15,6 +16,7 @@ main :: proc() {
 		context.logger = create_sublime_text_logger()
 	} else when ODIN_OS == .JS {
 		runtime.default_context_ptr().logger = create_sublime_text_logger()
+		context = runtime.default_context_ptr()^
 	}
 	ok := sugar.create_window([4]int{0,0, 900, 900}, "Wave Racer", use_gl = true)
 	if !ok { panic("Window creation failed.") }

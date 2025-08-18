@@ -39,7 +39,10 @@ class WasmMemoryInterface {
 		return new DataView(this.memory.buffer);
 	}
 
-
+	loadF16Array(addr, len) {
+		let array = new Float16Array(this.memory.buffer, addr, len);
+		return array;
+	}
 	loadF32Array(addr, len) {
 		let array = new Float32Array(this.memory.buffer, addr, len);
 		return array;
@@ -56,6 +59,23 @@ class WasmMemoryInterface {
 		let array = new Int32Array(this.memory.buffer, addr, len);
 		return array;
 	}
+	loadI16Array(addr, len) {
+		let array = new Int16Array(this.memory.buffer, addr, len);
+		return array;
+	}
+	loadU16Array(addr, len) {
+		let array = new UInt16Array(this.memory.buffer, addr, len);
+		return array;
+	}
+	loadU8Array(addr, len) {
+		let array = new U8Array(this.memory.buffer, addr, len);
+		return array;
+	}
+	loadI8Array(addr, len) {
+		let array = new I8Array(this.memory.buffer, addr, len);
+		return array;
+	}
+
 
 
 	loadU8(addr)  { return this.mem.getUint8  (addr); }
@@ -285,6 +305,37 @@ class WebGLInterface {
 		return source;
 	}
 
+	sizedArrayFromTextureType(texture_type, data, size) {
+		let sized_array
+		switch (texture_type) {
+		case 0x1400: // BYTE
+			sized_array = this.mem.loadI8Array(data, size)
+			break;
+		case 0x1401: // UNSIGNED_BYTE
+			sized_array = this.mem.loadU8Array(data, size)
+			break;
+		case 0x1402: // SHORT
+			sized_array = this.mem.loadI16Array(data, size / 2)
+			break;
+		case 0x1403: // UNSIGNED_SHORT
+			sized_array = this.mem.loadU16Array(data, size / 2)
+			break;
+		case 0x1404: // INT
+			sized_array = this.mem.loadI32Array(data, size / 4)
+			break;
+		case 0x1405: // UNSIGNED_INT
+			sized_array = this.mem.loadU32Array(data, size / 4)
+			break;
+		case 0x1406: // FLOAT
+			sized_array = this.mem.loadF32Array(data, size / 4)
+			break;
+		case 0x140B: // HALF_FLOAT
+			sized_array = this.mem.loadF16Array(data, size / 2)
+			break;
+		default: throw new Error("Unhandled texture type")
+		}
+		return sized_array
+	}
 	getWebGL1Interface() {
 		return {
 			SetCurrentContextById: (name_ptr, name_len) => {
@@ -803,7 +854,8 @@ class WebGLInterface {
 
 			TexImage2D: (target, level, internalformat, width, height, border, format, type, size, data) => {
 				if (data) {
-					this.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, this.mem.loadBytes(data, size));
+					let _data = this.sizedArrayFromTextureType(type, data, size)
+					this.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, _data);
 				} else {
 					this.ctx.texImage2D(target, level, internalformat, width, height, border, format, type, null);
 				}
@@ -815,7 +867,8 @@ class WebGLInterface {
 				this.ctx.texParameteri(target, pname, param);
 			},
 			TexSubImage2D: (target, level, xoffset, yoffset, width, height, format, type, size, data) => {
-				this.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, this.mem.loadBytes(data, size));
+				let _data = this.sizedArrayFromTextureType(type, data, size)
+				this.ctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, _data);
 			},
 
 
