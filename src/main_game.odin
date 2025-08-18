@@ -11,6 +11,7 @@ import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
 game_init :: proc () {
+	globals.camera.position.y = 5
 	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
 	plane_asset := ren_make_basic_asset(globals.ren, globals.plane_mesh.vertices[:], globals.plane_mesh.indices[:], globals.ren.instance_UBO)
 	v,i := make_circle_2D(44.0)

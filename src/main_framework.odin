@@ -32,7 +32,6 @@ framework_init :: proc () {
 		cast(int) globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT
 	)
 
-	globals.camera.position.y = 5
 	globals.game_view = 1
 	globals.ui_view = 1
 	game_entities := make([]^Entity_Memory, max(Entity_ID))
@@ -43,7 +42,7 @@ framework_init :: proc () {
 	globals.entities = slice.into_dynamic(entities)
 	globals.ren = ren_make()	
 	ren_init(globals.ren)
-	// ren_text_init()
+	ren_text_init()
 	game_init()
 }
 
