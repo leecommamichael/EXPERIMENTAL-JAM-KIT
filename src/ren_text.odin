@@ -55,44 +55,32 @@ make_draw_call :: proc () {
 	// asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
 }
 
-font_from_ttf :: proc (
-	name: string,
-	file_bytes: []byte,
-	height_px: f32,
-	out_font: ^Font,
-) -> (ok: bool) {
-	out_font.name = name
-	out_font.file_bytes = file_bytes
-	ok = cast(bool) stbtt.InitFont(&out_font.info, raw_data(file_bytes), offset = 0)
-	bake_font(out_font, height_px)
-	return
-}
 
 // Bakes the bitmap and scales metrics.
 // Call this on a font to re-scale it.
-bake_font :: proc (font: ^Font, new_height_px: f32) {
-  scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
+// bake_font :: proc (font: ^Font, new_height_px: f32) {
+//   scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
 
-  // Get the font's line height
-  ascent, descent, line_gap: f32;
-  stbtt.GetFontVMetrics(&font.info, cast(^c.int)&ascent, cast(^c.int)&descent, cast(^c.int)&line_gap);
-  font.ascent   = ascent  * scale;
-  font.descent  = descent * scale;
-  font.line_gap = line_gap * scale;
-  font.line_height = font.ascent - font.descent + font.line_gap;
+//   // Get the font's line height
+//   ascent, descent, line_gap: f32;
+//   stbtt.GetFontVMetrics(&font.info, cast(^c.int)&ascent, cast(^c.int)&descent, cast(^c.int)&line_gap);
+//   font.ascent   = ascent  * scale;
+//   font.descent  = descent * scale;
+//   font.line_gap = line_gap * scale;
+//   font.line_height = font.ascent - font.descent + font.line_gap;
 
-  // Get the monospace character width
-  _lsb, monospace_advance: f32;
-  stbtt.GetCodepointHMetrics(&font.info, ' ', cast(^c.int)&monospace_advance, cast(^c.int)&_lsb);
-  font.monospace_advance = monospace_advance * scale;
+//   // Get the monospace character width
+//   _lsb, monospace_advance: f32;
+//   stbtt.GetCodepointHMetrics(&font.info, ' ', cast(^c.int)&monospace_advance, cast(^c.int)&_lsb);
+//   font.monospace_advance = monospace_advance * scale;
 
-  stbtt.BakeFontBitmap(
-  	&font.file_bytes[0],  offset=0,
-    pixel_height = new_height_px,
-    pixels = nil/*&font.bitmap[0]*/,  pw=512,  ph=512,
-    first_char=32,  num_chars=96,
-    chardata = &font.baked_chars[0]) // no guarantee font fits!
-}
+//   stbtt.BakeFontBitmap(
+//   	&font.file_bytes[0],  offset=0,
+//     pixel_height = new_height_px,
+//     pixels = nil/*&font.bitmap[0]*/,  pw=512,  ph=512,
+//     first_char=32,  num_chars=96,
+//     chardata = &font.baked_chars[0]) // no guarantee font fits!
+// }
 
 //////////////////////////////////////////////////////////////////////
 // Framework Integration Implementation

@@ -39,7 +39,7 @@ framework_init :: proc () {
 	globals.ren = ren_make()	
 	ren_init(globals.ren)
 	ren_text_init()
-	bundle_fonts()
+	asset_init()
 	game_init()
 }
 

@@ -13,6 +13,8 @@ import stbtt "vendor:stb/truetype"
 globals: Globals
 
 Globals :: struct {
+	// Assets
+	assets: Asset_Bundle,
 	// Render Service
 	gl_standard: GL_Standard,
 	ren:         ^Ren,
@@ -203,7 +205,6 @@ Font :: struct {
 	is_monospace: bool, // otherwise proportional
 	// stb related data
 	info:        stbtt.fontinfo,
-	baked_chars: [96]stbtt.bakedchar, // ASCII 32..126 is 95 glyphs
   // Scaled metrics
   monospace_advance: f32,
   ascent:            f32,
