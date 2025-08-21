@@ -15,6 +15,7 @@ globals: Globals
 Globals :: struct {
 	// Assets
 	assets: Asset_Bundle,
+	fonts: Fonts,
 	// Render Service
 	gl_standard: GL_Standard,
 	ren:         ^Ren,
@@ -30,8 +31,6 @@ Globals :: struct {
 	ui_orthographic: Mat4,
 	game_view:       Mat4,
 	ui_view:         Mat4,
-	// Entity:Text Data
-	fonts: Fonts,
 	// TODO: make this var an interface to modify the above
 	camera:          Camera3D,
 
@@ -204,7 +203,8 @@ Font :: struct {
 	scale:      f32,
 	is_monospace: bool, // otherwise proportional
 	// stb related data
-	info:        stbtt.fontinfo,
+	info: stbtt.fontinfo,
+	data: []stbtt.packedchar,
   // Scaled metrics
   monospace_advance: f32,
   ascent:            f32,

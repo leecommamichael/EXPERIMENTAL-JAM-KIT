@@ -391,6 +391,8 @@ basic_vertex_inputs +
 `
 
 basic_fragment_shader_source :: fragment_preamble + `
+	uniform sampler2D font_atlas;
+
 	in vec4 io_color;
 	out vec4 outColor;
 	void main() {

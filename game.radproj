@@ -1,5 +1,6 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/ren_text.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/main_framework.odin"
 recent_file: path: "src/ren_util.odin"
@@ -39,11 +40,6 @@ breakpoint:
 }
 breakpoint:
 {
-  source_location: "src/asset_bundle.odin:95:1"
-  hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/asset_bundle.odin:92:1"
+  source_location: "src/ren_text.odin:150:1"
   hit_count: 1
 }

@@ -30,6 +30,8 @@ text :: proc (
 ) -> ^Text_Entity {
 	entity: ^Text_Entity = make_entity(Text_Entity)
 	entity.font = &globals.fonts[usage][variant]
+	entity.text = message
+	entity._ui = true
 	return entity
 }
 
@@ -43,6 +45,8 @@ do_text :: proc (
 ) {
 	entity: ^Text_Entity = make_entity(Text_Entity)
 	entity.font = &globals.fonts[usage][variant]
+	entity.text = message
+	entity._ui = true
 	ren_draw_text(globals.ren, entity)
 	free_entity(entity)
 }
@@ -50,10 +54,6 @@ do_text :: proc (
 //////////////////////////////////////////////////////////////////////
 // Implementation
 //////////////////////////////////////////////////////////////////////
-
-make_draw_call :: proc () {
-	// asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
-}
 
 
 // Bakes the bitmap and scales metrics.
@@ -109,7 +109,50 @@ ren_text_init :: proc () {
 // every little drawn-instance to some texture binding number, just 
 // having to say "this draw wants this image".
 ren_draw_text :: proc (ren: ^Ren, entity: ^Text_Entity) {
+
+	font: ^Font = entity.font
+	size := i32(font.height_px)
+	verts_needed   := len(entity.text) * 4
+	indices_needed := len(entity.text) * 6
+	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)
+	indices := make([]u32, indices_needed, context.temp_allocator)
+
+  p := 0.5 * f32(size)
+  TL := Vec3{ -p, p, 0, }
+  TR := Vec3{  p, p, 0, }
+  BL := Vec3{ -p,-p, 0, }
+  BR := Vec3{  p,-p, 0, }
+
+	@static print_once: bool = false
+	text_cursor: [2]f32 = {}
+	for byte, glyph_index in entity.text { // TODO: utf8 parse to runes
+		chardata_index := i32(byte-32)
+		quad: stbtt.aligned_quad
+		stbtt.GetPackedQuad(raw_data(font.data),size,size,
+			chardata_index, &text_cursor.x, &text_cursor.y, &quad, false)
+		gnum := glyph_index+1
+		if !print_once {
+			log.infof("gnum %v", gnum)
+			log.infof("aligned quad %d: %v", chardata_index, quad)
+			log.infof("cursor %v", text_cursor)
+		}
+		// now with info make quads
+		verts[(4*gnum)-4] = { position = (vec3(text_cursor)+{ TL.x, TL.y, 0 }), texcoord = {quad.s0,quad.t0} }
+		verts[(4*gnum)-3] = { position = (vec3(text_cursor)+{ TR.x, TR.y, 0 }), texcoord = {quad.s1,quad.s0} }
+		verts[(4*gnum)-2] = { position = (vec3(text_cursor)+{ BL.x, BL.y, 0 }), texcoord = {quad.s0,quad.s1} }
+		verts[(4*gnum)-1] = { position = (vec3(text_cursor)+{ BR.x, BR.y, 0 }), texcoord = {quad.s1,quad.s1} }
+
+		indices[(6*gnum)-6] = u32(4*glyph_index)+0 // TL
+		indices[(6*gnum)-5] = u32(4*glyph_index)+2 // BL
+		indices[(6*gnum)-4] = u32(4*glyph_index)+1 // TR
+		indices[(6*gnum)-3] = u32(4*glyph_index)+3 // BR
+		indices[(6*gnum)-2] = u32(4*glyph_index)+1 // TR
+		indices[(6*gnum)-1] = u32(4*glyph_index)+2 // BL
+	}
+	print_once = true
+	entity._asset = ren_make_basic_asset(globals.ren, verts, indices, globals.ren.instance_UBO)
 	asset := entity._asset // asset for font?
+
 	//////////////////////////////////////////////////////////////////////	
 	instance_index := cast(int) entity._id
 	gl.BindBufferRange(
@@ -127,13 +170,12 @@ ren_draw_text :: proc (ren: ^Ren, entity: ^Text_Entity) {
 		ren.VAO = asset.VAO
 		gl.BindVertexArray(ren.VAO)
 	}
-	// The above is pretty much going to be in every draw proc.
+	gl.DrawElements(
+		ren_mode_to_primitive(asset.mode),
+		count  = asset.index_count,
+		type   = .UNSIGNED_INT,
+		indices = cast(uintptr) 0,
+	)
+	// The above section is pretty much going to be in every draw proc.
 	//////////////////////////////////////////////////////////////////////
-	// text will be about instancing a quad all over with different textures.
-	// gl.DrawElements(
-	// 	ren_mode_to_primitive(asset.mode),
-	// 	count  = asset.index_count,
-	// 	type   = .UNSIGNED_INT,
-	// 	indices = cast(uintptr) 0,
-	// )
 }

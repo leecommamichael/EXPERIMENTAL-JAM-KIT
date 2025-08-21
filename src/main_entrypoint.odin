@@ -41,6 +41,7 @@ main :: proc() {
 // The context is defaulted each time you enter. Related: `runtime.default_context_ptr()`
 @export
 step :: proc (dt: f64) -> bool {
+	defer free_all(context.temp_allocator)
 	switch sugar.poll_events() {
 	case .Should_Exit: return false
 	case .Resized:     resolution_changed(sugar.viewport_size)

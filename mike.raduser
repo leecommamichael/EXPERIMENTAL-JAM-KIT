@@ -11,18 +11,15 @@ window:
     {
       0.337979:
       {
+        selected
         watch:
         {
           selected
           expression: ""
-          watch: x
-          watch: z
-          watch: input
           watch: globals
-          watch: "&globals"
-          watch: max_extent
-          watch: x
-          watch: y
+          watch: verts
+          watch: text_cursor
+          watch: TL
         }
         watch: expression: "query:types"
         watch:
@@ -63,7 +60,6 @@ window:
     }
     0.592988:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
@@ -96,14 +92,24 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/asset_bundle.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 95
-        cursor_column: 19
-        mark_line: 95
-        mark_column: 19
+        cursor_line: 75
+        cursor_column: 21
+        mark_line: 75
+        mark_column: 21
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_text.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query: input: ""
+        cursor_line: 150
+        cursor_column: 1
+        mark_line: 150
+        mark_column: 1
       }
     }
   }
@@ -235,4 +241,4 @@ keybindings:
   { log_marker m ctrl shift alt }
   { toggle_dev_menu d ctrl shift alt }
 }
-current_path: "C:/Users/thatl/usr/Repositories/nord_gl"
+current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src"

@@ -32,6 +32,8 @@ game_init :: proc () {
 
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 	err, tex := gl.CreateTexture()
+	unit: uint = 0
+	gl.glActiveTexture(gl.TEXTURE0 + unit) // A sampler can be set as i
 	gl.BindTexture(gl.TEXTURE_2D, tex)
 	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .REPEAT)
 	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .REPEAT)
@@ -48,14 +50,16 @@ game_init :: proc () {
 		gl.RED,
 		gl.FLOAT,
 		globals.water_heightmap)
-}
 
+	hello: ^Text_Entity
+	hello = text("Hello", .body_large)
+	hello.position = Vec3{100,100,0}
+}
 // Mixed-scope between renderer and game entities.
 game_step :: proc (dt: f64) {
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(dt))
 	step_water(dt)
 
-	do_text("Hello", Vec3{100,100,0})
 
 	cost := glsl.cos(globals.uniforms.tau_time * 4)
 	sint := glsl.sin(globals.uniforms.tau_time * 4)
