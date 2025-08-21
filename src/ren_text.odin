@@ -31,7 +31,6 @@ text :: proc (
 	entity: ^Text_Entity = make_entity(Text_Entity)
 	entity.font = &globals.fonts[usage][variant]
 	entity.text = message
-	entity._ui = true
 	return entity
 }
 
@@ -46,7 +45,6 @@ do_text :: proc (
 	entity: ^Text_Entity = make_entity(Text_Entity)
 	entity.font = &globals.fonts[usage][variant]
 	entity.text = message
-	entity._ui = true
 	ren_draw_text(globals.ren, entity)
 	free_entity(entity)
 }
@@ -150,11 +148,11 @@ ren_draw_text :: proc (ren: ^Ren, entity: ^Text_Entity) {
 		indices[(6*gnum)-1] = u32(4*glyph_index)+2 // BL
 	}
 	print_once = true
-	entity._asset = ren_make_basic_asset(globals.ren, verts, indices, globals.ren.instance_UBO)
-	asset := entity._asset // asset for font?
+	entity.draw_command = ren_make_basic_draw_cmd(globals.ren, verts, indices, globals.ren.instance_UBO)
+	asset := entity.draw_command // asset for font?
 
 	//////////////////////////////////////////////////////////////////////	
-	instance_index := cast(int) entity._id
+	instance_index := cast(int) entity.id
 	gl.BindBufferRange(
 		gl.UNIFORM_BUFFER,
 		index  = INSTANCE_UNIFORM_INDEX,

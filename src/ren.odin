@@ -4,7 +4,7 @@ import "base:intrinsics"
 import "core:log"
 import "core:mem"
 import "core:math/linalg"
-import ngl "nord_gl"
+import gl "nord_gl"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Entity 
@@ -12,10 +12,10 @@ import ngl "nord_gl"
 
 init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
 	entity^ = {} // zero
-	entity._id = id
-	entity._used = true
+	entity.id = id
+	entity.used = true
 	entity.scale = 1
-	entity.instance = subscript_aligned_array(&globals.instances, cast(int) entity._id)
+	entity.instance = subscript_aligned_array(&globals.instances, cast(int) entity.id)
 	entity.instance^ = {} // zero
 	entity.instance.color.a = 1
 	entity.instance.uv_transform = {0,0,1,1}
@@ -33,7 +33,7 @@ make_entity_basic :: proc () -> ^Entity {
 make_entity_variant :: proc ($T: typeid) -> ^T
 where intrinsics.type_is_subtype_of(T, Entity) {
 	for &mem, i in globals._entity_storage {
-		if !mem._used {
+		if !mem.used {
 			init_entity_memory(&mem, cast(Entity_ID) i)
 			if T == Text_Entity {
 				mem.variant = {}
@@ -51,7 +51,7 @@ where intrinsics.type_is_subtype_of(T, Entity) {
 
 free_entity :: proc (entity: ^$T)
 where intrinsics.type_is_subtype_of(T, Entity) {
-	entity._used = false
+	entity.used = false
 }
 
 
@@ -62,14 +62,14 @@ where intrinsics.type_is_subtype_of(T, Entity) {
 ren_make :: proc () -> ^Ren {
 	ren := new(Ren)
 
-	err: ngl.Error
-	err, ren.frame_UBO = ngl.CreateBuffer()
-	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
+	err: gl.Error
+	err, ren.frame_UBO = gl.CreateBuffer()
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
+	gl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
 
-	err = ngl.GenBuffers(1, &ren.instance_UBO)
-	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
-	ngl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:])
+	err = gl.GenBuffers(1, &ren.instance_UBO)
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
+	gl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:])
 
 	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
@@ -78,70 +78,70 @@ ren_make :: proc () -> ^Ren {
 }
 
 ren_init :: proc (ren: ^Ren) {
-	ngl.ClearColor(0.2, 0.3, 0.3, 1.0)
+	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 
-	ngl.Enable(.BLEND)
-	ngl.BlendFunc(.SRC_ALPHA, .ONE_MINUS_SRC_ALPHA)
+	gl.Enable(.BLEND)
+	gl.BlendFunc(.SRC_ALPHA, .ONE_MINUS_SRC_ALPHA)
 
-	ngl.Enable(.DEPTH_TEST)
+	gl.Enable(.DEPTH_TEST)
 
 	// TODO: When you've got multiple entities,
 	//       and more geometry going on, turn this on and fix issues.
-	// ngl.Enable(.CULL_FACE)
-	// ngl.CullFace(.BACK)
-	ngl.FrontFace(.CCW)
+	// gl.Enable(.CULL_FACE)
+	// gl.CullFace(.BACK)
+	gl.FrontFace(.CCW)
 }
 
 FRAME_UNIFORM_INDEX :: 0
 INSTANCE_UNIFORM_INDEX :: 1
 
-ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> ngl.Program {
+ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	// Compile program
-	program, ok := ngl.load_shaders_source(vert, frag)
+	program, ok := gl.load_shaders_source(vert, frag)
 	log.assertf(ok, "A shader failed to compile/link.\n%s\n%s", vert, frag)
 	// Link Uniform Block
 	//   TODO: apparently this is global and only needs to happen once
 	//   if all programs share the same name + layout.
-	uniform_index := ngl.GetUniformBlockIndex(program, "Frame_Uniforms")
-	assert(uniform_index != ngl.INVALID_INDEX)
-	ngl.UniformBlockBinding(program, uniform_index, FRAME_UNIFORM_INDEX)
-	ngl.BindBufferBase(ngl.UNIFORM_BUFFER, FRAME_UNIFORM_INDEX, ren.frame_UBO)
+	uniform_index := gl.GetUniformBlockIndex(program, "Frame_Uniforms")
+	assert(uniform_index != gl.INVALID_INDEX)
+	gl.UniformBlockBinding(program, uniform_index, FRAME_UNIFORM_INDEX)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, FRAME_UNIFORM_INDEX, ren.frame_UBO)
 
-	uniform_index = ngl.GetUniformBlockIndex(program, "Instance_Uniforms")
-	ngl.UniformBlockBinding(program, uniform_index, INSTANCE_UNIFORM_INDEX)
-	ngl.BindBufferBase(ngl.UNIFORM_BUFFER, INSTANCE_UNIFORM_INDEX, ren.instance_UBO)
+	uniform_index = gl.GetUniformBlockIndex(program, "Instance_Uniforms")
+	gl.UniformBlockBinding(program, uniform_index, INSTANCE_UNIFORM_INDEX)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, INSTANCE_UNIFORM_INDEX, ren.instance_UBO)
 
 	return program
 }
 
 ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
-	instance_index := cast(int) entity._id
-	ngl.BindBufferRange(
-		ngl.UNIFORM_BUFFER,
+	instance_index := cast(int) entity.id
+	gl.BindBufferRange(
+		gl.UNIFORM_BUFFER,
 		index  = INSTANCE_UNIFORM_INDEX,
 		buffer = ren.instance_UBO,
 		offset = instance_index * globals.instances.stride,
 		size = size_of(Ren_Instance)
 	)
-	asset := entity._asset
-	if ren.program != asset.program {
-		ren.program = asset.program
-		ngl.UseProgram(ren.program)
+	draw_cmd := entity.draw_command
+	if ren.program != draw_cmd.program {
+		ren.program = draw_cmd.program
+		gl.UseProgram(ren.program)
 	}
-	if ren.VAO != asset.VAO {
-		ren.VAO = asset.VAO
-		ngl.BindVertexArray(ren.VAO)
+	if ren.VAO != draw_cmd.VAO {
+		ren.VAO = draw_cmd.VAO
+		gl.BindVertexArray(ren.VAO)
 	}
-	ngl.DrawElements(
-		ren_mode_to_primitive(asset.mode),
-		count  = asset.index_count,
+	gl.DrawElements(
+		ren_mode_to_primitive(draw_cmd.mode),
+		count  = draw_cmd.index_count,
 		type   = .UNSIGNED_INT,
 		indices = cast(uintptr) 0,
 	)
 }
 
 ren_clear :: proc () {
-	ngl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT})
+	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT})
 }
 
 // ASSUME: data is sorted.
@@ -149,10 +149,10 @@ ren_clear :: proc () {
 ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.projection = globals.game_camera
 	globals.uniforms.view = globals.game_view
-	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-	ngl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
-	ngl.BufferSubData(.UNIFORM_BUFFER, 0, globals.instances.data[:])
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
+	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
+	gl.BufferSubData(.UNIFORM_BUFFER, 0, globals.instances.data[:])
 
 	for entity in globals.game_entities {
 		switch entity.tag {
@@ -163,8 +163,8 @@ ren_draw :: proc (ren: ^Ren) {
 
 	globals.uniforms.projection = globals.ui_orthographic
 	globals.uniforms.view = globals.ui_view
-	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	ngl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
+	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	for entity in globals.ui_entities {
 		switch entity.tag {
 		case .None: ren_draw_entity(ren, entity)
@@ -183,31 +183,31 @@ ren_draw :: proc (ren: ^Ren) {
 // This is lazy and slow, I could use one buffer for loads of models.
 //
 // But the instance buffer is shared, so that's good.
-ren_make_basic_asset :: proc (
+ren_make_basic_draw_cmd :: proc (
 	ren: ^Ren,
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
-	instance_buffer: ngl.Buffer,
-) -> Ren_Asset {
-	VAO: ngl.VertexArrayObject
-	ngl.GenVertexArrays(1, &VAO)
-	ngl.BindVertexArray(VAO)
+	instance_buffer: gl.Buffer,
+) -> Draw_Command {
+	VAO: gl.VertexArrayObject
+	gl.GenVertexArrays(1, &VAO)
+	gl.BindVertexArray(VAO)
 
 	// Create Vertex Buffer
 	vertex_buffer := Ren_Buffer {
 		element_size = size_of(Ren_Vertex_Base)
 	}
-	ngl.GenBuffers(1, &vertex_buffer.id)
-	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
-	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
-	ngl.BindBuffer(.ARRAY_BUFFER, 0)
+	gl.GenBuffers(1, &vertex_buffer.id)
+	gl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
+	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	// Create Index Buffer
 	index_count := len(indices)
-	index_buffer_id: ngl.Buffer
-	ngl.GenBuffers(1, &index_buffer_id)
-	ngl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
-	ngl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+	index_buffer_id: gl.Buffer
+	gl.GenBuffers(1, &index_buffer_id)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
+	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 
 	instance_buffer_view := Ren_Buffer {
 		id = instance_buffer,
@@ -224,23 +224,23 @@ ren_make_basic_asset :: proc (
 		{ type = .vec3, rate=.Vertex,   field_offset = offsets[2], buffer = vertex_buffer },
 	}
 
-	asset := ren_make_asset(ren, ren.programs[.Basic], VAO, inputs, index_count)
-	asset.VBO = vertex_buffer.id
-	return asset
+	draw_cmd := ren_make_draw_cmd(ren, ren.programs[.Basic], VAO, inputs, index_count)
+	draw_cmd.VBO = vertex_buffer.id
+	return draw_cmd
 }
 
 GLES_MAX_BINDINGS :: 16 // per spec
-ren_make_asset :: proc (
+ren_make_draw_cmd :: proc (
 	ren: ^Ren,
-	program: ngl.Program,
-	VAO:     ngl.VertexArrayObject,
+	program: gl.Program,
+	VAO:     gl.VertexArrayObject,
 	inputs: []Shader_Input,
 	index_count: int,
-) -> Ren_Asset {
+) -> Draw_Command {
 	assert(GLES_MAX_BINDINGS > len(inputs), "GLSL shaders only have 16 slots.")
 
 	// Allocate room for inputs
-	obj: Ren_Asset
+	obj: Draw_Command
 	obj.program = program
 	obj.index_count = index_count
 	obj.VAO = VAO
@@ -276,12 +276,12 @@ ren_make_asset :: proc (
 	}
 
 	// Create ideal VAO for this obj.
-	ngl.BindVertexArray(obj.VAO)
+	gl.BindVertexArray(obj.VAO)
 
 	for input in inputs {
 		divisor: uint = 0 if input.rate == .Vertex else 1
 		slots := slots_used_by_type(input.type)
-		ngl.BindBuffer(.ARRAY_BUFFER, input.buffer.id)
+		gl.BindBuffer(.ARRAY_BUFFER, input.buffer.id)
 		for slot_num in 0..<slots {
 			index := input.location + slot_num
 			num_components := input.value_count / cast(int) slots
@@ -290,7 +290,7 @@ ren_make_asset :: proc (
 			// But usually if you've got a multi-slot it's an f32 matrix.
 			offset := input.field_offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
 			if glsl_attrib_is_int(input.type) {
-				ngl.VertexAttribIPointer(
+				gl.VertexAttribIPointer(
 					index      = index,
 					size       = num_components,
 					type       = input.ngl_type,
@@ -298,7 +298,7 @@ ren_make_asset :: proc (
 					offset     =  offset
 				)
 			} else {
-				ngl.VertexAttribPointer(
+				gl.VertexAttribPointer(
 					index      = index,
 					size       = num_components,
 					type       = input.ngl_type,
@@ -307,12 +307,12 @@ ren_make_asset :: proc (
 					offset     = offset
 				)
 			}
-			ngl.EnableVertexAttribArray(index)
-			ngl.VertexAttribDivisor(index, divisor)
+			gl.EnableVertexAttribArray(index)
+			gl.VertexAttribDivisor(index, divisor)
 		}
 	}
-	ngl.BindBuffer(.ARRAY_BUFFER, 0)
-	ngl.BindVertexArray(0)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+	gl.BindVertexArray(0)
 
 	return obj
 }

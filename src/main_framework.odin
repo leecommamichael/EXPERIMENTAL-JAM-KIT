@@ -58,7 +58,7 @@ framework_step :: proc (dt: f64) {
 	clear(&globals.game_entities)
 	clear(&globals.ui_entities)
 	for &e in globals._entity_storage {
-		if e._used {
+		if e.used {
 			append(&globals.entities, &e)
 		}
 	}
@@ -78,20 +78,20 @@ framework_step :: proc (dt: f64) {
 				linalg.matrix4_translate(entity.position) *
 				linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, entity.rotation.y, entity.rotation.z) *
 				linalg.matrix4_scale(entity.scale)
-			if entity._ui {
+			if !entity.is_3D {
 				append(&globals.ui_entities, entity)
 			} else {
 				// TODO: Bucket Opaque from Transparent
 				// ASSUME: Centroid is 0,0,0 in model coordinates
 				centroid: Vec4 : { 0, 0, 0, 1 }
 		    entity_centroid_in_world := entity.model_transform * centroid
-				entity._distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+				entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
 				append(&globals.game_entities, entity)
 			}
 		}
 		// IDEA: Could use the same sort for UI and interpret it at Z index.
 	  slice.sort_by(globals.game_entities[:], proc (i,j: ^Entity_Memory) -> bool {
-	    return i._distance_from_camera > j._distance_from_camera
+	    return i.distance_from_camera > j.distance_from_camera
 	  })
 	}
 	finalize_simulation_frame()

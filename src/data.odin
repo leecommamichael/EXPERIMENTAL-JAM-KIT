@@ -56,11 +56,11 @@ Entity_ID :: u16
 
 // I've prefixed anything that isn't for gameplay with _
 Entity :: struct {
-	_id: Entity_ID, // index in storage.
-	_used: bool,
-	_ui:   bool, // 2D object anchored at origin in top-left (0,0)
-	_asset: Ren_Asset,
-	_distance_from_camera: f32,
+	id: Entity_ID,  // index in storage.
+	used: bool,     // like "alive"
+	is_3D: bool,    // 2D object anchored at origin in top-left (0,0)
+	draw_command: Draw_Command,
+	distance_from_camera: f32,
 	//
 	gizmo: bool,
 	//
@@ -144,7 +144,7 @@ Ren_Vertex_Base :: struct {
 	normal:   Vec3,
 }
 
-Ren_Asset :: struct {
+Draw_Command :: struct {
 	program:     ngl.Program,
 	VAO:         ngl.VertexArrayObject,
 	index_count: int,
