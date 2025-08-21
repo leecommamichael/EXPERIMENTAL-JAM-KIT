@@ -35,7 +35,7 @@ where intrinsics.type_is_subtype_of(T, Entity) {
 	for &mem, i in globals._entity_storage {
 		if !mem._used {
 			init_entity_memory(&mem, cast(Entity_ID) i)
-			if T == Text {
+			if T == Text_Entity {
 				mem.variant = {}
 				mem.tag = Entity_Variant.Text
 			} else if T == Entity {
@@ -85,6 +85,8 @@ ren_init :: proc (ren: ^Ren) {
 
 	ngl.Enable(.DEPTH_TEST)
 
+	// TODO: When you've got multiple entities,
+	//       and more geometry going on, turn this on and fix issues.
 	// ngl.Enable(.CULL_FACE)
 	// ngl.CullFace(.BACK)
 	ngl.FrontFace(.CCW)
@@ -153,7 +155,10 @@ ren_draw :: proc (ren: ^Ren) {
 	ngl.BufferSubData(.UNIFORM_BUFFER, 0, globals.instances.data[:])
 
 	for entity in globals.game_entities {
-		ren_draw_entity(ren, entity)
+		switch entity.tag {
+		case .None: ren_draw_entity(ren, entity)
+		case .Text: ren_draw_text(ren, transmute(^Text_Entity) entity)
+		}
 	}
 
 	globals.uniforms.projection = globals.ui_orthographic
@@ -161,13 +166,69 @@ ren_draw :: proc (ren: ^Ren) {
 	ngl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	ngl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	for entity in globals.ui_entities {
-		ren_draw_entity(ren, entity)
+		switch entity.tag {
+		case .None: ren_draw_entity(ren, entity)
+		case .Text: ren_draw_text(ren, transmute(^Text_Entity) entity)
+		}
 	}
 }
 
 //////////////////////////////////////////////////////////////////////
 // Section: Shading & Asset
 //////////////////////////////////////////////////////////////////////
+
+// Creates and initializes:
+//   - a vertex buffer.
+//   - an index buffer.
+// This is lazy and slow, I could use one buffer for loads of models.
+//
+// But the instance buffer is shared, so that's good.
+ren_make_basic_asset :: proc (
+	ren: ^Ren,
+	vertices: []Ren_Vertex_Base,
+	indices:  []u32,
+	instance_buffer: ngl.Buffer,
+) -> Ren_Asset {
+	VAO: ngl.VertexArrayObject
+	ngl.GenVertexArrays(1, &VAO)
+	ngl.BindVertexArray(VAO)
+
+	// Create Vertex Buffer
+	vertex_buffer := Ren_Buffer {
+		element_size = size_of(Ren_Vertex_Base)
+	}
+	ngl.GenBuffers(1, &vertex_buffer.id)
+	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
+	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	ngl.BindBuffer(.ARRAY_BUFFER, 0)
+
+	// Create Index Buffer
+	index_count := len(indices)
+	index_buffer_id: ngl.Buffer
+	ngl.GenBuffers(1, &index_buffer_id)
+	ngl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
+	ngl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+
+	instance_buffer_view := Ren_Buffer {
+		id = instance_buffer,
+		element_size = size_of(Ren_Instance)
+	}
+	offsets: []uintptr = {
+		offset_of(Ren_Vertex_Base, position),
+		offset_of(Ren_Vertex_Base, texcoord),
+		offset_of(Ren_Vertex_Base, normal),
+	}
+	inputs: []Shader_Input = {
+		{ type = .vec3, rate=.Vertex,   field_offset = offsets[0], buffer = vertex_buffer },
+		{ type = .vec2, rate=.Vertex,   field_offset = offsets[1], buffer = vertex_buffer },
+		{ type = .vec3, rate=.Vertex,   field_offset = offsets[2], buffer = vertex_buffer },
+	}
+
+	asset := ren_make_asset(ren, ren.programs[.Basic], VAO, inputs, index_count)
+	asset.VBO = vertex_buffer.id
+	return asset
+}
+
 GLES_MAX_BINDINGS :: 16 // per spec
 ren_make_asset :: proc (
 	ren: ^Ren,
@@ -255,6 +316,7 @@ ren_make_asset :: proc (
 
 	return obj
 }
+
 
 glsl_attrib_is_int :: proc (type: GLSL_Attribute_Type) -> bool {
 	return type >= .i32
@@ -386,58 +448,6 @@ water_fragment_shader_source :: fragment_preamble + `
 		outColor = vec4(light, 1.0);
 	}
 `
-
-// Creates and initializes:
-//   - a vertex buffer.
-//   - an index buffer.
-// This is lazy and slow, I could use one buffer for loads of models.
-//
-// But the instance buffer is shared, so that's good.
-ren_make_basic_asset :: proc (
-	ren: ^Ren,
-	vertices: []Ren_Vertex_Base,
-	indices:  []u32,
-	instance_buffer: ngl.Buffer,
-) -> Ren_Asset {
-	VAO: ngl.VertexArrayObject
-	ngl.GenVertexArrays(1, &VAO)
-	ngl.BindVertexArray(VAO)
-
-	// Create Vertex Buffer
-	vertex_buffer := Ren_Buffer {
-		element_size = size_of(Ren_Vertex_Base)
-	}
-	ngl.GenBuffers(1, &vertex_buffer.id)
-	ngl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
-	ngl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
-	ngl.BindBuffer(.ARRAY_BUFFER, 0)
-
-	// Create Index Buffer
-	index_count := len(indices)
-	index_buffer_id: ngl.Buffer
-	ngl.GenBuffers(1, &index_buffer_id)
-	ngl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
-	ngl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
-
-	instance_buffer_view := Ren_Buffer {
-		id = instance_buffer,
-		element_size = size_of(Ren_Instance)
-	}
-	offsets: []uintptr = {
-		offset_of(Ren_Vertex_Base, position),
-		offset_of(Ren_Vertex_Base, texcoord),
-		offset_of(Ren_Vertex_Base, normal),
-	}
-	inputs: []Shader_Input = {
-		{ type = .vec3, rate=.Vertex,   field_offset = offsets[0], buffer = vertex_buffer },
-		{ type = .vec2, rate=.Vertex,   field_offset = offsets[1], buffer = vertex_buffer },
-		{ type = .vec3, rate=.Vertex,   field_offset = offsets[2], buffer = vertex_buffer },
-	}
-
-	asset := ren_make_asset(ren, ren.programs[.Basic], VAO, inputs, index_count)
-	asset.VBO = vertex_buffer.id
-	return asset
-}
 
 //////////////////////////////////////////////////////////////////////
 // Section: Geometry

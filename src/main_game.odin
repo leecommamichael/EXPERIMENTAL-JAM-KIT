@@ -55,6 +55,8 @@ game_step :: proc (dt: f64) {
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(dt))
 	step_water(dt)
 
+	do_text("Hello", Vec3{100,100,0})
+
 	cost := glsl.cos(globals.uniforms.tau_time * 4)
 	sint := glsl.sin(globals.uniforms.tau_time * 4)
 	globals.marker.position = vec3(1*cost, 0, 1*sint)
@@ -69,7 +71,7 @@ game_step :: proc (dt: f64) {
 }
 
 
-AXIS_SQUARES  :: 1000 // Squares per axis
+AXIS_SQUARES  :: 100 // Squares per axis
 AXIS_POINTS   :: AXIS_SQUARES + 1
 PLANE_SQUARES :: AXIS_SQUARES * AXIS_SQUARES
 PLANE_POINTS :: AXIS_POINTS * AXIS_POINTS

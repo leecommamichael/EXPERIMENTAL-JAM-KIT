@@ -11,13 +11,6 @@ import "core:c"
 //////////////////////////////////////////////////////////////////////
 // Interface
 //////////////////////////////////////////////////////////////////////
-// The framework uses #load to embed assets for web-support.
-//
-// TODO:
-// That's already going to take some time, so to keep the burden low,
-// #load _baked_ font bitmaps. While the program is running on desktop,
-// use a desktop-specific file I/O procedure to overwrite the cache.
-asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 
 Font_Usage :: enum {
 	caption,    // 10px, sans
@@ -50,16 +43,17 @@ do_text :: proc (
 ) {
 	entity: ^Text_Entity = make_entity(Text_Entity)
 	entity.font = &globals.fonts[usage][variant]
-	ren_draw_entity(globals.ren, entity)
+	ren_draw_text(globals.ren, entity)
 	free_entity(entity)
 }
-
-// Use this to scale a font in-place.
-scale_font :: bake_font
 
 //////////////////////////////////////////////////////////////////////
 // Implementation
 //////////////////////////////////////////////////////////////////////
+
+make_draw_call :: proc () {
+	// asset := ren_make_basic_asset(globals.ren, v, i, globals.ren.instance_UBO)
+}
 
 font_from_ttf :: proc (
 	name: string,
@@ -95,7 +89,7 @@ bake_font :: proc (font: ^Font, new_height_px: f32) {
   stbtt.BakeFontBitmap(
   	&font.file_bytes[0],  offset=0,
     pixel_height = new_height_px,
-    pixels = &font.bitmap[0],  pw=512,  ph=512,
+    pixels = nil/*&font.bitmap[0]*/,  pw=512,  ph=512,
     first_char=32,  num_chars=96,
     chardata = &font.baked_chars[0]) // no guarantee font fits!
 }
@@ -107,48 +101,51 @@ import "core:strings"
 
 // TODO: Introduce a stbtt.font_info cache so it doesn't parse the file so much.
 ren_text_init :: proc () {
-	for asset_file in asset_files {
-		splits := strings.split(asset_file.name, "-")
-		if len(splits) > 1 {
-			variant_name := splits[1]
-			variant: Font_Variant
-			switch variant_name {
-			case "Bold.ttf"      : variant = .bold
-			case "BoldItalic.ttf": variant = .bold_italic
-			case "Italic.ttf"    : variant = .italic
-			case "Regular.ttf"   : variant = .regular
-			case:
-				log.debugf("FYI: Unrecognized Font_Variant (not loaded) %v", asset_file.name)
-				continue
-			}
 
-			sans_font :: "Cousine"
-			mono_font :: "Inter"
-			sans_usages: []Font_Usage : { .caption, .body, . body_large, .header }
-			mono_usages: []Font_Usage : { .mono }
-			font_name := splits[0]
-			usages: []Font_Usage
-			if font_name == sans_font {
-				usages = sans_usages
-			} else if font_name == mono_font {
-				usages = mono_usages
-			} else {
-				log.debugf("FYI: Unrecognized Font (not loaded) %v", asset_file.name)
-				continue
-			}
-			height_px_for_usage: [Font_Usage]f32 = {
-				.caption     = 10,
-				.body        = 12,
-				.body_large  = 16,
-				.header      = 20,
-				.mono        = 12,
-			}
-			for usage in usages {
-				height_px := height_px_for_usage[usage]
-				font_from_ttf(font_name, asset_file.data, height_px, &globals.fonts[usage][variant])
-				log.debugf(" OK: Loaded Font %v", asset_file.name)
-			}
-		}
-	}
 }
 
+// Build an array of textured-quads to have drawn in one shot.
+// This means a font bitmap is bound as a texture,
+// And that texture is sampled in the shader.
+//
+// To do styled text, I'll have the whole font-family bound as textures.
+// This means binding 4 textures before drawing.
+// For this to work, I'll need each quad to know it's texture binding number...
+//
+// Ideally, I'd bind an array (texbindings) and send that up as a uniform.
+// More ideally, I'd use a texture atlas, but that only goes so far.
+// Eventually I'll need an array of lights anyway.
+// So both techniques are needed. It's all about which way to go here.
+// For people to add plenty of textures to their game, they'll need an easy
+// way to upload textures to the GPU and not have to worry about associating
+// every little drawn-instance to some texture binding number, just 
+// having to say "this draw wants this image".
+ren_draw_text :: proc (ren: ^Ren, entity: ^Text_Entity) {
+	asset := entity._asset // asset for font?
+	//////////////////////////////////////////////////////////////////////	
+	instance_index := cast(int) entity._id
+	gl.BindBufferRange(
+		gl.UNIFORM_BUFFER,
+		index  = INSTANCE_UNIFORM_INDEX,
+		buffer = ren.instance_UBO,
+		offset = instance_index * globals.instances.stride,
+		size = size_of(Ren_Instance)
+	)
+	if ren.program != asset.program {
+		ren.program = asset.program
+		gl.UseProgram(ren.program)
+	}
+	if ren.VAO != asset.VAO {
+		ren.VAO = asset.VAO
+		gl.BindVertexArray(ren.VAO)
+	}
+	// The above is pretty much going to be in every draw proc.
+	//////////////////////////////////////////////////////////////////////
+	// text will be about instancing a quad all over with different textures.
+	// gl.DrawElements(
+	// 	ren_mode_to_primitive(asset.mode),
+	// 	count  = asset.index_count,
+	// 	type   = .UNSIGNED_INT,
+	// 	indices = cast(uintptr) 0,
+	// )
+}

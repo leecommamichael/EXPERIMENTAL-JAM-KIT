@@ -79,7 +79,7 @@ Text :: struct {
 	font: ^Font,
 }
 
-// ASSUME: All variants are subtypes of Entity.
+// ASSUMES: All variants are subtypes of Entity.
 Entity_Memory :: struct #packed {
 	using entity: Entity,
 	using variant: struct #raw_union {
@@ -198,7 +198,7 @@ Font :: struct {
 	name:       string,
 	file_bytes: []u8,
 	height_px:  f32,
-	bitmap:     [512*512]u8,
+	// bitmap:     [512*512]u8,
 	scale:      f32,
 	is_monospace: bool, // otherwise proportional
 	// stb related data

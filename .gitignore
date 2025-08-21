@@ -7,3 +7,4 @@ web/fireside_jam.wasm
 *.o
 .DS_Store
 *.spall
+src/font_atlas.png
