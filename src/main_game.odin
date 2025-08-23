@@ -13,23 +13,13 @@ import glsl "core:math/linalg/glsl"
 game_init :: proc () {
 	globals.camera.position.y = 5
 	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
-	plane_asset := ren_make_basic_draw_cmd(globals.ren, globals.plane_mesh.vertices[:], globals.plane_mesh.indices[:], globals.ren.instance_UBO)
-	v,i := make_circle_2D(44.0)
-	cursor_asset := ren_make_basic_draw_cmd(globals.ren, v, i, globals.ren.instance_UBO)
-	vm,im := make_circle_2D(0.5)
-	marker_asset := ren_make_basic_draw_cmd(globals.ren, vm, im, globals.ren.instance_UBO)
+	plane_asset := ren_make_basic_draw_cmd(globals.plane_mesh.vertices[:], globals.plane_mesh.indices[:])
 
 	globals.water_plane = make_entity()
 	globals.water_plane.is_3D = true
 	globals.water_plane.draw_command = plane_asset
 	globals.water_plane.draw_command.program = globals.ren.programs[.Water]
 	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
-	// globals.water_plane._asset.mode = .Line_Loop
-
-	globals.marker = make_entity()
-	globals.marker.draw_command = marker_asset
-	globals.marker.rotation.x = f32(linalg.PI/2)
-	globals.marker.hidden = true
 
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 	err, tex := gl.CreateTexture()
@@ -56,25 +46,12 @@ game_init :: proc () {
 	hello = text("Hello", .body_large)
 	hello.position = Vec3{100,100,0}
 }
+
 // Mixed-scope between renderer and game entities.
 game_step :: proc (dt: f64) {
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(dt))
 	step_water(dt)
-
-
-	cost := glsl.cos(globals.uniforms.tau_time * 4)
-	sint := glsl.sin(globals.uniforms.tau_time * 4)
-	globals.marker.position = vec3(1*cost, 0, 1*sint)
-	globals.marker.position +=  vec3(0,0,8)
-	if (cost) > 0.99 {
-		globals.marker.color = vec4(1,0,0,1)
-	} else if (sint) > 0.99 {
-		globals.marker.color = vec4(0,0,1,1)
-	} else {
-		globals.marker.color = vec4(0,0,0,1)
-	}
 }
-
 
 AXIS_SQUARES  :: 100 // Squares per axis
 AXIS_POINTS   :: AXIS_SQUARES + 1

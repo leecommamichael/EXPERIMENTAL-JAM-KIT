@@ -107,7 +107,6 @@ ren_text_init :: proc () {
 // every little drawn-instance to some texture binding number, just 
 // having to say "this draw wants this image".
 ren_draw_text :: proc (ren: ^Ren, entity: ^Text_Entity) {
-
 	font: ^Font = entity.font
 	size := i32(font.height_px)
 	verts_needed   := len(entity.text) * 4
@@ -148,25 +147,19 @@ ren_draw_text :: proc (ren: ^Ren, entity: ^Text_Entity) {
 		indices[(6*gnum)-1] = u32(4*glyph_index)+2 // BL
 	}
 	print_once = true
-	entity.draw_command = ren_make_basic_draw_cmd(globals.ren, verts, indices, globals.ren.instance_UBO)
+	entity.draw_command = ren_make_basic_draw_cmd(verts, indices)
 	asset := entity.draw_command // asset for font?
 
 	//////////////////////////////////////////////////////////////////////	
 	instance_index := cast(int) entity.id
-	gl.BindBufferRange(
-		gl.UNIFORM_BUFFER,
-		index  = INSTANCE_UNIFORM_INDEX,
-		buffer = ren.instance_UBO,
-		offset = instance_index * globals.instances.stride,
-		size = size_of(Ren_Instance)
-	)
-	if ren.program != asset.program {
-		ren.program = asset.program
-		gl.UseProgram(ren.program)
+	// TODO upload instance data
+	if ren.prev_cmd.program != asset.program {
+		ren.prev_cmd.program = asset.program
+		gl.UseProgram(ren.prev_cmd.program)
 	}
-	if ren.VAO != asset.VAO {
-		ren.VAO = asset.VAO
-		gl.BindVertexArray(ren.VAO)
+	if ren.prev_cmd.VAO != asset.VAO {
+		ren.prev_cmd.VAO = asset.VAO
+		gl.BindVertexArray(ren.prev_cmd.VAO)
 	}
 	gl.DrawElements(
 		ren_mode_to_primitive(asset.mode),

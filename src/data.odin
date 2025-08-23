@@ -4,12 +4,13 @@ package main
 //          data which crosses layer-boundaries in the program.
 
 import sugar "sugar"
-import ngl "nord_gl"
+import gl "nord_gl"
 import stbtt "vendor:stb/truetype"
 
 //////////////////////////////////////////////////////////////////////
 // Section: Framework + App Data
 //////////////////////////////////////////////////////////////////////
+
 globals: Globals
 
 Globals :: struct {
@@ -20,12 +21,18 @@ Globals :: struct {
 	gl_standard: GL_Standard,
 	ren:         ^Ren,
 	// Entity Service
+	// ubo_instance_data: Aligned_Array(Any_Instance), // TODO: Unused. Make it lights some day?
 	_entity_storage: [max(Entity_ID)]Entity_Memory,
 	entities:        [dynamic]^Entity_Memory,
-	game_entities:   [dynamic]^Entity_Memory,
-	ui_entities:     [dynamic]^Entity_Memory,
+	entities_2D:     [dynamic]^Entity_Memory,
+	entities_3D:     [dynamic]^Entity_Memory,
+	// This instance data is shared by across many (all?) shaders.
+	// That means no intelligent BufferSubData to minimize traffic.
+	// I must write to it everything which is needed by any draw command.
+	// It also means that persistent data between runs of a command must be
+	// managed separately. Probably attached to Entity variants, if not global.
+	instance_staging: [1<<16]Any_Instance, // 64k instances is probably plenty...
 	// Render+Entity Integration
-	instances:       Aligned_Array(Ren_Instance),
 	uniforms:        Uniforms,
 	game_camera:     Mat4,
 	ui_orthographic: Mat4,
@@ -37,7 +44,6 @@ Globals :: struct {
 	// App Data
 	water_plane:     ^Entity,
 	water_heightmap: []f32,
-	marker:          ^Entity,
 	plane_mesh:      Geom_Mesh2
 }
 
@@ -53,22 +59,45 @@ GL_Standard :: struct {                 // RTX-4070 ,          ,
 //////////////////////////////////////////////////////////////////////
 
 Entity_ID :: u16
+INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
-// I've prefixed anything that isn't for gameplay with _
 Entity :: struct {
-	id: Entity_ID,  // index in storage.
-	used: bool,     // like "alive"
-	is_3D: bool,    // 2D object anchored at origin in top-left (0,0)
+	type:  Entity_Type,
+	id:    Entity_ID,  // index in storage.
+	used:  bool,       // like "alive"
+	is_3D: bool,       // 2D object anchored at origin in top-left (0,0)
 	draw_command: Draw_Command,
 	distance_from_camera: f32,
-	//
-	gizmo: bool,
-	//
+	parent:          ^Entity,
+	using transform: Transform,
+	// sometimes things will program in terms of these fields.
+	// - animations choose different uvs,
+	// - 3d needs to sort by position
+	// - color is useful for debugging.
+	// This means a singular (non-instanced) thing needs to be 
+	using instance:  ^Any_Instance, // This will be copied.
+	_backing: Any_Instance, // Default backing memory for instance-pointer.
+	hidden:   bool,
+}
+
+// Perhaps the tension I feel on designing this is that instance data doesn't make
+// any sense in the abstract, and it totally depends on the variant.
+// One thing I can say, is that not all renders are truly instanced. Just batches of 1.
+// So to take this opinion, I can leave it to the Draw Command.
+//
+// CONSIDER: This is what I'm weighing
+CONSIDER_Instance_Usage :: enum {
+	Single_Owned,            // this Entity has its own instance data                                 (3D single) (enables painters algo)
+	Many_Shared,             // this Entity uses the global instance buffer for staging (stateless)   (text) (typical variant)
+	// I'm not sure if these are use-cases yet; but I can imagine.
+	Many_Dedicated_Retained, // this Entity has its own buffer for instances                          (complex variant) (maybe tileset)
+	Single_Reference,        // this Entity's instance data points into a buffer                      (entity as handle to instance) (idk)
+}
+
+Transform :: struct {
 	position: Vec3,
 	rotation: Vec3,
 	scale:    f32, // PUNT nonuniform scale
-	hidden:   bool,
-	using instance: ^Ren_Instance,
 }
 
 Text_Entity :: struct {
@@ -84,25 +113,23 @@ Text :: struct {
 Entity_Memory :: struct #packed {
 	using entity: Entity,
 	using variant: struct #raw_union {
-		text: Text_Entity,
+		text: Text,
 	},
-	// Can Transmute to Variants if I keep this below.
-	tag: Entity_Variant
 }
 
 // This enables a safe specializing cast to a variant.
-#assert(offset_of(Entity_Memory, variant) > 
-	offset_of(Entity_Memory, entity))
-#assert(offset_of(Entity_Memory, tag) > 
-	offset_of(Entity_Memory, variant))
+#assert(
+	offset_of(Entity_Memory, entity) <
+	offset_of(Entity_Memory, variant)
+)
 
 // I think ASAN implicated the wrong line of code, BUT:
 // When I had Font as a non-pointer the program crashed.
 // So here's an assert that serves as a reminder to keep variants small.
-#assert(size_of(Entity_Memory) < 256)
+#assert(size_of(Entity_Memory) < 512) // arbitary, but FYI (512 * 1<<16) = 6 MB 
 
-Entity_Variant :: enum {
-	None,
+Entity_Type :: enum {
+	None, // Generic, Any, Basic, Base
 	Text
 }
 
@@ -111,20 +138,20 @@ Entity_Variant :: enum {
 //////////////////////////////////////////////////////////////////////
 
 Ren :: struct {
-	program:      ngl.Program,
-	VAO:          ngl.VertexArrayObject,
-	frame_UBO:    ngl.Buffer,
-	instance_UBO: ngl.Buffer,           // constant
-	programs: [Game_Shader]ngl.Program, // constant
-	instance_buffer: ngl.Buffer,        // union of all instances
+	prev_cmd:  Draw_Command,
+	frame_UBO: gl.Buffer,
+	programs:  [Game_Shader]gl.Program, // constant
 }
 
 Game_Shader :: enum {
 	Basic,
+	Text,
+	Image,
+	UI_Box,
 	Water,
 }
 
-Ren_Instance :: struct {
+Any_Instance :: struct {
 	model_transform: Mat4,
 	uv_transform:    Vec4,
 	color:           Vec4,
@@ -145,42 +172,52 @@ Ren_Vertex_Base :: struct {
 }
 
 Draw_Command :: struct {
-	program:     ngl.Program,
-	VAO:         ngl.VertexArrayObject,
-	index_count: int,
-	mode:        Ren_Mode,
-	VBO:         ngl.Buffer,
+	program:      gl.Program,
+	VAO:          gl.VertexArrayObject,
+	attributes:   []Attribute_Binding,
+	textures:     []Texture_Binding,
+	index_buffer: gl.Buffer,
+	index_count:  int,
+	// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
+	mode:         Ren_Mode,
+}
+#assert(size_of(Draw_Command) < 90, "Watch it")
+
+Texture_Binding :: struct {
+	texture_unit: u32,
+	target:  gl.Texture_Target,
+	texture: gl.Texture,
 }
 
-//  Shader_Input
-//  .field_offset indicates the offset of the attribute into the struct.
-//  .type         of vec2 == ngl.FLOAT ; vec3 = ngl.FLOAT ; i32 == ngl.INT ...
-//	.value_count  of vec2 == 2        ; f32 == 1        ; mat4 == 16 ...
-//  .location     is computed when the shader is created, based upon the order of
-//                inputs in the attribute slice and the # of slots their data types require.
-//   Example:
-//     The Bindings { {type=.mat4}, {type=.f32} } take up 5 slots.
-//     The first binding is a mat4 at location=0, and takes 4 slots.
-//     The second binding is an f32 at location=4, and takes up 1 slot.
-Shader_Input :: struct {
-	type:          GLSL_Attribute_Type,
-	rate:          Shader_Input_Rate,
-	field_offset:  uintptr,
-	buffer:        Ren_Buffer,
-	// These are really just caches.
-	location:      uint,
-	value_count:   int,
-	ngl_type:      ngl.Data_Type
-}
-
-Ren_Buffer :: struct {
-	id:            ngl.Buffer,
-	element_size:  int,
-}
-
-Shader_Input_Rate :: enum {
-	Vertex,
-	Instance,
+//  Interface ----------------------------------------- (fields you must assign)
+//    .type         : The glsl data-type of the attribute
+//    .rate         : Specifies if the attribute is per-vertex or per-instance.
+//    .offset       : Used to extract fields from interleaved vertex structs.
+//                  |   e.g. offset_of(Vertex, position)
+//    .buffer       : The data-source for the given input.
+//
+//  Implementation ------------------------------ (fields you should not assign)
+//    .value_count: Inferred from type.  e.g. vec2 is 2, and mat4 is 16.
+//    .location   : The GLSL location of the attribute, which is computed when the
+//                | shader is created. 
+//                | For vertex attributes, it is based upon the order of inputs in
+//                | the attribute slice and the number of slots
+//                | their data types require.
+//                |   For Example:
+//                | > The Bindings { {type=.mat4}, {type=.f32} } take up 5 slots.
+//                | > The first binding is a mat4 at location=0, and takes 4 slots.
+//                | > The second binding is an f32 at location=4, and takes up 1 slot.
+Attribute_Binding :: struct {
+	buffer: gl.Buffer,
+	rate:   Shader_Input_Rate,
+	type:   GLSL_Attribute_Type,
+	stride: int,
+	offset: uintptr,
+	// implementation details, don't manually init.
+	// these are initialized by ren_make_draw_command
+	location:    uint,
+	value_count: int,
+	gl_type:     gl.Data_Type
 }
 
 GLSL_Attribute_Type :: enum {
@@ -188,6 +225,11 @@ GLSL_Attribute_Type :: enum {
 	mat4,
 	i32, ivec2, ivec3, ivec4,
 	u32, uvec2, uvec3, uvec4,
+}
+
+Shader_Input_Rate :: enum {
+	Vertex,
+	Instance,
 }
 
 //////////////////////////////////////////////////////////////////////

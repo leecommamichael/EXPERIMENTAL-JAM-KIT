@@ -3,6 +3,7 @@ package main
 import "base:intrinsics"
 import "core:log"
 import "core:mem"
+import "core:slice"
 import "core:math/linalg"
 import gl "nord_gl"
 
@@ -15,10 +16,11 @@ init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
 	entity.id = id
 	entity.used = true
 	entity.scale = 1
-	entity.instance = subscript_aligned_array(&globals.instances, cast(int) entity.id)
-	entity.instance^ = {} // zero
-	entity.instance.color.a = 1
-	entity.instance.uv_transform = {0,0,1,1}
+	entity.instance = &entity._backing
+	// entity.instance = subscript_aligned_array(&globals.ubo_instance_data, cast(int) entity.id)
+	// entity.instance^ = {} // zero
+	// entity.instance.color.a = 1
+	// entity.instance.uv_transform = {0,0,1,1}
 }
 
 make_entity :: proc {
@@ -37,9 +39,9 @@ where intrinsics.type_is_subtype_of(T, Entity) {
 			init_entity_memory(&mem, cast(Entity_ID) i)
 			if T == Text_Entity {
 				mem.variant = {}
-				mem.tag = Entity_Variant.Text
+				mem.type = Entity_Type.Text
 			} else if T == Entity {
-				mem.tag = Entity_Variant.None
+				mem.type = Entity_Type.None
 			} else {
 				panic("Unimplemented Entity Variant")
 			}
@@ -66,10 +68,6 @@ ren_make :: proc () -> ^Ren {
 	err, ren.frame_UBO = gl.CreateBuffer()
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
-
-	err = gl.GenBuffers(1, &ren.instance_UBO)
-	gl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
-	gl.BufferData(.UNIFORM_BUFFER, globals.instances.data[:])
 
 	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
@@ -107,34 +105,40 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	gl.UniformBlockBinding(program, uniform_index, FRAME_UNIFORM_INDEX)
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, FRAME_UNIFORM_INDEX, ren.frame_UBO)
 
-	uniform_index = gl.GetUniformBlockIndex(program, "Instance_Uniforms")
-	gl.UniformBlockBinding(program, uniform_index, INSTANCE_UNIFORM_INDEX)
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, INSTANCE_UNIFORM_INDEX, ren.instance_UBO)
-
 	return program
 }
 
+ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
+	next := &entity.draw_command
+	prev := &globals.ren.prev_cmd
+	pipeline_changed: bool = false
+
+	if prev.program != next.program {
+		prev.program = next.program
+		gl.UseProgram(next.program)
+		pipeline_changed = true
+	}
+
+	if prev.VAO != next.VAO {
+		prev.VAO = next.VAO
+		gl.BindVertexArray(next.VAO)
+		pipeline_changed = true
+	}
+	// If there was a change, each program locates instances differently.
+	if pipeline_changed {
+		// At the time of writing, freeing an entity doesn't wipe the draw command.
+		// This works for now, but if there's a bug in the future, suspect this.
+		prev = next
+	}
+}
+
 ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
+	ren_bind_or_reuse_draw_command(entity)
+	// TODO: copy all instance-level data
 	instance_index := cast(int) entity.id
-	gl.BindBufferRange(
-		gl.UNIFORM_BUFFER,
-		index  = INSTANCE_UNIFORM_INDEX,
-		buffer = ren.instance_UBO,
-		offset = instance_index * globals.instances.stride,
-		size = size_of(Ren_Instance)
-	)
-	draw_cmd := entity.draw_command
-	if ren.program != draw_cmd.program {
-		ren.program = draw_cmd.program
-		gl.UseProgram(ren.program)
-	}
-	if ren.VAO != draw_cmd.VAO {
-		ren.VAO = draw_cmd.VAO
-		gl.BindVertexArray(ren.VAO)
-	}
 	gl.DrawElements(
-		ren_mode_to_primitive(draw_cmd.mode),
-		count  = draw_cmd.index_count,
+		ren_mode_to_primitive(entity.draw_command.mode),
+		count  = entity.draw_command.index_count,
 		type   = .UNSIGNED_INT,
 		indices = cast(uintptr) 0,
 	)
@@ -151,11 +155,9 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.view = globals.game_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-	gl.BindBuffer(.UNIFORM_BUFFER, ren.instance_UBO)
-	gl.BufferSubData(.UNIFORM_BUFFER, 0, globals.instances.data[:])
 
-	for entity in globals.game_entities {
-		switch entity.tag {
+	for entity in globals.entities_3D {
+		switch entity.type {
 		case .None: ren_draw_entity(ren, entity)
 		case .Text: ren_draw_text(ren, transmute(^Text_Entity) entity)
 		}
@@ -165,8 +167,8 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.view = globals.ui_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-	for entity in globals.ui_entities {
-		switch entity.tag {
+	for entity in globals.entities_2D {
+		switch entity.type {
 		case .None: ren_draw_entity(ren, entity)
 		case .Text: ren_draw_text(ren, transmute(^Text_Entity) entity)
 		}
@@ -184,21 +186,17 @@ ren_draw :: proc (ren: ^Ren) {
 //
 // But the instance buffer is shared, so that's good.
 ren_make_basic_draw_cmd :: proc (
-	ren: ^Ren,
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
-	instance_buffer: gl.Buffer,
 ) -> Draw_Command {
 	VAO: gl.VertexArrayObject
 	gl.GenVertexArrays(1, &VAO)
 	gl.BindVertexArray(VAO)
 
 	// Create Vertex Buffer
-	vertex_buffer := Ren_Buffer {
-		element_size = size_of(Ren_Vertex_Base)
-	}
-	gl.GenBuffers(1, &vertex_buffer.id)
-	gl.BindBuffer(.ARRAY_BUFFER, vertex_buffer.id)
+	VBO: gl.Buffer
+	gl.GenBuffers(1, &VBO)
+	gl.BindBuffer(.ARRAY_BUFFER, VBO)
 	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
@@ -209,35 +207,43 @@ ren_make_basic_draw_cmd :: proc (
 	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 
-	instance_buffer_view := Ren_Buffer {
-		id = instance_buffer,
-		element_size = size_of(Ren_Instance)
-	}
-	offsets: []uintptr = {
-		offset_of(Ren_Vertex_Base, position),
-		offset_of(Ren_Vertex_Base, texcoord),
-		offset_of(Ren_Vertex_Base, normal),
-	}
-	inputs: []Shader_Input = {
-		{ type = .vec3, rate=.Vertex,   field_offset = offsets[0], buffer = vertex_buffer },
-		{ type = .vec2, rate=.Vertex,   field_offset = offsets[1], buffer = vertex_buffer },
-		{ type = .vec3, rate=.Vertex,   field_offset = offsets[2], buffer = vertex_buffer },
+	attributes: []Attribute_Binding = {
+		{
+			buffer = VBO,
+			rate   = .Vertex,
+			type   = .vec3,
+			stride = size_of(Ren_Vertex_Base), 
+			offset = offset_of(Ren_Vertex_Base, position)
+		},
+		{
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec2,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, texcoord)
+		},
+		{ 
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec3,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, normal)
+		},
 	}
 
-	draw_cmd := ren_make_draw_cmd(ren, ren.programs[.Basic], VAO, inputs, index_count)
-	draw_cmd.VBO = vertex_buffer.id
+	draw_cmd := ren_make_draw_cmd(globals.ren.programs[.Basic], VAO, attributes, index_count)
 	return draw_cmd
 }
 
 GLES_MAX_BINDINGS :: 16 // per spec
+
 ren_make_draw_cmd :: proc (
-	ren: ^Ren,
 	program: gl.Program,
 	VAO:     gl.VertexArrayObject,
-	inputs: []Shader_Input,
+	attributes: []Attribute_Binding,
 	index_count: int,
-) -> Draw_Command {
-	assert(GLES_MAX_BINDINGS > len(inputs), "GLSL shaders only have 16 slots.")
+) -> Draw_Command { 
+	assert(GLES_MAX_BINDINGS > len(attributes), "GLSL shaders only have 16 slots.")
 
 	// Allocate room for inputs
 	obj: Draw_Command
@@ -247,63 +253,63 @@ ren_make_draw_cmd :: proc (
 
 	// Enable inputs
 	next_location: uint = 0
-	for &input in inputs {
-		input.location = next_location
-		next_location += slots_used_by_type(input.type)
+	for &attr in attributes {
+		attr.location = next_location
+		next_location += slots_used_by_type(attr.type)
 		log.assertf(GLES_MAX_BINDINGS > next_location, "GLSL shaders only have 16 slots.")
 
-		switch input.type {
+		switch attr.type {
 		case .f32, .vec2, .vec3, .vec4, .mat4:
-			input.ngl_type = .FLOAT
+			attr.gl_type = .FLOAT
 		case .i32, .ivec2, .ivec3, .ivec4:
-			input.ngl_type = .INT
+			attr.gl_type = .INT
 		case .u32, .uvec2, .uvec3, .uvec4:
-			input.ngl_type = .UNSIGNED_INT
+			attr.gl_type = .UNSIGNED_INT
 		}
 
-		switch input.type {
+		switch attr.type {
 		case .f32, .i32, .u32:
-			input.value_count = 1
+			attr.value_count = 1
 		case .vec2, .ivec2, .uvec2:
-			input.value_count = 2
+			attr.value_count = 2
 		case .vec3, .ivec3, .uvec3:
-			input.value_count = 3
+			attr.value_count = 3
 		case .vec4, .ivec4, .uvec4:
-			input.value_count = 4
+			attr.value_count = 4
 		case .mat4:
-			input.value_count = 16
+			attr.value_count = 16
 		}
 	}
 
 	// Create ideal VAO for this obj.
 	gl.BindVertexArray(obj.VAO)
 
-	for input in inputs {
-		divisor: uint = 0 if input.rate == .Vertex else 1
-		slots := slots_used_by_type(input.type)
-		gl.BindBuffer(.ARRAY_BUFFER, input.buffer.id)
+	for attr in attributes {
+		divisor: uint = 0 if attr.rate == .Vertex else 1
+		slots := slots_used_by_type(attr.type)
+		gl.BindBuffer(.ARRAY_BUFFER, attr.buffer)
 		for slot_num in 0..<slots {
-			index := input.location + slot_num
-			num_components := input.value_count / cast(int) slots
+			index := attr.location + slot_num
+			num_components := attr.value_count / cast(int) slots
 			// WARNING:
 			// This size_of in here is a little forceful.
 			// But usually if you've got a multi-slot it's an f32 matrix.
-			offset := input.field_offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
-			if glsl_attrib_is_int(input.type) {
+			offset := attr.offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
+			if glsl_attrib_is_int(attr.type) {
 				gl.VertexAttribIPointer(
 					index      = index,
 					size       = num_components,
-					type       = input.ngl_type,
-					stride     = input.buffer.element_size,
-					offset     =  offset
+					type       = attr.gl_type,
+					stride     = attr.stride,
+					offset     = offset
 				)
 			} else {
 				gl.VertexAttribPointer(
 					index      = index,
 					size       = num_components,
-					type       = input.ngl_type,
+					type       = attr.gl_type,
 					normalized = false,
-					stride     = input.buffer.element_size,
+					stride     = attr.stride,
 					offset     = offset
 				)
 			}
@@ -347,26 +353,16 @@ frame_uniforms :: `
 	} frame;
 `
 
-instance_uniforms :: `
-	layout(std140) uniform Instance_Uniforms {
-		mat4 model_mat;
-		vec4 uv_xform;
-		vec4 color;
-	} instance;
-`
-
 vertex_preamble :: 
 	version +
 	"#pragma STDGL invariance(all)\n" +
 	precision_defaults +
-	frame_uniforms +
-	instance_uniforms
+	frame_uniforms
 
 fragment_preamble ::
 	version +
 	precision_defaults +
-	frame_uniforms +
-	instance_uniforms
+	frame_uniforms
 
 ////////////////////////////////////////////////////////////////////////////////
 // Shaders /////////////////////////////////////////////////////////////////////
@@ -376,6 +372,9 @@ basic_vertex_inputs :: `
 	layout (location = 0) in vec3 v_position;
 	layout (location = 1) in vec2 v_texcoord;
 	layout (location = 2) in vec3 v_normal;
+	layout (location = 3) in mat4 i_model_mat;
+	layout (location = 7) in vec4 i_uv_xform;
+	layout (location = 8) in vec4 i_color;
 `
 
 basic_vertex_shader_source :: vertex_preamble +
@@ -384,8 +383,8 @@ basic_vertex_inputs +
 	out vec4 io_color;
 
 	void main() {
-		io_color = instance.color;
-		mat4 mvp = frame.projection * frame.view * instance.model_mat;
+		io_color = i_color;
+		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
 	}
 `
@@ -417,14 +416,14 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 		float height_here = texture(heightmap, heightmap_here).r;
 		// float height_next_x = texture(heightmap, heightmap_next_x).r;
 		// float height_next_z = texture(heightmap, heightmap_next_z).r;
-		color = instance.color;
+		color = i_color;
 		raw_surface_normal = v_normal;
 
 		vec4 position4 = vec4(v_position, 1);
 		position4.y = height_here;
-		world_position = (instance.model_mat * position4).xyz;
+		world_position = (i_model_mat * position4).xyz;
 
-		mat4 mvp = frame.projection * frame.view * instance.model_mat;
+		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * position4;
 	}
 `
@@ -487,7 +486,7 @@ make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u
   VERTS_PER_CAP: u32 = cast(u32) sides + 1 // counting center-point
 
   // Now that the geometry has been baked in position according to the transforms,
-  // We can build an index buffer to from triangles from the points.
+  // We can build an index buffer to from triagles from the points.
   indices: [dynamic]u32 = make([dynamic]u32)
   EDGE_SEGMENTS: u32 = cast(u32) sides
   geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
@@ -496,7 +495,7 @@ make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u
   return verts[:], indices[:]
 }
 
-make_triangle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
+make_triagle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
   verts := make([dynamic]Ren_Vertex_Base)
   append(&verts, Ren_Vertex_Base{position = Vec3{-1,1,0}})
   append(&verts, Ren_Vertex_Base{position = Vec3{1,1,0}})

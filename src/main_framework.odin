@@ -21,19 +21,20 @@ framework_init :: proc () {
 		log.infof("OpenGL Platform Constants ---\n%#v", globals.gl_standard)
 	}
 	init_gl_constants()
-	#assert(size_of(Ren_Instance) < (1 << 14), "Instances may not fit in one Uniform Block")
-	globals.instances = make_aligned_array(
-		Ren_Instance,
-		cast(int) max(Entity_ID),
-		cast(int) globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT
-	)
+	// META: The below assert is out of date. My instances aren't in UBOs.
+	// #assert(size_of(Any_Instance) < (1 << 14), "Instances may not fit in one Uniform Block")
+	// globals.ubo_instance_data = make_aligned_array(
+	// 	Ren_Instance,
+	// 	cast(int) max(Entity_ID),
+	// 	cast(int) globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT
+	// )
 
 	globals.game_view = 1
 	globals.ui_view = 1
 	game_entities := make([]^Entity_Memory, max(Entity_ID))
-	globals.game_entities = slice.into_dynamic(game_entities)
+	globals.entities_3D = slice.into_dynamic(game_entities)
 	ui_entities := make([]^Entity_Memory, max(Entity_ID))
-	globals.ui_entities = slice.into_dynamic(ui_entities)
+	globals.entities_2D = slice.into_dynamic(ui_entities)
 	entities := make([]^Entity_Memory, max(Entity_ID))
 	globals.entities = slice.into_dynamic(entities)
 	globals.ren = ren_make()	
@@ -55,8 +56,8 @@ framework_step :: proc (dt: f64) {
 
 	// 1. Fill Caches //////////////////////////////////////////////////////////// 
 	clear(&globals.entities)
-	clear(&globals.game_entities)
-	clear(&globals.ui_entities)
+	clear(&globals.entities_2D)
+	clear(&globals.entities_3D)
 	for &e in globals._entity_storage {
 		if e.used {
 			append(&globals.entities, &e)
@@ -70,27 +71,29 @@ framework_step :: proc (dt: f64) {
 	finalize_simulation_frame :: proc () {
 		for &entity in globals.entities {
 			if entity.hidden {
-				// INTENT: If an object is hiddesugar.n, don't add it to render-lists.
+				// INTENT: If an object is hidden, don't add it to render-lists.
 				continue
 			}
 
 			entity.model_transform =
 				linalg.matrix4_translate(entity.position) *
-				linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, entity.rotation.y, entity.rotation.z) *
+				linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, 
+				                                         entity.rotation.y, 
+				                                         entity.rotation.z) *
 				linalg.matrix4_scale(entity.scale)
 			if !entity.is_3D {
-				append(&globals.ui_entities, entity)
+				append(&globals.entities_2D, entity)
 			} else {
 				// TODO: Bucket Opaque from Transparent
 				// ASSUME: Centroid is 0,0,0 in model coordinates
 				centroid: Vec4 : { 0, 0, 0, 1 }
 		    entity_centroid_in_world := entity.model_transform * centroid
 				entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
-				append(&globals.game_entities, entity)
+				append(&globals.entities_3D, entity)
 			}
 		}
 		// IDEA: Could use the same sort for UI and interpret it at Z index.
-	  slice.sort_by(globals.game_entities[:], proc (i,j: ^Entity_Memory) -> bool {
+	  slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity_Memory) -> bool {
 	    return i.distance_from_camera > j.distance_from_camera
 	  })
 	}
