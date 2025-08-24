@@ -1,8 +1,9 @@
 package sugar
 
-import NS "../../darwodin/darwodin-macos-lite/darwodin/AppKit"
-import CG "../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
-import NSF "../../darwodin/darwodin-macos-lite/darwodin/Foundation"
+
+import NS "../../../darwodin/darwodin-macos-lite/darwodin/AppKit"
+import CG "../../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
+import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
 
 Button :: enum {
 	Escape      =0,
@@ -13,6 +14,10 @@ Button :: enum {
 	Up_Arrow    =5,
 	Down_Arrow  =6,
 	Space_Bar   =7,
+	W,
+	A,
+	S,
+	D,
 }
 
 Feedback :: enum {

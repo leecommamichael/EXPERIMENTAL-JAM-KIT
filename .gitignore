@@ -8,3 +8,10 @@ web/fireside_jam.wasm
 .DS_Store
 *.spall
 src/font_atlas.png
+src/sugar/NSOpenGLContext.reference
+src/sugar/NSOpenGLLayer.reference
+src/sugar/NSOpenGLPixelBuffer.reference
+src/sugar/NSOpenGLPixelFormat.reference
+src/sugar/NSOpenGLView.reference
+game.exe.dSYM/Contents/Info.plist
+game.exe.dSYM/Contents/Resources/Relocations/aarch64/game.exe.yml
