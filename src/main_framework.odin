@@ -32,13 +32,18 @@ framework_init :: proc () {
 
 	globals.game_view = 1
 	globals.ui_view = 1
+
 	game_entities := make([]^Entity_Memory, max(Entity_ID))
 	globals.entities_3D = slice.into_dynamic(game_entities)
+
 	ui_entities := make([]^Entity_Memory, max(Entity_ID))
 	globals.entities_2D = slice.into_dynamic(ui_entities)
+
 	entities := make([]^Entity_Memory, max(Entity_ID))
 	globals.entities = slice.into_dynamic(entities)
-	globals.ren = ren_make()	
+
+	globals.ren = ren_make()
+
 	ren_init(globals.ren)
 	ren_text_init()
 	asset_init()

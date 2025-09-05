@@ -282,22 +282,6 @@ Data_Type :: enum GLenum {
 	FLOAT = FLOAT,
 }
 
-Pixel_Format :: enum GLenum {
-	DEPTH_COMPONENT = DEPTH_COMPONENT,
-	ALPHA = ALPHA,
-	RGB = RGB,
-	RGBA = RGBA,
-	LUMINANCE = LUMINANCE,
-	LUMINANCE_ALPHA = LUMINANCE_ALPHA,
-}
-
-Pixel_Type :: enum GLenum {
-	UNSIGNED_BYTE = UNSIGNED_BYTE,
-	UNSIGNED_SHORT_4_4_4_4 = UNSIGNED_SHORT_4_4_4_4,
-	UNSIGNED_SHORT_5_5_5_1 = UNSIGNED_SHORT_5_5_5_1,
-	UNSIGNED_SHORT_5_6_5 = UNSIGNED_SHORT_5_6_5,
-}
-
 Shader_Type :: enum GLenum {
 	FRAGMENT_SHADER = FRAGMENT_SHADER,
 	VERTEX_SHADER = VERTEX_SHADER,
@@ -315,7 +299,7 @@ Compare_Func :: enum GLenum {
 	ALWAYS = ALWAYS,
 }
 
-Compare_Mode :: enum GLenum {
+Texture_Compare_Mode :: enum GLenum {
 	NONE = NONE,
 	COMPARE_REF_TO_TEXTURE = COMPARE_REF_TO_TEXTURE
 }
@@ -390,6 +374,23 @@ Texture_Parameter_Target :: enum GLenum {
 	TEXTURE_CUBE_MAP = TEXTURE_CUBE_MAP,
 }
 
+// TODO: name, and move to utils
+parameter_for_target :: proc (target: Texture_Target) -> Texture_Parameter_Target {
+	switch target {
+	case .TEXTURE_2D_ARRAY: return .TEXTURE_2D_ARRAY
+	case .TEXTURE_3D:       return .TEXTURE_3D
+	case .TEXTURE_CUBE_MAP: return .TEXTURE_CUBE_MAP
+	case .TEXTURE_2D:       return .TEXTURE_2D
+	case .TEXTURE_CUBE_MAP_POSITIVE_X: fallthrough
+	case .TEXTURE_CUBE_MAP_NEGATIVE_X: fallthrough
+	case .TEXTURE_CUBE_MAP_POSITIVE_Y: fallthrough
+	case .TEXTURE_CUBE_MAP_NEGATIVE_Y: fallthrough
+	case .TEXTURE_CUBE_MAP_POSITIVE_Z: fallthrough
+	case .TEXTURE_CUBE_MAP_NEGATIVE_Z: return .TEXTURE_CUBE_MAP
+	}
+	panic("Exhaustive Switch")
+}
+
 Texture_Unit :: enum GLenum {
 	ACTIVE_TEXTURE = ACTIVE_TEXTURE,
 	TEXTURE0 = TEXTURE0,
@@ -451,12 +452,12 @@ Uniform_Types :: enum GLenum {
 }
 
 Vertex_Attrib_Parameter_Name :: enum GLenum {
-	VERTEX_ATTRIB_ARRAY_ENABLED = VERTEX_ATTRIB_ARRAY_ENABLED,
-	VERTEX_ATTRIB_ARRAY_SIZE = VERTEX_ATTRIB_ARRAY_SIZE,
-	VERTEX_ATTRIB_ARRAY_STRIDE = VERTEX_ATTRIB_ARRAY_STRIDE,
-	VERTEX_ATTRIB_ARRAY_TYPE = VERTEX_ATTRIB_ARRAY_TYPE,
+	VERTEX_ATTRIB_ARRAY_ENABLED    = VERTEX_ATTRIB_ARRAY_ENABLED,
+	VERTEX_ATTRIB_ARRAY_SIZE       = VERTEX_ATTRIB_ARRAY_SIZE,
+	VERTEX_ATTRIB_ARRAY_STRIDE     = VERTEX_ATTRIB_ARRAY_STRIDE,
+	VERTEX_ATTRIB_ARRAY_TYPE       = VERTEX_ATTRIB_ARRAY_TYPE,
 	VERTEX_ATTRIB_ARRAY_NORMALIZED = VERTEX_ATTRIB_ARRAY_NORMALIZED,
-	VERTEX_ATTRIB_ARRAY_POINTER = VERTEX_ATTRIB_ARRAY_POINTER,
+	VERTEX_ATTRIB_ARRAY_POINTER    = VERTEX_ATTRIB_ARRAY_POINTER,
 }
 
 Shader_Parameter_Name :: enum GLenum {
@@ -496,21 +497,298 @@ Framebuffer_Target :: enum GLenum {
 	DRAW_FRAMEBUFFER = DRAW_FRAMEBUFFER,
 }
 
-
-/* WIP
-Internal_Pixel_Format :: enum GLenum {
-	RGBA4 = RGBA4,
-	RGB5_A1 = RGB5_A1,
-	RGB565 = RGB565,
-	RGBA8 = RGBA8,
+Pixel_Data_Type :: enum GLenum {
+	HALF_FLOAT     = HALF_FLOAT,
+	FLOAT          = FLOAT,
+	UNSIGNED_BYTE  = UNSIGNED_BYTE,
+	UNSIGNED_SHORT = UNSIGNED_SHORT,
+	UNSIGNED_INT   = UNSIGNED_INT,
+	BYTE           = BYTE,
+	SHORT          = SHORT,
+	INT            = INT,
+	UNSIGNED_SHORT_5_6_5           = UNSIGNED_SHORT_5_6_5,
+	UNSIGNED_SHORT_4_4_4_4         = UNSIGNED_SHORT_4_4_4_4,
+	UNSIGNED_SHORT_5_5_5_1         = UNSIGNED_SHORT_5_5_5_1,
+	UNSIGNED_INT_10F_11F_11F_REV   = UNSIGNED_INT_10F_11F_11F_REV,
+	FLOAT_32_UNSIGNED_INT_24_8_REV = FLOAT_32_UNSIGNED_INT_24_8_REV,
+	UNSIGNED_INT_2_10_10_10_REV    = UNSIGNED_INT_2_10_10_10_REV,
 }
 
+Internal_Color_Format :: enum GLenum {
+	// Unsized Formats. Use with UNSIGNED_BYTE
+  RGB,
+  RGBA,
+  ALPHA,
+  LUMINANCE,
+  LUMINANCE_ALPHA,
+	// Color-Renderable & Texture-Filterable Formats
+	R8,
+	RG8,
+	RGB8,
+	RGBA4,
+	RGBA8,
+
+	RGB565,
+	RGB5_A1,
+	RGB10_A2,
+	SRGB8_ALPHA8,
+	// Color-Renderable Format (not Texture Filterable)
+	RGB10_A2UI,
+	R8I,
+	R8UI,
+	R16I,
+	R16UI,
+	R32I,
+	R32UI,
+	RG8I,
+	RG8UI,
+	RG16I,
+	RG16UI,
+	RG32I,
+	RG32UI,
+	RGBA8I,
+	RGBA8UI,
+	RGBA16I,
+	RGBA16UI,
+	RGBA32I,
+	RGBA32UI,
+	// Texture-Filterable Formats (not Color-Renderable)
+	R8_SNORM,
+	RG8_SNORM,
+	RGB8_SNORM,
+	RGBA8_SNORM,
+	SRGB8,
+	R16F,
+	RG16F,
+	RGB16F,
+	RGBA16F,
+	R11F_G11F_B10F,
+	RGB9_E5,
+	// Neither Color-Renderable nor Texture-Filterable
+	RGB8UI,
+	RGB16UI,
+	RGB32UI,
+	RGB8I,
+	RGB16I,
+	RGB32I,
+	R32F,
+	RG32F,
+	RGB32F,
+	RGBA32F,
+	// Depth-Renderable
+	DEPTH_COMPONENT16,
+	DEPTH_COMPONENT24,
+	DEPTH_COMPONENT32F,
+	DEPTH24_STENCIL8,
+	DEPTH32F_STENCIL8,
+}
+
+Texture_Format_Capability :: enum {
+	Color_Renderable,
+	Depth_Renderable,
+	Stencil_Renderable,
+	Texture_Filterable,
+}
+
+Color_Format_Info :: struct {
+	gl_name: GLenum,
+	format: Pixel_Format,    // channel layout
+	type:   Pixel_Data_Type, // channel data
+	capabilities: bit_set[Texture_Format_Capability]
+}
+
+Internal_Format_Infos : [Internal_Color_Format]Color_Format_Info : {
+	// Unsized Formats. Use with UNSIGNED_BYTE
+	.RGB = { 
+		gl_name = RGB8,
+		format = .RGB,
+		type = .UNSIGNED_BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGBA = {
+		gl_name = RGBA8,
+		format = .RGBA,
+		type = .UNSIGNED_BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.ALPHA = {
+		gl_name = ALPHA,
+		format = .ALPHA,
+		type = .UNSIGNED_BYTE,
+		capabilities = {}
+	},
+	.LUMINANCE = {
+		gl_name = LUMINANCE,
+		format = .LUMINANCE,
+		type = .UNSIGNED_BYTE,
+		capabilities = {}
+	},
+	.LUMINANCE_ALPHA = {
+		gl_name = LUMINANCE_ALPHA,
+		format = .LUMINANCE_ALPHA,
+		type = .UNSIGNED_BYTE,
+		capabilities = {}
+	},
+	// Color-Renderable & Texture-Filterable Formats
+	.R8 = {
+		gl_name = R8,
+		format = .RED,
+		type = .BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RG8 = {
+		gl_name = RG8,
+		format = .RG,
+		type = .BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGB8 = {
+		gl_name = RGB8,
+		format = .RGB,
+		type = .BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGBA4 = {
+		gl_name = RGBA4,
+		format = .RGBA,
+		type = .UNSIGNED_SHORT_4_4_4_4,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGBA8 = {
+		gl_name = RGBA8,
+		format = .RGBA,
+		type = .BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGB565 = {
+		gl_name = RGB565,
+		format = .RGB,
+		type = .UNSIGNED_SHORT_5_6_5,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGB5_A1 = {
+		gl_name = RGB5_A1,
+		format = .RGBA,
+		type = .UNSIGNED_SHORT_5_5_5_1,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.RGB10_A2 = {
+		gl_name = RGB10_A2,
+		format = .RGBA,
+		type = .UNSIGNED_INT_2_10_10_10_REV,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	.SRGB8_ALPHA8 = {
+		gl_name = SRGB8_ALPHA8,
+		format = .RGBA,
+		type = .BYTE,
+		capabilities = { .Color_Renderable, .Texture_Filterable }
+	},
+	// Color-Renderable Format (not Texture Filterable)
+	.RGB10_A2UI = {
+		gl_name = RGB10_A2UI,
+		format = .RGBA,
+		type = .UNSIGNED_INT_2_10_10_10_REV,
+		capabilities = { .Color_Renderable }
+	},
+	.R8I = {},
+	.R8UI = {},
+	.R16I = {},
+	.R16UI = {},
+	.R32I = {},
+	.R32UI = {},
+	.RG8I = {},
+	.RG8UI = {},
+	.RG16I = {},
+	.RG16UI = {},
+	.RG32I = {},
+	.RG32UI = {},
+	.RGBA8I = {},
+	.RGBA8UI = {},
+	.RGBA16I = {},
+	.RGBA16UI = {},
+	.RGBA32I = {},
+	.RGBA32UI = {},
+	// Texture-Filterable Formats (not Color-Renderable)
+	.R8_SNORM = {},
+	.RG8_SNORM = {},
+	.RGB8_SNORM = {},
+	.RGBA8_SNORM = {},
+	.SRGB8 = {},
+	.R16F = {
+		gl_name = R16F,
+		format = .RED,
+		type = .HALF_FLOAT,
+		capabilities = { .Texture_Filterable }
+	},
+	.RG16F = {},
+	.RGB16F = {},
+	.RGBA16F = {},
+	.R11F_G11F_B10F = {},
+	.RGB9_E5 = {},
+	// Neither Color-Renderable nor Texture-Filterable
+	.RGB8UI = {},
+	.RGB16UI = {},
+	.RGB32UI = {},
+	.RGB8I = {},
+	.RGB16I = {},
+	.RGB32I = {},
+	.R32F = {
+		gl_name = R32F,
+		format = .RED,
+		type = .FLOAT,
+		capabilities = {}
+	},
+	.RG32F = {},
+	.RGB32F = {},
+	.RGBA32F = {},
+	// Depth-Renderable
+	.DEPTH_COMPONENT16 = {},
+	.DEPTH_COMPONENT24 = {},
+	.DEPTH_COMPONENT32F = {},
+	.DEPTH24_STENCIL8 = {},
+	.DEPTH32F_STENCIL8 = {},
+}
+
+// For Unsized Formats:
+// > Effective Internal Formats: Table 3.12 Page 128 es 3.0.6
+// @Note: Alpha8, Luminance8, Luminance8Alpha8 don't exist.
+//        The spec is just pointing out what data is in the channels.
+//
+// Format           |  Type                   |   Effective Internal Format
+// -----------------|-------------------------|--------------------------
+// RGB              |  UNSIGNED_BYTE          |  RGB8
+// RGBA             |  UNSIGNED_BYTE          |  RGBA8
+// ALPHA            |  UNSIGNED_BYTE          |  Alpha8           (Packed like R8)
+// LUMINANCE        |  UNSIGNED_BYTE          |  Luminance8       (Packed like R8)
+// LUMINANCE_ALPHA  |  UNSIGNED_BYTE          |  Luminance8Alpha8 (Packed like R8A8)
+// RGB              |  UNSIGNED_SHORT_5_5_5_1 |  RGB5_A1
+// RGBA             |  UNSIGNED_SHORT_5_6_5   |  RGB565
+// RGBA             |  UNSIGNED_SHORT_4_4_4_4 |  RGBA4
+
+Pixel_Format :: enum GLenum {
+	RED,
+	RG,
+	RGB,
+	RGBA,
+
+	RED_INTEGER,
+	RG_INTEGER,
+	RGB_INTEGER,
+	RGBA_INTEGER,
+
+	DEPTH_COMPONENT,
+	DEPTH_STENCIL,
+	LUMINANCE_ALPHA,
+	LUMINANCE,
+	ALPHA,
+}
+
+/* WIP
 RENDERBUFFER,
 
-DEPTH_COMPONENT16,
 STENCIL_INDEX,
 STENCIL_INDEX8,
-DEPTH_STENCIL,
 
 RENDERBUFFER_WIDTH,
 RENDERBUFFER_HEIGHT,
@@ -559,14 +837,12 @@ RGB10_A2,
 UNPACK_SKIP_IMAGES,
 UNPACK_IMAGE_HEIGHT,
 TEXTURE_WRAP_R,
-UNSIGNED_INT_2_10_10_10_REV,
 TEXTURE_MIN_LOD,
 TEXTURE_MAX_LOD,
 TEXTURE_BASE_LEVEL,
 TEXTURE_MAX_LEVEL,
 MIN,
 MAX,
-DEPTH_COMPONENT24,
 TEXTURE_COMPARE_MODE,
 TEXTURE_COMPARE_FUNC,
 QUERY_RESULT,
@@ -613,9 +889,7 @@ RGB16F,
 VERTEX_ATTRIB_ARRAY_INTEGER,
 MIN_PROGRAM_TEXEL_OFFSET,
 R11F_G11F_B10F,
-UNSIGNED_INT_10F_11F_11F_REV,
 RGB9_E5,
-UNSIGNED_INT_5_9_9_9_REV,
 TRANSFORM_FEEDBACK_BUFFER_MODE,
 TRANSFORM_FEEDBACK_VARYINGS,
 TRANSFORM_FEEDBACK_BUFFER_START,
@@ -653,9 +927,6 @@ UNSIGNED_INT_SAMPLER_2D,
 UNSIGNED_INT_SAMPLER_3D,
 UNSIGNED_INT_SAMPLER_CUBE,
 UNSIGNED_INT_SAMPLER_2D_ARRAY,
-DEPTH_COMPONENT32F,
-DEPTH32F_STENCIL8,
-FLOAT_32_UNSIGNED_INT_24_8_REV,
 FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING,
 FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE,
 FRAMEBUFFER_ATTACHMENT_RED_SIZE,
@@ -666,7 +937,6 @@ FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE,
 FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE,
 FRAMEBUFFER_DEFAULT,
 UNSIGNED_INT_24_8,
-DEPTH24_STENCIL8,
 UNSIGNED_NORMALIZED,
 RENDERBUFFER_SAMPLES,
 FRAMEBUFFER_ATTACHMENT_TEXTURE_LAYER,
@@ -685,30 +955,6 @@ COLOR_ATTACHMENT12,
 COLOR_ATTACHMENT13,
 COLOR_ATTACHMENT14,
 COLOR_ATTACHMENT15,
-RG,
-RG_INTEGER,
-R8,
-RG8,
-R16F,
-R32F,
-RG16F,
-RG32F,
-R8I,
-R8UI,
-R16I,
-R16UI,
-R32I,
-R32UI,
-RG8I,
-RG8UI,
-RG16I,
-RG16UI,
-RG32I,
-RG32UI,
-R8_SNORM,
-RG8_SNORM,
-RGB8_SNORM,
-RGBA8_SNORM,
 SIGNED_NORMALIZED,
 UNIFORM_BUFFER_START,
 UNIFORM_BUFFER_SIZE,
@@ -743,7 +989,6 @@ VERTEX_ATTRIB_ARRAY_DIVISOR,
 ANY_SAMPLES_PASSED,
 ANY_SAMPLES_PASSED_CONSERVATIVE,
 RGB10_A2UI,
-INT_2_10_10_10_REV,
 TRANSFORM_FEEDBACK,
 TRANSFORM_FEEDBACK_PAUSED,
 TRANSFORM_FEEDBACK_ACTIVE,

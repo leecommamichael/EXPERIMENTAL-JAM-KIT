@@ -12,7 +12,7 @@ import stbtt "vendor:stb/truetype"
 //////////////////////////////////////////////////////////////////////
 
 globals: Globals
-
+MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 Globals :: struct {
 	// Assets
 	assets: Asset_Bundle,
@@ -31,7 +31,17 @@ Globals :: struct {
 	// I must write to it everything which is needed by any draw command.
 	// It also means that persistent data between runs of a command must be
 	// managed separately. Probably attached to Entity variants, if not global.
-	instance_staging: [1<<16]Any_Instance, // 64k instances is probably plenty...
+	// TODO: rename entity_instance_staging
+	instance_staging: [max(Entity_ID)]Any_Instance,
+	instance_buffer:  gl.Buffer,
+
+	// Text Rendering
+	glyph_staging:    [MAX_GLYPHS_PER_FRAME]Any_Instance,
+	glyph_buffer:     gl.Buffer,
+	glpyh_offset:     int,
+	immediate_glyph_staging: [MAX_GLYPHS_PER_FRAME]Any_Instance,
+	immediate_glyph_buffer:  gl.Buffer,
+
 	// Render+Entity Integration
 	uniforms:        Uniforms,
 	game_camera:     Mat4,
@@ -75,8 +85,7 @@ Entity :: struct {
 	// - 3d needs to sort by position
 	// - color is useful for debugging.
 	// This means a singular (non-instanced) thing needs to be 
-	using instance:  ^Any_Instance, // This will be copied.
-	_backing: Any_Instance, // Default backing memory for instance-pointer.
+	using instance: ^Any_Instance, // This will be copied.
 	hidden:   bool,
 }
 
@@ -141,6 +150,7 @@ Ren :: struct {
 	prev_cmd:  Draw_Command,
 	frame_UBO: gl.Buffer,
 	programs:  [Game_Shader]gl.Program, // constant
+	textures: [16]Texture_Binding
 }
 
 Game_Shader :: enum {
@@ -174,19 +184,36 @@ Ren_Vertex_Base :: struct {
 Draw_Command :: struct {
 	program:      gl.Program,
 	VAO:          gl.VertexArrayObject,
-	attributes:   []Attribute_Binding,
+	// attributes:   []Attribute_Binding, // easy to add. might do for debug.
 	textures:     []Texture_Binding,
 	index_buffer: gl.Buffer,
 	index_count:  int,
-	// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
+		// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
 	mode:         Ren_Mode,
 }
-#assert(size_of(Draw_Command) < 90, "Watch it")
+#assert(size_of(Draw_Command) < 90, "Be mindful of this increasing.")
 
 Texture_Binding :: struct {
-	texture_unit: u32,
-	target:  gl.Texture_Target,
-	texture: gl.Texture,
+	texture_unit:   u32, // binding point
+	target:         gl.Texture_Target,
+	texture:        gl.Texture, // TODO: associate this to prebundlefilenames
+		// For copying
+	format: gl.Internal_Color_Format,
+	width:  int,
+	height: int,
+	level:  int,
+		// Texture Unit State (all fields below are optional)
+	magnify_filter: gl.Texture_Mag_Filter,
+	minify_filter:  gl.Texture_Min_Filter,
+	wrap_ST:        [2]gl.Texture_Wrap_Mode,
+		// Fields below are more likely to matter in 3D.
+	wrap_R:         gl.Texture_Wrap_Mode,
+	base_level:     uint,
+	max_level:      uint,
+	min_LOD:        f32,
+	max_LOD:        f32,
+	compare_func:   gl.Compare_Func,
+	compare_mode:   gl.Texture_Compare_Mode,
 }
 
 //  Interface ----------------------------------------- (fields you must assign)
@@ -241,7 +268,6 @@ Font :: struct {
 	name:       string,
 	file_bytes: []u8,
 	height_px:  f32,
-	// bitmap:     [512*512]u8,
 	scale:      f32,
 	is_monospace: bool, // otherwise proportional
 	// stb related data

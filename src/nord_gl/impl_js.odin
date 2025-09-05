@@ -491,8 +491,8 @@ TexSubImage2D :: proc (
 
 
 
-BindTexture :: proc (binding: uint, tex: Texture) {
-	glBindTexture(binding, tex)
+BindTexture :: proc (binding: Texture_Target, tex: Texture) {
+	glBindTexture(cast(uint) binding, tex)
 }
 
 
@@ -520,7 +520,7 @@ Set_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target, param: Textu
 Set_Texture_Compare_Func :: proc (target: Texture_Parameter_Target, param: Compare_Func) {
 	glTexParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
 }
-Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Compare_Mode) {
+Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Texture_Compare_Mode) {
 	glTexParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
 }
 Set_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {

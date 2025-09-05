@@ -477,7 +477,33 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 
 
 
-TexImage2D :: proc (
+TexImage2D :: proc {
+	make_texture_2D,
+	TexImage2D_verbatim
+}
+
+make_texture_2D :: proc (
+	target: Texture_2D_Target,
+	internalformat: Internal_Color_Format,
+	width, height: int,
+	data: $Indistinct/[]$T,
+	lod: uint = 0,
+	_loc := #caller_location
+) -> ( err: Error = .NO_ERROR ) {
+	info := Internal_Format_Infos[internalformat]
+	TexImage2D_verbatim(
+		target,
+		lod,
+		info.gl_name,
+		width, height,
+		info.format,
+		info.type,
+		data
+	)
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+TexImage2D_verbatim :: proc (
 	target: Texture_2D_Target,
 	level: int,
 	internalformat: int,
@@ -527,8 +553,8 @@ TexSubImage2D :: proc (
 
 
 
-BindTexture :: proc (binding: uint, tex: Texture) {
-	glBindTexture(binding, auto_cast tex)
+BindTexture :: proc (binding: Texture_Target, tex: Texture) {
+	glBindTexture(cast(uint)binding, auto_cast tex)
 }
 
 
@@ -556,7 +582,7 @@ Set_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target, param: Textu
 Set_Texture_Compare_Func :: proc (target: Texture_Parameter_Target, param: Compare_Func) {
 	glTexParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
 }
-Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Compare_Mode) {
+Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Texture_Compare_Mode) {
 	glTexParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
 }
 Set_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {

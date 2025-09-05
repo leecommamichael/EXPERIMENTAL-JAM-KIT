@@ -2,6 +2,7 @@ package main
 
 import "base:runtime"
 import "core:log"
+import "core:c"
 import "core:strings"
 import "core:os/os2"
 import "core:image/png"
@@ -16,12 +17,12 @@ import stbi "vendor:stb/image"
 // use a desktop-specific file I/O procedure to overwrite the cache.
 font_files: []runtime.Load_Directory_File = #load_directory("../assets")
 
-MAX_ATLAS_SIZE :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
-MAX_ATLAS_BYTES :: MAX_ATLAS_SIZE * MAX_ATLAS_SIZE // 268 MB
+MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
+MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
 
 Asset_Bundle :: struct {
 	font_infos: map[string]stbtt.fontinfo,
-	font_atlas: []u8
+	font_atlas: ^png.Image
 }
 
 asset_init :: proc () {
@@ -53,13 +54,25 @@ load_ttf :: proc (
 	return
 }
 
-pack_chars :: 95
+Pack_Range :: struct {
+	rects: []stbrp.Rect,
+	range: stbtt.pack_range,
+	font:  ^Font,
+}
+
+num_fonts :: len(Font_Variant) * len(Font_Usage)
+pack_chars :: 95 // ASCII table
 
 bundle_fonts :: proc () {
 	atlas_size: [2]int
 	pack_ctx: stbtt.pack_context
 	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
-	stbtt.PackBegin(&pack_ctx, raw_data(atlas_bytes), MAX_ATLAS_SIZE, MAX_ATLAS_SIZE, MAX_ATLAS_SIZE, 1, nil)
+	pack_ranges := make([]Pack_Range, num_fonts)
+	rects := make([]stbrp.Rect, pack_chars * num_fonts)
+	raw_rects := raw_data(rects)
+	stbtt.PackBegin(&pack_ctx, raw_data(atlas_bytes), MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, nil)
+	total_rects: c.int = 0
+	font_index: int = 0
 	for font_file in font_files {
 		splits := strings.split(font_file.name, "-") // LEAK
 		if len(splits) < 2 {
@@ -85,11 +98,11 @@ bundle_fonts :: proc () {
 			continue
 		}
 		height_px_for_usage: [Font_Usage]f32 = {
-			.caption     = 10,
-			.body        = 12,
-			.body_large  = 16,
-			.header      = 20,
-			.mono        = 12,
+			.caption     = 64,
+			.body        = 64,
+			.body_large  = 64,
+			.header      = 64,
+			.mono        = 64,
 		}
 
 		//////////////////////////////////////////////////////////////////////	
@@ -100,7 +113,7 @@ bundle_fonts :: proc () {
 		case "Italic.ttf"    : variant = .italic
 		case "Regular.ttf"   : variant = .regular
 		case:
-			log.debugf("FYI: Unrecognized Font_Variant (not loaded) %v", font_file.name)
+			log.warnf("FYI: Unrecognized Font_Variant (not loaded) %v", font_file.name)
 			continue
 		}
 
@@ -110,53 +123,83 @@ bundle_fonts :: proc () {
 			height_px := height_px_for_usage[usage]
 			font: ^Font = &globals.fonts[usage][variant]
 			ok := load_ttf(font_file.name, font_file.data, font)
-			font.height_px = height_px // TWO STEP INIT
 			if !ok {
-				log.warnf("Font parsing failed. %v", font_file.name)
+				log.errorf("Font parsing failed. %v", font_file.name)
 				continue
 			} // else continue to add font to atlas
-			rects := make([]stbrp.Rect, pack_chars)
-			defer delete(rects)
-			rdata := raw_data(rects)
+			set_font_height(font, height_px)
 			font.data = make([]stbtt.packedchar, pack_chars)
-			ranges := stbtt.pack_range {
+			range := stbtt.pack_range {
 				font_size = height_px,
 				first_unicode_codepoint_in_range = 32, // a
 				num_chars = pack_chars,
 				chardata_for_range = raw_data(font.data)
 			}
-			num_rects := stbtt.PackFontRangesGatherRects(&pack_ctx, &font.info, &ranges, 2, rdata)
-			stbtt.PackFontRangesPackRects(&pack_ctx, rdata, num_rects)
-			ok = cast(bool) stbtt.PackFontRangesRenderIntoRects(&pack_ctx, &font.info, &ranges, 1, rdata)
-			if !ok {
-				log.warnf("Font rasterizing failed. %v", font_file.name)
+			rects_so_far := total_rects
+			range_rects := rects[rects_so_far:rects_so_far+pack_chars]
+			num_rects := stbtt.PackFontRangesGatherRects(&pack_ctx, &font.info, &range, 1, raw_data(range_rects))
+			pack_ranges[font_index] = Pack_Range {
+				range_rects,
+				range,
+				font,
+			}
+			total_rects += num_rects
+			font_index += 1
+			if num_rects < 1 {
+				log.warnf("GatherRects found no rects in font: %v", font_file.name)
 				continue
-			} // else continue to adjust atlas dimensions 
-
-			for i in 0 ..< num_rects {
-				r := rects[i]
-				x := cast(int) r.x + cast(int) r.w
-				y := cast(int) r.y + cast(int) r.h
-				if x > atlas_size.x {
-					atlas_size.x = x
-				}
-				if y > atlas_size.y {
-					atlas_size.y = y
-				}
-			} // for rect
+			}
 		} // for usage
 	} // for file
+
+	stbtt.PackFontRangesPackRects(&pack_ctx, raw_data(rects), total_rects)
+	for &pack_range in pack_ranges {
+		ok := cast(bool) stbtt.PackFontRangesRenderIntoRects(
+			&pack_ctx,
+			&pack_range.font.info,
+			&pack_range.range, 1,
+			raw_data(pack_range.rects))
+		if !ok {
+			log.errorf("Font rasterizing failed.")
+			continue
+		} // else continue to adjust atlas dimensions 
+	}
+
+	for r in rects {
+		x := cast(int) r.x + cast(int) r.w
+		y := cast(int) r.y + cast(int) r.h
+		if x > atlas_size.x {
+			atlas_size.x = x
+		}
+		if y > atlas_size.y {
+			atlas_size.y = y
+		}
+	} // for rect
 	log.debugf("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
-	stbi.write_png(FONT_ATLAS_PATH, i32(atlas_size.x), i32(atlas_size.y), 1, raw_data(atlas_bytes), MAX_ATLAS_SIZE)
+	log.infof("Writing PNG...")
+	ok := cast(b32) stbi.write_png(FONT_ATLAS_PATH, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, raw_data(atlas_bytes), MAX_ATLAS_PIXELS)
+	if !ok {
+		log.errorf("STBI failed to write PNG")
+	}
+	log.infof("Wrote PNG...")
+	delete(pack_ranges)
+	delete(rects)
+	delete(atlas_bytes)
 }
 
 FONT_ATLAS_PATH :: "./font_atlas.png"
 
 load_bundled_fonts :: proc () {
+	log.infof("Reading PNG...")
 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
 	assert(err == nil)
-	img, img_err := png.load_from_bytes(font_atlas_bytes)
-	assert(img_err == nil)
-	globals.assets.font_atlas = img.pixels.buf[:] // is dynamic
+	log.infof("Loading PNG...")
+	img, img_err := png.load_from_bytes(font_atlas_bytes, {})
+	log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
+	if img_err != nil {
+		log.errorf("%v", img_err)
+		assert(img_err == nil)
+	}
+	globals.assets.font_atlas = img
 }

@@ -16,11 +16,7 @@ init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
 	entity.id = id
 	entity.used = true
 	entity.scale = 1
-	entity.instance = &entity._backing
-	// entity.instance = subscript_aligned_array(&globals.ubo_instance_data, cast(int) entity.id)
-	// entity.instance^ = {} // zero
-	// entity.instance.color.a = 1
-	// entity.instance.uv_transform = {0,0,1,1}
+	entity.instance = &globals.instance_staging[entity.id]
 }
 
 make_entity :: proc {
@@ -68,9 +64,25 @@ ren_make :: proc () -> ^Ren {
 	err, ren.frame_UBO = gl.CreateBuffer()
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferData(.UNIFORM_BUFFER, &globals.uniforms, .STATIC_DRAW)
+	gl.BindBuffer(.UNIFORM_BUFFER, 0)
+
+	gl.GenBuffers(1, &globals.instance_buffer)
+	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
+	gl.BufferData(.ARRAY_BUFFER, globals.instance_staging[:], .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+
+	gl.GenBuffers(1, &globals.glyph_buffer)
+	gl.BindBuffer(.ARRAY_BUFFER, globals.glyph_buffer)
+	gl.BufferData(.ARRAY_BUFFER, globals.glyph_staging[:], .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+	gl.GenBuffers(1, &globals.immediate_glyph_buffer)
+	gl.BindBuffer(.ARRAY_BUFFER, globals.immediate_glyph_buffer)
+	gl.BufferData(.ARRAY_BUFFER, globals.immediate_glyph_staging[:], .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
+	ren.programs[.Image] = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 
 	return ren
 }
@@ -155,6 +167,8 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.view = globals.game_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
+	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
+	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
 
 	for entity in globals.entities_3D {
 		switch entity.type {
@@ -163,6 +177,7 @@ ren_draw :: proc (ren: ^Ren) {
 		}
 	}
 
+	// TODO: Just use a different shader for 2D things. Don't have to copy this.
 	globals.uniforms.projection = globals.ui_orthographic
 	globals.uniforms.view = globals.ui_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
@@ -186,12 +201,14 @@ ren_draw :: proc (ren: ^Ren) {
 //
 // But the instance buffer is shared, so that's good.
 ren_make_basic_draw_cmd :: proc (
+	instance_buffer: gl.Buffer,
+	instance_index: int,
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
-) -> Draw_Command {
-	VAO: gl.VertexArrayObject
-	gl.GenVertexArrays(1, &VAO)
-	gl.BindVertexArray(VAO)
+) -> (cmd: Draw_Command) {
+	cmd.program = globals.ren.programs[.Basic]
+	gl.GenVertexArrays(1, &cmd.VAO)
+	gl.BindVertexArray(cmd.VAO)
 
 	// Create Vertex Buffer
 	VBO: gl.Buffer
@@ -201,12 +218,12 @@ ren_make_basic_draw_cmd :: proc (
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	// Create Index Buffer
-	index_count := len(indices)
-	index_buffer_id: gl.Buffer
-	gl.GenBuffers(1, &index_buffer_id)
-	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, index_buffer_id)
+	cmd.index_count = len(indices)
+	gl.GenBuffers(1, &cmd.index_buffer)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 
+	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
 	attributes: []Attribute_Binding = {
 		{
 			buffer = VBO,
@@ -229,27 +246,183 @@ ren_make_basic_draw_cmd :: proc (
 			stride = size_of(Ren_Vertex_Base),
 			offset = offset_of(Ren_Vertex_Base, normal)
 		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .mat4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, model_transform)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, uv_transform)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, color)
+		},
 	}
+	set_VAO_attributes(&cmd.VAO, attributes)
+	return
+}
 
-	draw_cmd := ren_make_draw_cmd(globals.ren.programs[.Basic], VAO, attributes, index_count)
-	return draw_cmd
+ren_make_image_draw_cmd :: proc (
+	instance_buffer: gl.Buffer,
+	instance_index: int,
+	vertices: []Ren_Vertex_Base,
+	indices:  []u32,
+) -> (cmd: Draw_Command) {
+	cmd.program = globals.ren.programs[.Image]
+	gl.GenVertexArrays(1, &cmd.VAO)
+	gl.BindVertexArray(cmd.VAO)
+
+	// Create Vertex Buffer
+	VBO: gl.Buffer
+	gl.GenBuffers(1, &VBO)
+	gl.BindBuffer(.ARRAY_BUFFER, VBO)
+	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+
+	// Create Index Buffer
+	cmd.index_count = len(indices)
+	gl.GenBuffers(1, &cmd.index_buffer)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
+	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+
+	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
+	attributes: []Attribute_Binding = {
+		{
+			buffer = VBO,
+			rate   = .Vertex,
+			type   = .vec3,
+			stride = size_of(Ren_Vertex_Base), 
+			offset = offset_of(Ren_Vertex_Base, position)
+		},
+		{
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec2,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, texcoord)
+		},
+		{ 
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec3,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, normal)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .mat4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, model_transform)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, uv_transform)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, color)
+		},
+	}
+	set_VAO_attributes(&cmd.VAO, attributes)
+	return
+}
+
+ren_make_water_draw_cmd :: proc (
+	entity_id: Entity_ID,
+	vertices: []Ren_Vertex_Base,
+	indices:  []u32,
+) -> (cmd: Draw_Command) {
+	cmd.program = globals.ren.programs[.Water]
+	gl.GenVertexArrays(1, &cmd.VAO)
+	gl.BindVertexArray(cmd.VAO)
+
+	// Create Vertex Buffer
+	VBO: gl.Buffer
+	gl.GenBuffers(1, &VBO)
+	gl.BindBuffer(.ARRAY_BUFFER, VBO)
+	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+
+	// Create Index Buffer
+	cmd.index_count = len(indices)
+	gl.GenBuffers(1, &cmd.index_buffer)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
+	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+	
+	entity_offset := uintptr(size_of(Any_Instance) * entity_id) 
+	attributes: []Attribute_Binding = {
+		{
+			buffer = VBO,
+			rate   = .Vertex,
+			type   = .vec3,
+			stride = size_of(Ren_Vertex_Base), 
+			offset = offset_of(Ren_Vertex_Base, position)
+		},
+		{
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec2,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, texcoord)
+		},
+		{ 
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec3,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, normal)
+		},
+		{
+			buffer = globals.instance_buffer,
+			rate = .Instance,
+			type = .mat4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, model_transform)
+		},
+		{
+			buffer = globals.instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, uv_transform)
+		},
+		{
+			buffer = globals.instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, color)
+		},
+	}
+	set_VAO_attributes(&cmd.VAO, attributes)
+	return
 }
 
 GLES_MAX_BINDINGS :: 16 // per spec
+GLES_MAX_FRAGMENT_TEXTURES :: 16 // limit from Intel HD 4000
 
-ren_make_draw_cmd :: proc (
-	program: gl.Program,
-	VAO:     gl.VertexArrayObject,
+set_VAO_attributes :: proc (
+	VAO:        ^gl.VertexArrayObject,
 	attributes: []Attribute_Binding,
-	index_count: int,
-) -> Draw_Command { 
-	assert(GLES_MAX_BINDINGS > len(attributes), "GLSL shaders only have 16 slots.")
-
-	// Allocate room for inputs
-	obj: Draw_Command
-	obj.program = program
-	obj.index_count = index_count
-	obj.VAO = VAO
+) {
+	assert(len(attributes) <= GLES_MAX_BINDINGS , "GLSL shaders only have 16 slots.")
 
 	// Enable inputs
 	next_location: uint = 0
@@ -282,7 +455,7 @@ ren_make_draw_cmd :: proc (
 	}
 
 	// Create ideal VAO for this obj.
-	gl.BindVertexArray(obj.VAO)
+	gl.BindVertexArray(VAO^)
 
 	for attr in attributes {
 		divisor: uint = 0 if attr.rate == .Vertex else 1
@@ -291,7 +464,7 @@ ren_make_draw_cmd :: proc (
 		for slot_num in 0..<slots {
 			index := attr.location + slot_num
 			num_components := attr.value_count / cast(int) slots
-			// WARNING:
+			// WARNING: Breaks when you start needing ivecs... probably.
 			// This size_of in here is a little forceful.
 			// But usually if you've got a multi-slot it's an f32 matrix.
 			offset := attr.offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
@@ -319,10 +492,7 @@ ren_make_draw_cmd :: proc (
 	}
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
-
-	return obj
 }
-
 
 glsl_attrib_is_int :: proc (type: GLSL_Attribute_Type) -> bool {
 	return type >= .i32
@@ -333,6 +503,61 @@ slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
 		return 4
 	}
 	return 1
+}
+
+ren_make_texture_binding :: proc (
+	binding: ^Texture_Binding
+) {
+	err, tex := gl.CreateTexture()
+	assert(err == .NO_ERROR) // TODO: Not sure how I wanna deal with this yet.
+	binding.texture = tex
+}
+
+ren_set_texture_state :: proc (
+	binding: ^Texture_Binding
+) {
+	assert(binding.texture_unit <= GLES_MAX_FRAGMENT_TEXTURES)
+
+	err, tex := gl.CreateTexture()
+	assert(err == .NO_ERROR) // TODO: Not sure how I wanna deal with this yet.
+	binding.texture = tex
+	gl.glActiveTexture(gl.TEXTURE0 + uint(binding.texture_unit))
+	gl.BindTexture(binding.target, binding.texture)
+	// TODO: No variant of a binding for a cubemap. Implement one to find an API.
+	parameter_target := gl.parameter_for_target(binding.target)
+	if binding.magnify_filter != nil {
+		gl.Set_Texture_Mag_Filter(parameter_target, binding.magnify_filter)
+	}
+	if binding.minify_filter != nil {
+		gl.Set_Texture_Min_Filter(parameter_target, binding.minify_filter)
+	}
+	if binding.wrap_ST[0] != nil {
+		gl.Set_Texture_Wrap_S(parameter_target, binding.wrap_ST[0])
+	}
+	if binding.wrap_ST[1] != nil {
+		gl.Set_Texture_Wrap_T(parameter_target, binding.wrap_ST[1])
+	}
+	if binding.wrap_R != nil {
+		gl.Set_Texture_Wrap_R(parameter_target, binding.wrap_R)
+	}
+	if binding.base_level != 0 {
+		gl.Set_Texture_Base_Level(parameter_target, binding.base_level)
+	}
+	if binding.max_level != 0 {
+		gl.Set_Texture_Max_Level(parameter_target, binding.max_level)
+	}
+	if binding.min_LOD != 0 {
+		gl.Set_Texture_Min_LOD(parameter_target, binding.min_LOD)
+	}
+	if binding.max_LOD != 0 {
+		gl.Set_Texture_Max_LOD(parameter_target, binding.max_LOD)
+	}
+	if binding.compare_func != nil {
+		gl.Set_Texture_Compare_Func(parameter_target, binding.compare_func)
+	}
+	if binding.compare_mode != nil {
+		gl.Set_Texture_Compare_Mode(parameter_target, binding.compare_mode)
+	}
 }
 
 
@@ -390,7 +615,6 @@ basic_vertex_inputs +
 `
 
 basic_fragment_shader_source :: fragment_preamble + `
-	uniform sampler2D font_atlas;
 
 	in vec4 io_color;
 	out vec4 outColor;
@@ -449,7 +673,37 @@ water_fragment_shader_source :: fragment_preamble + `
 		outColor = vec4(light, 1.0);
 	}
 `
+// Image ///////////////////////////////////////////////////////////////////////
+image_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
+`
+	out vec4 io_color;
+	out vec2 uv;
+	flat out vec4 uv_xform;
 
+	void main() {
+		uv_xform = i_uv_xform;
+		uv = v_texcoord;
+		io_color = i_color;
+		mat4 mvp = frame.projection * frame.view * i_model_mat;
+		gl_Position = mvp * vec4(v_position, 1);
+	}
+`
+
+image_fragment_shader_source :: fragment_preamble + `
+	uniform sampler2D font_atlas;
+
+	in vec4 io_color;
+	in vec2 uv;
+	flat in vec4 uv_xform;
+
+	out vec4 outColor;
+
+	void main() {
+		vec2 texel = uv_xform.xy + (uv * uv_xform.zw);
+		vec4 tex_color = texture(font_atlas, texel);
+		outColor = tex_color;
+	}
+`
 //////////////////////////////////////////////////////////////////////
 // Section: Geometry
 //////////////////////////////////////////////////////////////////////
