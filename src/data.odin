@@ -23,9 +23,9 @@ Globals :: struct {
 	// Entity Service
 	// ubo_instance_data: Aligned_Array(Any_Instance), // TODO: Unused. Make it lights some day?
 	_entity_storage: [max(Entity_ID)]Entity_Memory,
-	entities:        [dynamic]^Entity_Memory,
-	entities_2D:     [dynamic]^Entity_Memory,
-	entities_3D:     [dynamic]^Entity_Memory,
+	entities:        [dynamic]^Entity,
+	entities_2D:     [dynamic]^Entity,
+	entities_3D:     [dynamic]^Entity,
 	// This instance data is shared by across many (all?) shaders.
 	// That means no intelligent BufferSubData to minimize traffic.
 	// I must write to it everything which is needed by any draw command.
@@ -87,20 +87,6 @@ Entity :: struct {
 	// This means a singular (non-instanced) thing needs to be 
 	using instance: ^Any_Instance, // This will be copied.
 	hidden:   bool,
-}
-
-// Perhaps the tension I feel on designing this is that instance data doesn't make
-// any sense in the abstract, and it totally depends on the variant.
-// One thing I can say, is that not all renders are truly instanced. Just batches of 1.
-// So to take this opinion, I can leave it to the Draw Command.
-//
-// CONSIDER: This is what I'm weighing
-CONSIDER_Instance_Usage :: enum {
-	Single_Owned,            // this Entity has its own instance data                                 (3D single) (enables painters algo)
-	Many_Shared,             // this Entity uses the global instance buffer for staging (stateless)   (text) (typical variant)
-	// I'm not sure if these are use-cases yet; but I can imagine.
-	Many_Dedicated_Retained, // this Entity has its own buffer for instances                          (complex variant) (maybe tileset)
-	Single_Reference,        // this Entity's instance data points into a buffer                      (entity as handle to instance) (idk)
 }
 
 Transform :: struct {
@@ -263,6 +249,8 @@ Shader_Input_Rate :: enum {
 // Section: Text
 //////////////////////////////////////////////////////////////////////
 
+Fonts :: [Font_Usage]Font_Family
+
 // What you need to render text.
 Font :: struct {
 	name:       string,
@@ -279,14 +267,4 @@ Font :: struct {
   descent:           f32,
   line_height:       f32,
   line_gap:          f32,
-}
-
-// What you need to render _styled_ text.
-Font_Family :: [Font_Variant]Font
-
-Font_Variant :: enum {
-	regular,
-	bold,
-	italic,
-	bold_italic
 }

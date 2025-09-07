@@ -5,6 +5,7 @@ import "core:log"
 import "core:c"
 import "core:strings"
 import "core:os/os2"
+import "core:image"
 import "core:image/png"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
@@ -22,7 +23,7 @@ MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
 
 Asset_Bundle :: struct {
 	font_infos: map[string]stbtt.fontinfo,
-	font_atlas: ^png.Image
+	font_atlas: ^tga.Image
 }
 
 asset_init :: proc () {
@@ -64,6 +65,7 @@ num_fonts :: len(Font_Variant) * len(Font_Usage)
 pack_chars :: 95 // ASCII table
 
 bundle_fonts :: proc () {
+	log_time("pack_font_atlas")
 	atlas_size: [2]int
 	pack_ctx: stbtt.pack_context
 	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
@@ -71,6 +73,7 @@ bundle_fonts :: proc () {
 	rects := make([]stbrp.Rect, pack_chars * num_fonts)
 	raw_rects := raw_data(rects)
 	stbtt.PackBegin(&pack_ctx, raw_data(atlas_bytes), MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, nil)
+	stbtt.PackSetOversampling(&pack_ctx, 3, 3)
 	total_rects: c.int = 0
 	font_index: int = 0
 	for font_file in font_files {
@@ -177,12 +180,13 @@ bundle_fonts :: proc () {
 	} // for rect
 	log.debugf("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
-	log.infof("Writing PNG...")
-	ok := cast(b32) stbi.write_png(FONT_ATLAS_PATH, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, raw_data(atlas_bytes), MAX_ATLAS_PIXELS)
+	log_time("pack_font_atlas")
+	log_time("write_atlas_to_disk")
+	ok := cast(b32) stbi.write_tga(FONT_ATLAS_PATH, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, raw_data(atlas_bytes))
+	log_time("write_atlas_to_disk")
 	if !ok {
 		log.errorf("STBI failed to write PNG")
 	}
-	log.infof("Wrote PNG...")
 	delete(pack_ranges)
 	delete(rects)
 	delete(atlas_bytes)
@@ -191,11 +195,13 @@ bundle_fonts :: proc () {
 FONT_ATLAS_PATH :: "./font_atlas.png"
 
 load_bundled_fonts :: proc () {
-	log.infof("Reading PNG...")
+	log_time("read_atlas_from_disk")
 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
+	log_time("read_atlas_from_disk")
 	assert(err == nil)
-	log.infof("Loading PNG...")
-	img, img_err := png.load_from_bytes(font_atlas_bytes, {})
+	log_time("decode_atlas_to_pixels")
+	img, img_err := tga.load_from_bytes(font_atlas_bytes, { .do_not_expand_grayscale })
+	log_time("decode_atlas_to_pixels")
 	log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
 	if img_err != nil {
 		log.errorf("%v", img_err)
@@ -203,3 +209,4 @@ load_bundled_fonts :: proc () {
 	}
 	globals.assets.font_atlas = img
 }
+import "core:image/tga"

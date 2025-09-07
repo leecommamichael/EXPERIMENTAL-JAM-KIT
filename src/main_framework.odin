@@ -33,21 +33,50 @@ framework_init :: proc () {
 	globals.game_view = 1
 	globals.ui_view = 1
 
-	game_entities := make([]^Entity_Memory, max(Entity_ID))
+	game_entities := make([]^Entity, max(Entity_ID))
 	globals.entities_3D = slice.into_dynamic(game_entities)
 
-	ui_entities := make([]^Entity_Memory, max(Entity_ID))
+	ui_entities := make([]^Entity, max(Entity_ID))
 	globals.entities_2D = slice.into_dynamic(ui_entities)
 
-	entities := make([]^Entity_Memory, max(Entity_ID))
+	entities := make([]^Entity, max(Entity_ID))
 	globals.entities = slice.into_dynamic(entities)
 
 	globals.ren = ren_make()
 
 	ren_init(globals.ren)
-	ren_text_init()
 	asset_init()
 	game_init()
+}
+
+// Prepare an object for rendering.
+compute_gpu_command_parameters :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
+	if entity.hidden {
+// INTENT: If an object is hidden, don't add it to render-lists.
+		return false
+	}
+
+	switch entity.type {
+	case .None:
+	case .Text: finalize_text_draw_command(transmute(^Text_Entity)entity, immediate=false)
+	}
+
+	entity.model_transform =
+		linalg.matrix4_translate(entity.position) *
+		linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, 
+		                                         entity.rotation.y, 
+		                                         entity.rotation.z) *
+		linalg.matrix4_scale(entity.scale)
+
+	if entity.is_3D {
+// TODO: Bucket Opaque from Transparent
+// ASSUME: Centroid is 0,0,0 in model coordinates
+		centroid: Vec4 : { 0, 0, 0, 1 }
+    entity_centroid_in_world := entity.model_transform * centroid
+		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+	}
+
+	return true
 }
 
 // Mixed-scope between renderer and game entities.
@@ -60,7 +89,7 @@ framework_step :: proc (dt: f64) {
 	}
 	globals.uniforms.time += f32(dt)
 
-	// 1. Fill Caches //////////////////////////////////////////////////////////// 
+// Reset Caches ////////////////////////////////////////////////////////////////
 	clear(&globals.entities)
 	clear(&globals.entities_2D)
 	clear(&globals.entities_3D)
@@ -69,37 +98,23 @@ framework_step :: proc (dt: f64) {
 			append(&globals.entities, &e)
 		}
 	}
-	// 2. Simulate /////////////////////////////////////////////////////////////// 
-	//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 	game_step(dt)
-	////////////////////////////////////////////////////////////////////////////// 
-	// 3. Prepare Frame and Draw /////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 	finalize_simulation_frame :: proc () {
 		for &entity in globals.entities {
-			if entity.hidden {
-				// INTENT: If an object is hidden, don't add it to render-lists.
-				continue
-			}
+			compute_gpu_command_parameters(entity) or_continue
 
-			entity.model_transform =
-				linalg.matrix4_translate(entity.position) *
-				linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, 
-				                                         entity.rotation.y, 
-				                                         entity.rotation.z) *
-				linalg.matrix4_scale(entity.scale)
-			if !entity.is_3D {
-				append(&globals.entities_2D, entity)
-			} else {
-				// TODO: Bucket Opaque from Transparent
-				// ASSUME: Centroid is 0,0,0 in model coordinates
-				centroid: Vec4 : { 0, 0, 0, 1 }
-		    entity_centroid_in_world := entity.model_transform * centroid
-				entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+			if entity.is_3D {
 				append(&globals.entities_3D, entity)
+			} else {
+				append(&globals.entities_2D, entity)
 			}
 		}
-		// IDEA: Could use the same sort for UI and interpret it at Z index.
-	  slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity_Memory) -> bool {
+// IDEA: Could use the same sort for UI and interpret it at Z index.
+	  slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
 	    return i.distance_from_camera > j.distance_from_camera
 	  })
 	}

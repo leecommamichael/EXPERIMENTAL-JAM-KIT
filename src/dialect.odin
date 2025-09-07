@@ -2,6 +2,9 @@ package main
 
 import "core:strings"
 import "core:math"
+import "core:log"
+import "core:fmt"
+import "core:time"
 import "base:intrinsics"
 
 // Convert a null-terminated fixed-size byte array to a string.
@@ -10,6 +13,7 @@ bats :: proc "contextless" (byte_array: []u8) -> string {
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+// This proc doesn't consider NaN/Inf to be "real"
 is_real :: proc {
   is_real_float,
   is_real_array
@@ -88,3 +92,16 @@ vec2 :: #force_inline proc "contextless" (x, y: f32) -> [2]f32 {
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+// A stopwatch timer for quick and dirty measurements.
+log_timers: map[string]time.Tick
+
+log_time :: proc(id: string) {
+  if id in log_timers {
+    tick := log_timers[id]
+    duration := time.tick_diff(tick, time.tick_now())
+    fmt.printfln("[TIMER] % 6.1fms %s", f64(duration) / f64(time.Millisecond), id)
+    delete_key(&log_timers, id)
+  } else {
+    log_timers[id] = time.tick_now()
+  }
+}

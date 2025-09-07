@@ -62,13 +62,17 @@ game_init :: proc () {
 		globals.assets.font_atlas.pixels.buf[:])
 
 
-	hello: ^Text_Entity
 	hello = text(`hello`)
-	hello.position = Vec3{100,100,0}
+	hello.color = Vec4{1,0,0,1}
 }
-
+hello: ^Text_Entity
+offset: f32
 // Mixed-scope between renderer and game entities.
 game_step :: proc (dt: f64) {
+	offset += f32(10 * dt)
+	hello.position.x = offset
+	hello.position.y = offset
+	do_text(`immediately!`, hello.position)
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(dt))
 	// step_water(dt)
 }

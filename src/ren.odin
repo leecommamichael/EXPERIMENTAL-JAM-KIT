@@ -163,17 +163,18 @@ ren_clear :: proc () {
 // ASSUME: data is sorted.
 // TODO: Render opaque Near to Far and do fragment discard.
 ren_draw :: proc (ren: ^Ren) {
+	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
+	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
+	
 	globals.uniforms.projection = globals.game_camera
 	globals.uniforms.view = globals.game_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
-	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
 
 	for entity in globals.entities_3D {
 		switch entity.type {
 		case .None: ren_draw_entity(ren, entity)
-		case .Text: ren_draw_text(ren, transmute(^Text_Entity) entity)
+		case .Text: ren_draw_entity(ren, entity)
 		}
 	}
 
@@ -185,7 +186,7 @@ ren_draw :: proc (ren: ^Ren) {
 	for entity in globals.entities_2D {
 		switch entity.type {
 		case .None: ren_draw_entity(ren, entity)
-		case .Text: ren_draw_text(ren, transmute(^Text_Entity) entity)
+		case .Text: ren_draw_entity(ren, entity)
 		}
 	}
 }
@@ -311,7 +312,7 @@ ren_make_image_draw_cmd :: proc (
 			stride = size_of(Ren_Vertex_Base),
 			offset = offset_of(Ren_Vertex_Base, texcoord)
 		},
-		{ 
+		{
 			buffer = VBO,
 			rate = .Vertex,
 			type = .vec3,
@@ -673,15 +674,20 @@ water_fragment_shader_source :: fragment_preamble + `
 		outColor = vec4(light, 1.0);
 	}
 `
-// Image ///////////////////////////////////////////////////////////////////////
-image_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
+// Text ////////////////////////////////////////////////////////////////////////
+image_vertex_shader_source :: vertex_preamble +
 `
+	layout (location = 0) in vec3 v_position;
+	layout (location = 1) in vec2 v_texcoord;
+	layout (location = 2) in vec3 v_normal;
+	layout (location = 3) in mat4 i_model_mat;
+	layout (location = 7) in vec4 i_uv_xform;
+	layout (location = 8) in vec4 i_color;
+
 	out vec4 io_color;
 	out vec2 uv;
-	flat out vec4 uv_xform;
 
 	void main() {
-		uv_xform = i_uv_xform;
 		uv = v_texcoord;
 		io_color = i_color;
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
@@ -694,13 +700,13 @@ image_fragment_shader_source :: fragment_preamble + `
 
 	in vec4 io_color;
 	in vec2 uv;
-	flat in vec4 uv_xform;
 
 	out vec4 outColor;
 
 	void main() {
-		vec2 texel = uv_xform.xy + (uv * uv_xform.zw);
-		vec4 tex_color = texture(font_atlas, texel);
+		vec4 tex_color = texture(font_atlas, uv);
+		tex_color = mix(tex_color, io_color, tex_color.r);
+		tex_color = mix(tex_color, vec4(0,0,0,0), 1.-tex_color.r);
 		outColor = tex_color;
 	}
 `
@@ -764,4 +770,3 @@ make_triagle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
 //////////////////////////////////////////////////////////////////////
 // Section: UI Nodes
 //////////////////////////////////////////////////////////////////////
-
