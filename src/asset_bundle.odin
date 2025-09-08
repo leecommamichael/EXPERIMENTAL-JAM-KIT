@@ -7,6 +7,7 @@ import "core:strings"
 import "core:os/os2"
 import "core:image"
 import "core:image/png"
+import "core:encoding/cbor"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
@@ -30,7 +31,7 @@ asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
 	when ODIN_OS != .JS {
-		bundle_fonts()
+		// bundle_fonts()
 	}
 	load_bundled_fonts() // TODO store and load chardata.
 }
@@ -190,11 +191,56 @@ bundle_fonts :: proc () {
 	delete(pack_ranges)
 	delete(rects)
 	delete(atlas_bytes)
+	log_time("write_atlas_metadata")
+	serialized_fonts := make([]Serialized_Atlas_Font, num_fonts)
+	i: int
+	for usage in Font_Usage {
+		for variant in Font_Variant {
+			font := globals.fonts[usage][variant]
+
+			serialized_font: Serialized_Atlas_Font = {
+				usage = usage,
+				variant = variant,
+				packed_char = font.data,
+			}
+			serialized_fonts[i] = serialized_font
+			i += 1
+		}
+	}
+	file, err := os2.open(FONT_ATLAS_METADATA, {.Read, .Trunc, .Create})
+	defer os2.close(file)
+	assert(err == nil)
+	writer := os2.to_writer(file)
+	cbor.marshal_into_writer(writer, serialized_fonts)
+	log_time("write_atlas_metadata")
+	delete(serialized_fonts)
 }
 
+Serialized_Atlas_Font :: struct {
+	usage:       Font_Usage,
+	variant:     Font_Variant,
+	packed_char: []stbtt.packedchar,
+}
+
+FONT_ATLAS_METADATA :: "./font_atlas_metadata.cbor"
 FONT_ATLAS_PATH :: "./font_atlas.png"
 
 load_bundled_fonts :: proc () {
+	log_time("read_atlas_metadata_from_disk")
+	metadata_file, err_opening_metadata_file := os2.open(FONT_ATLAS_METADATA, {.Read})
+	if err_opening_metadata_file != nil {
+		log.errorf("%v", err_opening_metadata_file)
+		assert(false)
+	}
+	metadata_reader := os2.to_reader(metadata_file)
+	serialized_fonts := make([]Serialized_Atlas_Font, num_fonts)
+	unmarshal_error := cbor.unmarshal_from_reader(metadata_reader, &serialized_fonts)
+	for font in serialized_fonts {
+		globals.fonts[font.usage][font.variant].data = font.packed_char
+	}
+	assert(unmarshal_error == nil)
+	log_time("read_atlas_metadata_from_disk")
+
 	log_time("read_atlas_from_disk")
 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
 	log_time("read_atlas_from_disk")

@@ -12,6 +12,7 @@ create_sublime_text_logger :: proc () -> log.Logger {
 } 
 
 main :: proc() {
+	log_time("initializing platform")
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
 	} else when ODIN_OS == .JS {
@@ -20,8 +21,11 @@ main :: proc() {
 	}
 	ok := sugar.create_window([4]int{0,0, 900, 900}, "Wave Racer", use_gl = true)
 	if !ok { panic("Window creation failed.") }
+	log_time("initializing platform")
 
+	log_time("initializing framework")
 	framework_init()
+	log_time("initializing framework")
 
 	sugar.capture_cursor()
 	sugar.set_cursor_visible(false)
