@@ -6,11 +6,11 @@ import "core:c"
 import "core:strings"
 import "core:os/os2"
 import "core:image"
-import "core:image/png"
 import "core:encoding/cbor"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
+import "core:image/tga"
 // The framework uses #load to embed assets for web-support.
 //
 // TODO:
@@ -28,12 +28,14 @@ Asset_Bundle :: struct {
 }
 
 asset_init :: proc () {
+	log_time("Asset Bundler")
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
 	when ODIN_OS != .JS {
-		// bundle_fonts()
+		bundle_fonts()
 	}
 	load_bundled_fonts() // TODO store and load chardata.
+	log_time("Asset Bundler")
 }
 
 load_ttf :: proc (
@@ -66,7 +68,7 @@ num_fonts :: len(Font_Variant) * len(Font_Usage)
 pack_chars :: 95 // ASCII table
 
 bundle_fonts :: proc () {
-	log_time("pack_font_atlas")
+	log_time("1. Gather Rects")
 	atlas_size: [2]int
 	pack_ctx: stbtt.pack_context
 	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
@@ -155,8 +157,12 @@ bundle_fonts :: proc () {
 			}
 		} // for usage
 	} // for file
+	log_time("1. Gather Rects")
 
+	log_time("2. Pack Rects")
 	stbtt.PackFontRangesPackRects(&pack_ctx, raw_data(rects), total_rects)
+	log_time("2. Pack Rects")
+	log_time("3. Render Into Rects")
 	for &pack_range in pack_ranges {
 		ok := cast(bool) stbtt.PackFontRangesRenderIntoRects(
 			&pack_ctx,
@@ -168,6 +174,7 @@ bundle_fonts :: proc () {
 			continue
 		} // else continue to adjust atlas dimensions 
 	}
+	log_time("3. Render Into Rects")
 
 	for r in rects {
 		x := cast(int) r.x + cast(int) r.w
@@ -179,18 +186,27 @@ bundle_fonts :: proc () {
 			atlas_size.y = y
 		}
 	} // for rect
+	log_time("4. Resize Atlas")
+	cropped_atlas_bytes := make([]u8, MAX_ATLAS_PIXELS*atlas_size.y)
+	copy(cropped_atlas_bytes, atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
+	log_time("4. Resize Atlas")
+	delete(atlas_bytes)
 	log.debugf("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
-	log_time("pack_font_atlas")
+
 	log_time("write_atlas_to_disk")
-	ok := cast(b32) stbi.write_tga(FONT_ATLAS_PATH, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, raw_data(atlas_bytes))
+	ok := cast(b32) stbi.write_tga(
+		FONT_ATLAS_PATH,
+		w=cast(i32)MAX_ATLAS_PIXELS,
+		h=cast(i32)atlas_size.y,
+		comp=1,
+		data=raw_data(cropped_atlas_bytes))
 	log_time("write_atlas_to_disk")
 	if !ok {
 		log.errorf("STBI failed to write PNG")
 	}
 	delete(pack_ranges)
 	delete(rects)
-	delete(atlas_bytes)
 	log_time("write_atlas_metadata")
 	serialized_fonts := make([]Serialized_Atlas_Font, num_fonts)
 	i: int
@@ -214,6 +230,7 @@ bundle_fonts :: proc () {
 	cbor.marshal_into_writer(writer, serialized_fonts)
 	log_time("write_atlas_metadata")
 	delete(serialized_fonts)
+	delete(cropped_atlas_bytes)
 }
 
 Serialized_Atlas_Font :: struct {
@@ -223,7 +240,7 @@ Serialized_Atlas_Font :: struct {
 }
 
 FONT_ATLAS_METADATA :: "./font_atlas_metadata.cbor"
-FONT_ATLAS_PATH :: "./font_atlas.png"
+FONT_ATLAS_PATH :: "./font_atlas.tga"
 
 load_bundled_fonts :: proc () {
 	log_time("read_atlas_metadata_from_disk")
@@ -255,4 +272,3 @@ load_bundled_fonts :: proc () {
 	}
 	globals.assets.font_atlas = img
 }
-import "core:image/tga"
