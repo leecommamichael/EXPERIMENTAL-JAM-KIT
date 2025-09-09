@@ -95,7 +95,7 @@ vec2 :: #force_inline proc "contextless" (x, y: f32) -> [2]f32 {
 // A stopwatch timer for quick and dirty measurements.
 log_timers: map[string]time.Tick
 
-log_time :: proc(id: string) {
+log_time :: proc (id: string) {
   if id in log_timers {
     tick := log_timers[id]
     duration := time.tick_diff(tick, time.tick_now())

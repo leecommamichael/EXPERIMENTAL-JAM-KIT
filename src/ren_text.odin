@@ -10,27 +10,23 @@ import "core:c"
 import "core:math/linalg"
 
 //////////////////////////////////////////////////////////////////////
+// Entity Variant
+//////////////////////////////////////////////////////////////////////
+
+Text_Entity :: struct {
+	using base:  Entity,
+	using variant: Text,
+}
+
+Text :: struct {
+	text: string,
+	font: ^Font,
+}
+
+//////////////////////////////////////////////////////////////////////
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-Font_Usage :: enum {
-	caption,    // 10px, sans
-	body,       // 12px, sans
-	body_large, // 16px, sans
-	header,     // 20px, sans
-	mono        // 12px, mono
-}
-
-Font_Variant :: enum {
-	regular,
-	bold,
-	italic,
-	bold_italic
-}
-
-Font_Family :: [Font_Variant]Font
-
-// Use this to create an entity whose text changes when the string changes.
 text :: proc (
 	message: string,
 	usage:   Font_Usage   = .body,
@@ -42,8 +38,6 @@ text :: proc (
 	return entity
 }
 
-// Use this _every frame_ to draw text.
-// It will disappear otherwise.
 do_text :: proc (
 	message:  string,
 	position: Vec3,
@@ -60,27 +54,37 @@ do_text :: proc (
 	free_entity(entity)
 }
 
-//////////////////////////////////////////////////////////////////////
-// Implementation
-//////////////////////////////////////////////////////////////////////
+Font_Usage :: enum {
+	caption,    // 10px, sans // TODO: link to definition
+	body,       // 12px, sans
+	body_large, // 16px, sans
+	header,     // 20px, sans
+	mono        // 12px, mono
+}
 
-set_font_height :: proc (font: ^Font, new_height_px: f32) {
-	font.height_px = new_height_px
-  scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
-  font.scale = scale
+Font_Variant :: enum {
+	regular,
+	bold,
+	italic,
+	bold_italic
+}
 
-  // Get the font's line height
-  ascent, descent, line_gap: f32;
-  stbtt.GetFontVMetrics(&font.info, cast(^c.int)&ascent, cast(^c.int)&descent, cast(^c.int)&line_gap);
-  font.ascent   = ascent  * scale;
-  font.descent  = descent * scale;
-  font.line_gap = line_gap * scale;
-  font.line_height = font.ascent - font.descent + font.line_gap;
-
-  // Get the monospace character width
-  _lsb, monospace_advance: f32;
-  stbtt.GetCodepointHMetrics(&font.info, ' ', cast(^c.int)&monospace_advance, cast(^c.int)&_lsb);
-  font.monospace_advance = monospace_advance * scale;
+Font_Family :: [Font_Variant]Font
+Font :: struct {
+	name:       string,
+	file_bytes: []u8,
+	height_px:  f32,
+	scale:      f32,
+	is_monospace: bool, // else proportional
+	// stb related data
+	info: stbtt.fontinfo,
+	data: []stbtt.packedchar,
+  // Scaled metrics
+  monospace_advance: f32,
+  ascent:            f32,
+  descent:           f32,
+  line_height:       f32,
+  line_gap:          f32,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -136,5 +140,5 @@ finalize_text_draw_command :: proc (entity: ^Text_Entity, immediate: bool) {
 		gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[entity.id:entity.id+1])
 		gl.BindBuffer(.ARRAY_BUFFER, 0)
 	}
-	entity.draw_command = ren_make_image_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
+	entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
 }

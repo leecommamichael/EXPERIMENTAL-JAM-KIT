@@ -82,6 +82,7 @@ ren_make :: proc () -> ^Ren {
 
 	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
+	ren.programs[.Text]  = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
 	ren.programs[.Image] = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 
 	return ren
@@ -165,7 +166,7 @@ ren_clear :: proc () {
 ren_draw :: proc (ren: ^Ren) {
 	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
 	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
-	
+
 	globals.uniforms.projection = globals.game_camera
 	globals.uniforms.view = globals.game_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
@@ -273,7 +274,7 @@ ren_make_basic_draw_cmd :: proc (
 	return
 }
 
-ren_make_image_draw_cmd :: proc (
+ren_make_text_draw_cmd :: proc (
 	instance_buffer: gl.Buffer,
 	instance_index: int,
 	vertices: []Ren_Vertex_Base,
@@ -675,7 +676,7 @@ water_fragment_shader_source :: fragment_preamble + `
 	}
 `
 // Text ////////////////////////////////////////////////////////////////////////
-image_vertex_shader_source :: vertex_preamble +
+text_vertex_shader_source :: vertex_preamble +
 `
 	layout (location = 0) in vec3 v_position;
 	layout (location = 1) in vec2 v_texcoord;
@@ -695,7 +696,7 @@ image_vertex_shader_source :: vertex_preamble +
 	}
 `
 
-image_fragment_shader_source :: fragment_preamble + `
+text_fragment_shader_source :: fragment_preamble + `
 	uniform sampler2D font_atlas;
 
 	in vec4 io_color;

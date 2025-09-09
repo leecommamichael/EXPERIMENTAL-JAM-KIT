@@ -16,7 +16,7 @@ MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 Globals :: struct {
 	// Assets
 	assets: Asset_Bundle,
-	fonts: Fonts,
+	fonts: [Font_Usage]Font_Family,
 	// Render Service
 	gl_standard: GL_Standard,
 	ren:         ^Ren,
@@ -95,14 +95,6 @@ Transform :: struct {
 	scale:    f32, // PUNT nonuniform scale
 }
 
-Text_Entity :: struct {
-	using entity:  Entity,
-	using variant: Text,
-}
-Text :: struct {
-	text: string,
-	font: ^Font,
-}
 
 // ASSUMES: All variants are subtypes of Entity.
 Entity_Memory :: struct #packed {
@@ -249,22 +241,3 @@ Shader_Input_Rate :: enum {
 // Section: Text
 //////////////////////////////////////////////////////////////////////
 
-Fonts :: [Font_Usage]Font_Family
-
-// What you need to render text.
-Font :: struct {
-	name:       string,
-	file_bytes: []u8,
-	height_px:  f32,
-	scale:      f32,
-	is_monospace: bool, // otherwise proportional
-	// stb related data
-	info: stbtt.fontinfo,
-	data: []stbtt.packedchar,
-  // Scaled metrics
-  monospace_advance: f32,
-  ascent:            f32,
-  descent:           f32,
-  line_height:       f32,
-  line_gap:          f32,
-}
