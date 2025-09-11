@@ -10,12 +10,12 @@ Image_Entity :: struct {
 	using image: ^Image,
 }
 
-Image:: struct {
-	filename:  string,
-	size:      [2]int,
-	uv_offset: [2]f32,
-	uv_size:   [2]f32,
-	gpu_handle: gl.Texture,
+Image :: struct {
+	filename:       string,
+	size_in_pixels: [2]int,
+	uv_rect:        [4]f32, // .xy = top_left, .w = width, .z = height
+	lod:            int,
+	gpu_handle:     gl.Texture,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -30,9 +30,9 @@ image :: proc (filename: string) -> ^Image_Entity {
 }
 
 do_image :: proc (filename: string, position: Vec3) {
-	entity: ^Text_Entity = make_entity(Text_Entity)
+	entity: ^Image_Entity = make_entity(Image_Entity)
 	entity.position = position
-	finalize_text_draw_command(entity, immediate=true)
+	step_image(entity, immediate=true)
 	ren_draw_entity(globals.ren, transmute(^Entity) entity)
 	free_entity(entity)
 }
@@ -77,6 +77,10 @@ ren_make_image_draw_cmd :: proc (
 	indices:  []u32,
 ) -> (cmd: Draw_Command) {
 	cmd = ren_make_basic_draw_cmd(instance_buffer, instance_index, vertices, indices)
-	cmd.program = globals.ren.programs[.Image]
+	cmd.program = globals.ren.programs[Game_Shader.Image]
 	return cmd
+}
+
+step_image :: proc (entity: ^Image_Entity, immediate: bool) {
+	// ...
 }

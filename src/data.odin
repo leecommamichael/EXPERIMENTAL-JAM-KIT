@@ -74,8 +74,9 @@ INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 Entity :: struct {
 	type:  Entity_Type,
 	id:    Entity_ID,  // index in storage.
-	used:  bool,       // like "alive"
+	used:  bool,       // like "allocated | free"
 	is_3D: bool,       // 2D object anchored at origin in top-left (0,0)
+	time_scale:   f64,
 	draw_command: Draw_Command,
 	distance_from_camera: f32,
 	parent:          ^Entity,
@@ -137,6 +138,7 @@ Game_Shader :: enum {
 	Image,
 	UI_Box,
 	Water,
+	Sprite
 }
 
 Any_Instance :: struct {

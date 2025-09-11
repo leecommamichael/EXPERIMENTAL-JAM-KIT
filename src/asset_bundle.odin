@@ -11,6 +11,9 @@ import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
 import "core:image/tga"
+import "core:image/png"
+import aseprite "third-party/odin-aseprite"
+import aseprite_utils "third-party/odin-aseprite/utils"
 
 //////////////////////////////////////////////////////////////////////
 // Interface
@@ -18,7 +21,8 @@ import "core:image/tga"
 Asset_Bundle :: struct {
 	font_infos: map[string]stbtt.fontinfo,
 	font_atlas: ^tga.Image,
-	images: map[string]Image
+	images: map[string]Image,
+	sprites: map[string]Sprite,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -34,6 +38,7 @@ asset_init :: proc () {
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
 	when ODIN_OS != .JS {
 		bundle_fonts()
+		bundle_textures()
 	}
 	load_bundled_fonts()
 	log_time("Asset Bundler")
@@ -74,7 +79,7 @@ load_bundled_fonts :: proc () {
 	log_time("read_atlas_from_disk")
 	assert(err == nil)
 	log_time("decode_atlas_to_pixels")
-	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale })
+	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
 	log_time("decode_atlas_to_pixels")
 	log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
 	if img_err != nil {
@@ -302,19 +307,151 @@ bundle_fonts :: proc () {
 //////////////////////////////////////////////////////////////////////
 // Implementation (2/2) Texture Atlas                (4 channel image)
 //////////////////////////////////////////////////////////////////////
+Serialized_Image :: struct {
+	
+}
+
+Serialized_Animation :: struct {
+	[]Serialized_Animation_Frame
+}
+
+Serialized_Animation_Frame :: struct {
+
+}
+
 
 TEXTURE_ATLAS_METADATA :: "./texture_atlas_metadata.cbor"
 TEXTURE_ATLAS_PATH :: "./texture_atlas.tga"
-
 bundle_textures :: proc () {
+// I need to iterate over these and render from them.
+	Aseprite_Animation :: struct {
+		document:  aseprite.Document,
+		tag:       Maybe(aseprite_utils.Tag),
+		animation: aseprite_utils.Animation,
+	}
+	Aseprite_Image :: struct {
+		document: aseprite.Document,
+		image:    aseprite_utils.Image,
+	}
+	Packable_Rect :: union {
+		^png.Image,
+		Aseprite_Image,
+		Aseprite_Animation,
+	}
+	log_time("Texture Bundler")
+// 1. Gather Rects ///////////////////////////////////////////////////////////////////////
+	num_rects: i32 = 0
+	packable_rects := make([dynamic]Packable_Rect)
 	for file in asset_files {
 		switch {
 		case strings.ends_with(file.name, ".png"): 
-		case strings.ends_with(file.name, ".aseprite"):
+			img, img_err := png.load_from_bytes(file.data, { .alpha_premultiply })
+			log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
+			if img_err != nil {
+				log.errorf("Failed to load %s as a PNG. %v",
+					file.name, img_err)
+				continue
+			}
+			append(&packable_rects, img)
+		// If there are tags, only frames in tags will be saved.
+		case strings.ends_with(file.name, ".aseprite"): fallthrough
+		case strings.ends_with(file.name, ".ase"):
+			ase_doc: aseprite.Document
+			error_unmarshalling := aseprite.unmarshal_from_slice(&ase_doc, file.data)
+			if error_unmarshalling != nil {
+				log.errorf("Failed to unmarshal %s as an aseprite file. %v",
+					file.name, error_unmarshalling)
+				continue
+			}
+
+			ase_info, error_getting_info := aseprite_utils.get_info(&ase_doc)
+			if error_getting_info != nil {
+				log.errorf("Failed to get_info from %s after unmarshalling. %v",
+					file.name, error_getting_info)
+				continue
+			}
+
+			// Build either an image, one animation, or many animations.
+			// Progressively stream animation data into the atlas metadata.
+			if len(ase_info.frames) > 1 {
+				if len(ase_info.tags) >= 1 {
+					// Take only the frames which reside in tags.
+					for tag in ase_info.tags {
+						// Tag :: struct {
+						//     from:      int,
+						//     to:        int,
+						//     direction: ase.Tag_Loop_Dir,
+						//     name:      string,
+						// }
+						//
+						// Animation :: struct {
+						//     using md: Metadata,
+						//     fps:      int,
+						//     length:   time.Duration, 
+						//     frames:   []Pixels, 
+						// }
+						animation: aseprite_utils.Animation
+						err := aseprite_utils.get_animation_from_frames(ase_info, &animation, tag.name)
+						aseprite_ok(file.name, err) or_continue
+						append(&packable_rects, Aseprite_Animation {ase_doc, tag, animation})
+					}
+				} else {
+					// No tags, but multiple frames. Take all frames.
+					animation: aseprite_utils.Animation
+					err := aseprite_utils.get_animation_from_doc(&ase_doc, &animation)
+					aseprite_ok(file.name, err) or_continue
+					append(&packable_rects, Aseprite_Animation {ase_doc, nil, animation})
+				}
+			} else {
+				// Consider it an image. Take first frame.
+				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
+				aseprite_ok(file.name, error_making_first_frame) or_continue
+				append(&packable_rects, Aseprite_Image {ase_doc, img})
+			}
 		}
+		// At this point we've got a rect from those procedures.
+		// The rect ID is the location in the array.
+	}
+// 2. Pack & Render //////////////////////////////////////////////////////////////////////
+	num_rects = cast(i32) len(packable_rects)
+	// TODO: padding :: 1
+	rects := make([]stbrp.Rect, num_rects)
+	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
+	nodes := make([]stbrp.Node, num_rects)
+	ctx: stbrp.Context
+	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
+	stbrp.pack_rects(&ctx, raw_data(rects), num_rects)
+	for stbrect in rects {
+		// copy(cropped_atlas_bytes, atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
+		// 1. Get pixels for whatever this is, and render it into the place.
 	}
 
+	log_time("Texture Bundler")
 }
+
+@(private="file")
+aseprite_ok :: #force_inline proc (
+	filename: string,
+	err: aseprite_utils.Errors,
+	location := #caller_location
+) -> bool {
+	if err != nil {
+		log.errorf("Failed to make image from %s. %v", filename, err, location = location)
+		return false
+	}
+	return true
+}
+
+// TODO: 
+load_textures :: proc () {
+}
+	// #load Textureatlas
+	// #load Textureatlasmetadata
+	// cbor unmarshal meta
+	// treat atlas as png (but tga was better?) (but no premult alpha)
+	//
+	// unpack into types I actually care to use.
+	// No reason those types can't be the app types, either.
 
 // Diagnostic :: struct {
 // layer

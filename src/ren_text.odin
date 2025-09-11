@@ -44,12 +44,10 @@ do_text :: proc (
 	usage:    Font_Usage   = .body,
 	variant:  Font_Variant = .regular,
 ) {
-	entity: ^Text_Entity = make_entity(Text_Entity)
-	entity.text = message
-	entity.font = &globals.fonts[usage][variant]
+	entity: ^Text_Entity = text(message, usage, variant)
 	entity.position = position
 	entity.color = 1
-	finalize_text_draw_command(entity, immediate=true)
+	step_text(entity, immediate=true)
 	ren_draw_entity(globals.ren, transmute(^Entity) entity)
 	free_entity(entity)
 }
@@ -91,7 +89,7 @@ Font :: struct {
 // Framework Integration Implementation
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
-finalize_text_draw_command :: proc (entity: ^Text_Entity, immediate: bool) {
+step_text :: proc (entity: ^Text_Entity, immediate: bool) {
 	font: ^Font = entity.font
 	verts_needed   := len(entity.text) * 4
 	indices_needed := len(entity.text) * 6

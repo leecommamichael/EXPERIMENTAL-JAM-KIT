@@ -1,57 +1,10 @@
 package main
 
-import "base:intrinsics"
 import "core:log"
 import "core:mem"
 import "core:slice"
 import "core:math/linalg"
 import gl "nord_gl"
-
-////////////////////////////////////////////////////////////////////////////////
-// Entity 
-////////////////////////////////////////////////////////////////////////////////
-
-init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
-	entity^ = {} // zero
-	entity.id = id
-	entity.used = true
-	entity.scale = 1
-	entity.instance = &globals.instance_staging[entity.id]
-}
-
-make_entity :: proc {
-	make_entity_basic,
-	make_entity_variant
-}
-
-make_entity_basic :: proc () -> ^Entity {
-	return make_entity_variant(Entity)
-}
-
-make_entity_variant :: proc ($T: typeid) -> ^T
-where intrinsics.type_is_subtype_of(T, Entity) {
-	for &mem, i in globals._entity_storage {
-		if !mem.used {
-			init_entity_memory(&mem, cast(Entity_ID) i)
-			if T == Text_Entity {
-				mem.variant = {}
-				mem.type = Entity_Type.Text
-			} else if T == Entity {
-				mem.type = Entity_Type.None
-			} else {
-				panic("Unimplemented Entity Variant")
-			}
-			return transmute(^T) &mem
-		}
-	}
-	panic("Out of entities.")
-}
-
-free_entity :: proc (entity: ^$T)
-where intrinsics.type_is_subtype_of(T, Entity) {
-	entity.used = false
-}
-
 
 //////////////////////////////////////////////////////////////////////
 // Section: Renderer

@@ -60,13 +60,14 @@ game_init :: proc () {
 		gl.RGB,
 		gl.UNSIGNED_BYTE,
 		globals.assets.font_atlas.pixels.buf[:])
-
-
+	sprite :: proc (a:string) -> int { return 0 }
+	spr := sprite(`berserker.aseprite`)
 	hello = text(`hello`)
 	hello.color = Vec4{1,0,0,1}
 	hello.position.x = 100
 	hello.position.y = 100
 }
+
 hello: ^Text_Entity
 offset: f32
 // Mixed-scope between renderer and game entities.

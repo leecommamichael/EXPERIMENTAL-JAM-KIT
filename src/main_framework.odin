@@ -49,36 +49,6 @@ framework_init :: proc () {
 	game_init()
 }
 
-// Prepare an object for rendering.
-compute_gpu_command_parameters :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
-	if entity.hidden {
-// INTENT: If an object is hidden, don't add it to render-lists.
-		return false
-	}
-
-	switch entity.type {
-	case .None:
-	case .Text: finalize_text_draw_command(transmute(^Text_Entity)entity, immediate=false)
-	}
-
-	entity.model_transform =
-		linalg.matrix4_translate(entity.position) *
-		linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, 
-		                                         entity.rotation.y, 
-		                                         entity.rotation.z) *
-		linalg.matrix4_scale(entity.scale)
-
-	if entity.is_3D {
-// TODO: Bucket Opaque from Transparent
-// ASSUME: Centroid is 0,0,0 in model coordinates
-		centroid: Vec4 : { 0, 0, 0, 1 }
-    entity_centroid_in_world := entity.model_transform * centroid
-		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
-	}
-
-	return true
-}
-
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
 	ren_clear()
@@ -89,7 +59,6 @@ framework_step :: proc (dt: f64) {
 	}
 	globals.uniforms.time += f32(dt)
 
-// Reset Caches ////////////////////////////////////////////////////////////////
 	clear(&globals.entities)
 	clear(&globals.entities_2D)
 	clear(&globals.entities_3D)
@@ -99,27 +68,104 @@ framework_step :: proc (dt: f64) {
 		}
 	}
 ////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 	game_step(dt)
 ////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-	finalize_simulation_frame :: proc () {
-		for &entity in globals.entities {
-			compute_gpu_command_parameters(entity) or_continue
+	for &entity in globals.entities {
+		entity_step(entity) or_continue
 
-			if entity.is_3D {
-				append(&globals.entities_3D, entity)
-			} else {
-				append(&globals.entities_2D, entity)
-			}
+		if entity.is_3D {
+			append(&globals.entities_3D, entity)
+		} else {
+			append(&globals.entities_2D, entity)
 		}
-// IDEA: Could use the same sort for UI and interpret it at Z index.
-	  slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
-	    return i.distance_from_camera > j.distance_from_camera
-	  })
 	}
-	finalize_simulation_frame()
+// IDEA: Could use the same sort for UI and interpret it as Z index.
+  slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
+    return i.distance_from_camera > j.distance_from_camera
+  })
 	ren_draw(globals.ren)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Entity 
+////////////////////////////////////////////////////////////////////////////////
+
+init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
+	entity^ = {} // zero
+	entity.id = id
+	entity.used = true
+	entity.scale = 1
+	entity.instance = &globals.instance_staging[entity.id]
+	entity.time_scale = 1
+}
+
+make_entity :: proc {
+	make_entity_basic,
+	make_entity_variant
+}
+
+make_entity_basic :: proc () -> ^Entity {
+	return make_entity_variant(Entity)
+}
+
+make_entity_variant :: proc ($T: typeid) -> ^T where type_uses(T, Entity) {
+	for &mem, i in globals._entity_storage {
+		if !mem.used {
+			init_entity_memory(&mem, cast(Entity_ID) i)
+			if T == Text_Entity {
+				mem.variant = {}
+				mem.type = Entity_Type.Text
+			} else if T == Entity {
+				mem.type = Entity_Type.None
+			} else {
+				panic("Unimplemented Entity Variant")
+			}
+			entity := transmute(^T) &mem
+			append(&globals.entities, entity)
+			return entity
+		}
+	}
+	panic("Out of entities.")
+}
+
+free_entity :: proc (entity: ^$T) where type_uses(T, Entity) {
+	entity.used = false
+	index, found := slice.linear_search(globals.entities[:], entity)
+	assert(found)
+	unordered_remove(&globals.entities, index)
+}
+
+// Prepare an object for rendering.
+// The entity gets some time to do whatever.
+// Data which is derivable from Entity variant data is computed here.
+entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
+	if !entity.used {
+		assert(false) // freed objects shouldn't make it here.
+	}
+
+	if entity.hidden {
+		return false
+	}
+
+	switch entity.type {
+	case .None:
+	case .Text: step_text(transmute(^Text_Entity)entity, immediate=false)
+	}
+
+	instance: ^Any_Instance = entity.instance
+	instance.model_transform =
+		linalg.matrix4_translate(entity.position)\
+		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation))\
+		* linalg.matrix4_scale(entity.scale)
+	if entity.is_3D {
+// TODO: Bucket Opaque from Transparent
+// ASSUME: Centroid is 0,0,0 in model coordinates
+		centroid: Vec4 : { 0, 0, 0, 1 }
+    entity_centroid_in_world := instance.model_transform * centroid
+		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+	}
+
+	return true
 }
 
 // TODO: Read various data from Globals such that the game
@@ -142,3 +188,4 @@ resolution_changed :: proc (res: [2]int) {
 		far    = 1000
 	)
 }
+
