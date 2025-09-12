@@ -6,6 +6,7 @@ import "core:c"
 import "core:strings"
 import "core:os/os2"
 import "core:image"
+import "core:mem"
 import "core:encoding/cbor"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
@@ -413,18 +414,44 @@ bundle_textures :: proc () {
 		// The rect ID is the location in the array.
 	}
 // 2. Pack & Render //////////////////////////////////////////////////////////////////////
+	padding :: 1
 	num_rects = cast(i32) len(packable_rects)
-	// TODO: padding :: 1
 	rects := make([]stbrp.Rect, num_rects)
+	for packable_union, i in packable_rects {
+		w,h: i32
+		switch asset in packable_union {
+		case ^png.Image:
+			w = cast(i32) asset.width
+			h = cast(i32) asset.height
+		case Aseprite_Image:
+			w = cast(i32) asset.document.header.width
+			h = cast(i32) asset.document.header.height
+		case Aseprite_Animation:
+			w = cast(i32) asset.document.header.width
+			h = cast(i32) asset.document.header.height
+		}
+		rects[i] = stbrp.Rect {
+			id=i32(i),
+			w=stbrp.Coord(w + (2*padding)),
+			h=stbrp.Coord(h + (2*padding)),
+		}
+	}
 	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
 	nodes := make([]stbrp.Node, num_rects)
 	ctx: stbrp.Context
 	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
 	stbrp.pack_rects(&ctx, raw_data(rects), num_rects)
+	size: [2]i32
 	for stbrect in rects {
-		// copy(cropped_atlas_bytes, atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
-		// 1. Get pixels for whatever this is, and render it into the place.
+		assert(stbrect.was_packed == true)
+		x2 := i32(stbrect.x + stbrect.w)
+		if x2 > size.x { size.x = x2 }
+		y2 := i32(stbrect.y + stbrect.h)
+		if y2 > size.y { size.y = y2 }
+
+		//TODO: some mem copy pixels.
 	}
+	log.infof("texture atlas size: %v", size)
 
 	log_time("Texture Bundler")
 }
