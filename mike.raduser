@@ -11,7 +11,6 @@ window:
     {
       0.337979:
       {
-        selected
         watch:
         {
           expression: ""
@@ -19,13 +18,14 @@ window:
           watch: rects
           watch: range_rects
           watch: "entity.text"
+          watch: asset
         }
         watch: expression: "query:types"
         watch:
         {
           selected
           expression: "query:locals"
-          normal: 0.350000 0.400000 0.250000
+          normal: 0.350000 0.489419 0.160581
         }
         watch: expression: "query:type_views"
       }
@@ -60,6 +60,7 @@ window:
     }
     0.580108:
     {
+      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
@@ -106,10 +107,10 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 211
-        cursor_column: 1
-        mark_line: 211
-        mark_column: 1
+        cursor_line: 445
+        cursor_column: 42
+        mark_line: 445
+        mark_column: 42
       }
       text:
       {
@@ -125,10 +126,20 @@ window:
         mark_line: 150
         mark_column: 11
       }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/base/runtime/error_checks.odin\".data"
+        auto: 1
+        query: input: ""
+        cursor_line: 86
+        cursor_column: 1
+        mark_line: 86
+        mark_column: 1
+      }
     }
   }
   split_x
-  pos: 2193 54
+  pos: 1353 54
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0

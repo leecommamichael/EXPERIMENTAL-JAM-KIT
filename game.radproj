@@ -1,6 +1,7 @@
 // raddbg 0.9.20 project file
 
 recent_file: path: "src/asset_bundle.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/error_checks.odin"
 recent_file: path: "src/ren_text.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/main_framework.odin"
@@ -16,7 +17,6 @@ recent_file: path: "src/nord_gl/interface.odin"
 recent_file: path: "src/ren_util.odin"
 recent_file: path: "../../applications (compilers)/odin/core/mem/alloc.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/internal.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/error_checks.odin"
 recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "src/main_app.odin"
 recent_file: path: "src/sugar/sugar.odin"
@@ -53,13 +53,18 @@ breakpoint:
   source_location: "src/ren_text.odin:53:1"
   hit_count: 0
 }
-breakpoint:
-{
-  source_location: "src/asset_bundle.odin:211:1"
-  hit_count: 1
-}
 watch_pin:
 {
   expression: "serialized_fonts[0]"
   source_location: "src/asset_bundle.odin:171:1"
+}
+breakpoint:
+{
+  source_location: "src/asset_bundle.odin:452:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/asset_bundle.odin:459:1"
+  hit_count: 1
 }

@@ -72,13 +72,13 @@ load_bundled_fonts :: proc () {
 	for font in serialized_fonts {
 		globals.fonts[font.usage][font.variant].data = font.packed_char
 	}
-	assert(unmarshal_error == nil)
+assert(unmarshal_error == nil)
 	log_time("read_atlas_metadata_from_disk")
 
 	log_time("read_atlas_from_disk")
 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
 	log_time("read_atlas_from_disk")
-	assert(err == nil)
+assert(err == nil)
 	log_time("decode_atlas_to_pixels")
 	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
 	log_time("decode_atlas_to_pixels")
@@ -297,7 +297,7 @@ bundle_fonts :: proc () {
 	}
 	file, err := os2.open(FONT_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
-	assert(err == nil)
+assert(err == nil)
 	writer := os2.to_writer(file)
 	cbor.marshal_into_writer(writer, serialized_fonts)
 	log_time("write_atlas_metadata")
@@ -308,34 +308,28 @@ bundle_fonts :: proc () {
 //////////////////////////////////////////////////////////////////////
 // Implementation (2/2) Texture Atlas                (4 channel image)
 //////////////////////////////////////////////////////////////////////
-Serialized_Image :: struct {
-	
-}
-
-Serialized_Animation :: struct {
-	[]Serialized_Animation_Frame
-}
-
-Serialized_Animation_Frame :: struct {
-
-}
-
-
+MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
 TEXTURE_ATLAS_METADATA :: "./texture_atlas_metadata.cbor"
 TEXTURE_ATLAS_PATH :: "./texture_atlas.tga"
 bundle_textures :: proc () {
 // I need to iterate over these and render from them.
 	Aseprite_Animation :: struct {
+		name: string,
 		document:  aseprite.Document,
 		tag:       Maybe(aseprite_utils.Tag),
 		animation: aseprite_utils.Animation,
 	}
 	Aseprite_Image :: struct {
+		name: string,
 		document: aseprite.Document,
 		image:    aseprite_utils.Image,
 	}
+	PNG_Image :: struct {
+		name: string,
+		image: ^png.Image
+	}
 	Packable_Rect :: union {
-		^png.Image,
+		PNG_Image,
 		Aseprite_Image,
 		Aseprite_Animation,
 	}
@@ -353,7 +347,7 @@ bundle_textures :: proc () {
 					file.name, img_err)
 				continue
 			}
-			append(&packable_rects, img)
+			append(&packable_rects, PNG_Image{file.name, img})
 		// If there are tags, only frames in tags will be saved.
 		case strings.ends_with(file.name, ".aseprite"): fallthrough
 		case strings.ends_with(file.name, ".ase"):
@@ -394,35 +388,36 @@ bundle_textures :: proc () {
 						animation: aseprite_utils.Animation
 						err := aseprite_utils.get_animation_from_frames(ase_info, &animation, tag.name)
 						aseprite_ok(file.name, err) or_continue
-						append(&packable_rects, Aseprite_Animation {ase_doc, tag, animation})
+						append(&packable_rects, Aseprite_Animation{file.name, ase_doc, tag, animation})
 					}
 				} else {
 					// No tags, but multiple frames. Take all frames.
 					animation: aseprite_utils.Animation
 					err := aseprite_utils.get_animation_from_doc(&ase_doc, &animation)
 					aseprite_ok(file.name, err) or_continue
-					append(&packable_rects, Aseprite_Animation {ase_doc, nil, animation})
+					append(&packable_rects, Aseprite_Animation{file.name, ase_doc, nil, animation})
 				}
 			} else {
 				// Consider it an image. Take first frame.
 				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
 				aseprite_ok(file.name, error_making_first_frame) or_continue
-				append(&packable_rects, Aseprite_Image {ase_doc, img})
+				append(&packable_rects, Aseprite_Image{file.name, ase_doc, img})
 			}
 		}
 		// At this point we've got a rect from those procedures.
 		// The rect ID is the location in the array.
 	}
 // 2. Pack & Render //////////////////////////////////////////////////////////////////////
-	padding :: 1
+	n_chan :: 4 // it's the job of the program to expand to 4 (and premult alpha) by now.
+	pad_px :: 1 // pixels
 	num_rects = cast(i32) len(packable_rects)
 	rects := make([]stbrp.Rect, num_rects)
 	for packable_union, i in packable_rects {
 		w,h: i32
 		switch asset in packable_union {
-		case ^png.Image:
-			w = cast(i32) asset.width
-			h = cast(i32) asset.height
+		case PNG_Image:
+			w = cast(i32) asset.image.width
+			h = cast(i32) asset.image.height
 		case Aseprite_Image:
 			w = cast(i32) asset.document.header.width
 			h = cast(i32) asset.document.header.height
@@ -432,26 +427,69 @@ bundle_textures :: proc () {
 		}
 		rects[i] = stbrp.Rect {
 			id=i32(i),
-			w=stbrp.Coord(w + (2*padding)),
-			h=stbrp.Coord(h + (2*padding)),
+			w=stbrp.Coord(w + (2*pad_px)),
+			h=stbrp.Coord(h + (2*pad_px)),
 		}
 	}
-	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
+	atlas_rgba := make([]u8, MAX_TEXTURE_ATLAS_BYTES)
 	nodes := make([]stbrp.Node, num_rects)
 	ctx: stbrp.Context
 	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
 	stbrp.pack_rects(&ctx, raw_data(rects), num_rects)
+	delete(nodes)
 	size: [2]i32
-	for stbrect in rects {
-		assert(stbrect.was_packed == true)
-		x2 := i32(stbrect.x + stbrect.w)
+	for stb_rect in rects {
+assert(stb_rect.was_packed == true)
+		x2 := i32(stb_rect.x + stb_rect.w)
 		if x2 > size.x { size.x = x2 }
-		y2 := i32(stbrect.y + stbrect.h)
+		y2 := i32(stb_rect.y + stb_rect.h)
 		if y2 > size.y { size.y = y2 }
-
-		//TODO: some mem copy pixels.
+assert(size.x > 0 && size.y > 0)
+		packable_rect := packable_rects[stb_rect.id]
+		atlas_stride := n_chan*MAX_ATLAS_PIXELS
+		px_line_of_write := (int(stb_rect.y) + pad_px)
+		px_offset_into_line := (int(stb_rect.x) + pad_px)
+		atlas_subrect_topleft := (atlas_stride*px_line_of_write) + (n_chan*px_offset_into_line)
+		switch asset in packable_rect {
+		case PNG_Image:
+assert(asset.image.channels == n_chan)
+assert(asset.image.pixels.off == 0)
+		case Aseprite_Image:
+		asset_channels := 4 // TODO: find a way to write read this from the file.
+		log.info(asset.name)
+		asset_stride := asset_channels * size_of(u8) * (int(asset.document.header.width))
+		for row in 0..< int(asset.document.header.height) {
+			src_start := (row * asset_stride)
+			src_end := src_start + asset_stride
+			copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
+			     asset.image.data[src_start: src_end])
+		}
+		case Aseprite_Animation:
+			// asset_channels := 4 // TODO: find a way to write read this from the file.
+			// log.info(asset.name)
+			// for frame in asset.animation.frames {
+			// 	asset_stride := asset_channels * size_of(u8) * (int(asset.document.header.width))
+			// 	for row in 0..< int(asset.document.header.height) {
+			// 		src_start := (row * asset_stride)
+			// 		src_end := src_start + asset_stride
+			// 		copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
+			// 		     frame.pixels[src_start: src_end])
+			// 	}
+			// }
+		}
 	}
 	log.infof("texture atlas size: %v", size)
+	log_time("write_texture_atlas_to_disk")
+	ok := cast(b32) stbi.write_tga(
+		TEXTURE_ATLAS_PATH,
+		w=cast(i32)MAX_ATLAS_PIXELS,
+		h=cast(i32)size.y,
+		comp=4,
+		data=raw_data(atlas_rgba))
+	log_time("write_texture_atlas_to_disk")
+	if !ok {
+		log.errorf("STBI failed to write the RGBA atlas.")
+	}
 
 	log_time("Texture Bundler")
 }

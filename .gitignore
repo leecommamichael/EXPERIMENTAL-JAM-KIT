@@ -17,3 +17,4 @@ game.exe.dSYM/Contents/Info.plist
 game.exe.dSYM/Contents/Resources/Relocations/aarch64/game.exe.yml
 font_atlas.png
 src/font_atlas.tga
+src/texture_atlas.tga
