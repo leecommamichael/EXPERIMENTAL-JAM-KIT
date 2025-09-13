@@ -17,34 +17,31 @@ Sprite_Entity :: struct {
 	_play_in_reverse: bool,
 }
 
-Sprite_Event :: enum {
-	None,
-	Repetition_Completed,
-	Animation_Completed,
-	Frame_Advanced,
-}
-
 Sprite :: struct {
-	filename:         string,
-	animations:       map[string]Sprite_Animation,
-	frames:           []Image,
-	seconds_in_frame: []f64,
+	filename:   string,
+	size_px:    [2]int,
+	frames:     []Sprite_Animation_Frame,
+	animations: map[string]Sprite_Animation,
 }
 
+/**/	Sprite_Animation_Frame :: struct {
+/**/		uv_rect: Vec4, // .xy = top_left, .w = width, .z = height
+/**/		seconds: f64,
+/**/	}
+/**/
 /**/	Sprite_Animation :: struct {
 /**/		name:                 string,
 /**/		first_frame_index:    int,
-/**/		final_frame_index:    int,
+/**/		final_frame_index:    int, // consider removing. have offset + len
 /**/		frame_count:          int,
 /**/		playback_mode:        Animation_Playback_Mode,
-/**/		seconds_in_animation: f64,
 /**/	}
 /**/
 /**/	Animation_Playback_Mode :: enum {
-/**/	  Forward,
-/**/	  Reverse,
-/**/	  Ping_Pong,
-/**/	  Ping_Pong_Reverse,
+/**/		Forward,
+/**/		Reverse,
+/**/		Ping_Pong,
+/**/		Ping_Pong_Reverse,
 /**/	}
 
 
@@ -66,6 +63,13 @@ do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_
 	free_entity(entity)
 	return
 }
+
+/**/	Sprite_Event :: enum {
+/**/		None,
+/**/		Repetition_Completed,
+/**/		Animation_Completed,
+/**/		Frame_Advanced,
+/**/	}
 
 set_animation :: proc (it: ^Sprite_Entity, name: string) {
 	if !(name in it.sprite.animations) {
@@ -180,7 +184,7 @@ step_sprite :: proc (_dt: f64, it: ^Sprite_Entity, immediate: bool) -> (events: 
 				}
 			}
 			events += { .Frame_Advanced }
-			it.frame_seconds_remaining = it.sprite.seconds_in_frame[it.frame_index]
+			it.frame_seconds_remaining = it.sprite.frames[it.frame_index].seconds
 			seconds_to_spend -= it.frame_seconds_remaining
 		}
 	} else {

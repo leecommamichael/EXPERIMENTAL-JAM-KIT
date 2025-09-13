@@ -2,6 +2,7 @@ package main
 
 import "core:strings"
 import "core:math"
+import "core:math/linalg"
 import "core:log"
 import "core:fmt"
 import "core:time"
@@ -110,3 +111,4 @@ log_time :: proc (id: string) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 type_uses :: intrinsics.type_is_subtype_of
+array_cast :: linalg.array_cast

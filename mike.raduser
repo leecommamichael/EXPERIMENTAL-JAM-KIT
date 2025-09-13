@@ -4,7 +4,7 @@ recent_project: path: "game.radproj"
 recent_project: path: game
 window:
 {
-  size: 3293 1979
+  size: 2936 1775
   panels:
   {
     0.419890:
@@ -15,17 +15,16 @@ window:
         {
           expression: ""
           watch: globals
-          watch: rects
-          watch: range_rects
-          watch: "entity.text"
-          watch: asset
+          watch: "info.frames"
+          watch: s
+          watch: f
         }
         watch: expression: "query:types"
         watch:
         {
           selected
           expression: "query:locals"
-          normal: 0.350000 0.489419 0.160581
+          normal: 0.350000 0.410432 0.239568
         }
         watch: expression: "query:type_views"
       }
@@ -103,14 +102,13 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 445
-        cursor_column: 42
-        mark_line: 445
-        mark_column: 42
+        cursor_line: 401
+        cursor_column: 1
+        mark_line: 401
+        mark_column: 1
       }
       text:
       {
@@ -128,18 +126,19 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/base/runtime/error_checks.odin\".data"
+        selected
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/third-party/odin-aseprite/utils/animation.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 86
+        cursor_line: 47
         cursor_column: 1
-        mark_line: 86
+        mark_line: 47
         mark_column: 1
       }
     }
   }
   split_x
-  pos: 1353 54
+  pos: 1710 258
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0

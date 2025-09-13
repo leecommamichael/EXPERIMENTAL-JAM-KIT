@@ -3,10 +3,13 @@ package main
 import "base:runtime"
 import "core:log"
 import "core:c"
+import "core:slice"
 import "core:strings"
 import "core:os/os2"
 import "core:image"
 import "core:mem"
+import "core:time"
+import "core:fmt"
 import "core:encoding/cbor"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
@@ -110,7 +113,14 @@ bundle_fonts :: proc () {
 	pack_ranges := make([]Pack_Range, FONT_COUNT)
 	rects := make([]stbrp.Rect, GLYPH_COUNT * FONT_COUNT)
 	raw_rects := raw_data(rects)
-	stbtt.PackBegin(&pack_ctx, raw_data(atlas_bytes), MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, 1, nil)
+	stbtt.PackBegin(
+		spc = &pack_ctx,
+		pixels = raw_data(atlas_bytes),
+		width = MAX_ATLAS_PIXELS,
+		height = MAX_ATLAS_PIXELS,
+		stride_in_bytes = MAX_ATLAS_PIXELS,
+		padding = 1,
+		alloc_context = nil)
 	stbtt.PackSetOversampling(&pack_ctx, 3, 3)
 	total_rects: c.int = 0
 	font_index: int = 0
@@ -311,35 +321,32 @@ assert(err == nil)
 MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
 TEXTURE_ATLAS_METADATA :: "./texture_atlas_metadata.cbor"
 TEXTURE_ATLAS_PATH :: "./texture_atlas.tga"
+
 bundle_textures :: proc () {
-// I need to iterate over these and render from them.
-	Aseprite_Animation :: struct {
-		name: string,
-		document:  aseprite.Document,
-		tag:       Maybe(aseprite_utils.Tag),
-		animation: aseprite_utils.Animation,
+	rect_id :: #force_inline proc (filename: string, frame_index:int) -> string {
+		return fmt.tprintf("%s_frame%d", filename, frame_index)
 	}
-	Aseprite_Image :: struct {
-		name: string,
-		document: aseprite.Document,
-		image:    aseprite_utils.Image,
+
+	Image_With_Pixels :: struct {
+		using _: Image,
+		pixels: []u8 `cbor:"-" fmt:"-"`,
 	}
-	PNG_Image :: struct {
-		name: string,
-		image: ^png.Image
+	Sprite_With_Pixels :: struct {
+		using _: Sprite,
+		pixels: [][]u8 `cbor:"-" fmt:"-"`,
 	}
-	Packable_Rect :: union {
-		PNG_Image,
-		Aseprite_Image,
-		Aseprite_Animation,
+	Packable_Asset :: union {
+		Image_With_Pixels,
+		Sprite_With_Pixels,
 	}
+
 	log_time("Texture Bundler")
 // 1. Gather Rects ///////////////////////////////////////////////////////////////////////
-	num_rects: i32 = 0
-	packable_rects := make([dynamic]Packable_Rect)
+	pack_list := make([dynamic]Packable_Asset)
 	for file in asset_files {
 		switch {
-		case strings.ends_with(file.name, ".png"): 
+		case strings.ends_with(file.name, ".png"):
+			log.infof("png IMAGE: %s", file.name)
 			img, img_err := png.load_from_bytes(file.data, { .alpha_premultiply })
 			log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
 			if img_err != nil {
@@ -347,7 +354,10 @@ bundle_textures :: proc () {
 					file.name, img_err)
 				continue
 			}
-			append(&packable_rects, PNG_Image{file.name, img})
+			append(&pack_list, Image_With_Pixels{
+				Image{file.name, {img.width, img.height}, {}, 0, 0},
+				img.pixels.buf[:]
+			})
 		// If there are tags, only frames in tags will be saved.
 		case strings.ends_with(file.name, ".aseprite"): fallthrough
 		case strings.ends_with(file.name, ".ase"):
@@ -365,77 +375,118 @@ bundle_textures :: proc () {
 					file.name, error_getting_info)
 				continue
 			}
-
 			// Build either an image, one animation, or many animations.
 			// Progressively stream animation data into the atlas metadata.
 			if len(ase_info.frames) > 1 {
 				if len(ase_info.tags) >= 1 {
 					// Take only the frames which reside in tags.
-					for tag in ase_info.tags {
-						// Tag :: struct {
-						//     from:      int,
-						//     to:        int,
-						//     direction: ase.Tag_Loop_Dir,
-						//     name:      string,
-						// }
-						//
-						// Animation :: struct {
-						//     using md: Metadata,
-						//     fps:      int,
-						//     length:   time.Duration, 
-						//     frames:   []Pixels, 
-						// }
-						animation: aseprite_utils.Animation
-						err := aseprite_utils.get_animation_from_frames(ase_info, &animation, tag.name)
-						aseprite_ok(file.name, err) or_continue
-						append(&packable_rects, Aseprite_Animation{file.name, ase_doc, tag, animation})
+					log.infof("ase TAGGED_ANIMATIONS(%d): %s", len(ase_info.tags), file.name)
+					sprite := Sprite_With_Pixels {
+						Sprite{
+							file.name,
+							{ ase_info.md.width, ase_info.md.height },
+							make([]Sprite_Animation_Frame, len(ase_info.frames)),
+							{}, 
+						},
+						make([][]u8, len(ase_info.frames)),
 					}
+					for frame, i in ase_info.frames {
+						img, err := aseprite_utils.get_image_bytes_from_frame(frame, ase_info)
+						aseprite_ok(file.name, err) or_continue
+						sprite.pixels[i] = img
+						sprite.frames[i] = {
+							{},
+							f64(frame.duration) / 1000,
+						}
+					}
+					for tag in ase_info.tags {
+						animation: Sprite_Animation = {
+							name = tag.name,
+							first_frame_index = tag.from,
+							final_frame_index = tag.to,
+							frame_count = tag.to - tag.from,
+							playback_mode = cast(Animation_Playback_Mode) tag.direction, // TODO: robustness: enum mapping function
+						}
+						sprite.animations[animation.name] = animation
+					}
+					append(&pack_list, sprite)
 				} else {
 					// No tags, but multiple frames. Take all frames.
-					animation: aseprite_utils.Animation
-					err := aseprite_utils.get_animation_from_doc(&ase_doc, &animation)
-					aseprite_ok(file.name, err) or_continue
-					append(&packable_rects, Aseprite_Animation{file.name, ase_doc, nil, animation})
+					log.infof("ase INFER_ANIMATION(%d): %s", len(ase_info.frames), file.name)
+					sprite := Sprite_With_Pixels {
+						Sprite{
+							file.name,
+							{ ase_info.md.width, ase_info.md.height },
+							make([]Sprite_Animation_Frame, len(ase_info.frames)),
+							{}, 
+						},
+						make([][]u8, len(ase_info.frames)),
+					}
+					for frame, i in ase_info.frames {
+						img, err := aseprite_utils.get_image_bytes_from_frame(frame, ase_info)
+						aseprite_ok(file.name, err) or_continue
+						sprite.pixels[i] = img
+						sprite.frames[i] = {
+							{},
+							f64(frame.duration) / 1000
+						}
+					}
+					animation := Sprite_Animation { // principle difference between this and the above
+						name = "default",
+						first_frame_index = 0,
+						final_frame_index = len(ase_info.frames)-1,
+						frame_count = len(ase_info.frames),
+						playback_mode = .Forward,
+					}
+					sprite.animations[animation.name] = animation
+					append(&pack_list, sprite)
 				}
 			} else {
 				// Consider it an image. Take first frame.
+				log.infof("ase IMAGE: %s", file.name)
 				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
 				aseprite_ok(file.name, error_making_first_frame) or_continue
-				append(&packable_rects, Aseprite_Image{file.name, ase_doc, img})
+				append(&pack_list, 
+					Image_With_Pixels{Image{file.name, {img.width, img.height}, {}, 0, 0},
+					img.data
+				})
 			}
 		}
-		// At this point we've got a rect from those procedures.
-		// The rect ID is the location in the array.
 	}
+
 // 2. Pack & Render //////////////////////////////////////////////////////////////////////
 	n_chan :: 4 // it's the job of the program to expand to 4 (and premult alpha) by now.
 	pad_px :: 1 // pixels
-	num_rects = cast(i32) len(packable_rects)
-	rects := make([]stbrp.Rect, num_rects)
-	for packable_union, i in packable_rects {
-		w,h: i32
+	rects := make([dynamic]stbrp.Rect)
+	for packable_union, i in pack_list {
+		assert(i <= cast(int) max(i16))
+		id := [2]i16 { cast(i16)i, -1 } // if -1 use index naively
 		switch asset in packable_union {
-		case PNG_Image:
-			w = cast(i32) asset.image.width
-			h = cast(i32) asset.image.height
-		case Aseprite_Image:
-			w = cast(i32) asset.document.header.width
-			h = cast(i32) asset.document.header.height
-		case Aseprite_Animation:
-			w = cast(i32) asset.document.header.width
-			h = cast(i32) asset.document.header.height
-		}
-		rects[i] = stbrp.Rect {
-			id=i32(i),
-			w=stbrp.Coord(w + (2*pad_px)),
-			h=stbrp.Coord(h + (2*pad_px)),
+		case Image_With_Pixels:
+			size_px := asset.size_in_pixels
+			append(&rects, stbrp.Rect {
+				id = transmute(i32) id,
+				w  = stbrp.Coord(size_px.x + (2*pad_px)),
+				h  = stbrp.Coord(size_px.y + (2*pad_px)),
+			})
+		case Sprite_With_Pixels:
+			size_px := asset.size_px
+			for frame, frame_index in asset.frames {
+				id.y = cast(i16) frame_index
+				append(&rects, stbrp.Rect {
+					id = transmute(i32) id,
+					w  = stbrp.Coord(size_px.x + (2*pad_px)),
+					h  = stbrp.Coord(size_px.y + (2*pad_px)),
+				})
+			}
 		}
 	}
+	num_rects := len(rects)
 	atlas_rgba := make([]u8, MAX_TEXTURE_ATLAS_BYTES)
 	nodes := make([]stbrp.Node, num_rects)
 	ctx: stbrp.Context
 	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
-	stbrp.pack_rects(&ctx, raw_data(rects), num_rects)
+	stbrp.pack_rects(&ctx, raw_data(rects), cast(i32) num_rects)
 	delete(nodes)
 	size: [2]i32
 	for stb_rect in rects {
@@ -445,37 +496,31 @@ assert(stb_rect.was_packed == true)
 		y2 := i32(stb_rect.y + stb_rect.h)
 		if y2 > size.y { size.y = y2 }
 assert(size.x > 0 && size.y > 0)
-		packable_rect := packable_rects[stb_rect.id]
 		atlas_stride := n_chan*MAX_ATLAS_PIXELS
 		px_line_of_write := (int(stb_rect.y) + pad_px)
 		px_offset_into_line := (int(stb_rect.x) + pad_px)
 		atlas_subrect_topleft := (atlas_stride*px_line_of_write) + (n_chan*px_offset_into_line)
-		switch asset in packable_rect {
-		case PNG_Image:
-assert(asset.image.channels == n_chan)
-assert(asset.image.pixels.off == 0)
-		case Aseprite_Image:
-		asset_channels := 4 // TODO: find a way to write read this from the file.
-		log.info(asset.name)
-		asset_stride := asset_channels * size_of(u8) * (int(asset.document.header.width))
-		for row in 0..< int(asset.document.header.height) {
-			src_start := (row * asset_stride)
-			src_end := src_start + asset_stride
-			copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
-			     asset.image.data[src_start: src_end])
-		}
-		case Aseprite_Animation:
-			// asset_channels := 4 // TODO: find a way to write read this from the file.
-			// log.info(asset.name)
-			// for frame in asset.animation.frames {
-			// 	asset_stride := asset_channels * size_of(u8) * (int(asset.document.header.width))
-			// 	for row in 0..< int(asset.document.header.height) {
-			// 		src_start := (row * asset_stride)
-			// 		src_end := src_start + asset_stride
-			// 		copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
-			// 		     frame.pixels[src_start: src_end])
-			// 	}
-			// }
+		id := transmute([2]i16) stb_rect.id
+		packable_asset := pack_list[id.x]
+		frame_index := id.y
+		asset_channels :: 4 // TODO: find a way to ensure this.
+		switch asset in packable_asset {
+		case Image_With_Pixels:
+			asset_stride := asset_channels * size_of(u8) * asset.size_in_pixels.x
+			for row in 0..< asset.size_in_pixels.y {
+				src_start := (row * asset_stride)
+				src_end := src_start + asset_stride
+				copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
+				     asset.pixels[src_start: src_end])
+			}
+		case Sprite_With_Pixels:
+			asset_stride := asset_channels * size_of(u8) * asset.size_px.x
+			for row in 0..< asset.size_px.y {
+				src_start := (row * asset_stride)
+				src_end := src_start + asset_stride
+				copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
+				     asset.pixels[frame_index][src_start: src_end])
+			}
 		}
 	}
 	log.infof("texture atlas size: %v", size)
