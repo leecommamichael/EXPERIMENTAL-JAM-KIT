@@ -11,11 +11,9 @@ Image_Entity :: struct {
 }
 
 Image :: struct {
-	filename:       string,
-	size_in_pixels: [2]int,
-	uv_rect:        [4]f32, // .xy = top_left, .w = width, .z = height
-	lod:            int,
-	gpu_handle:     gl.Texture,
+	filename: string, // TODO?: call it ID? name/id. name.
+	uv_rect:  [4]f32, // .xy = top_left, .w = width, .z = height
+	texture:  ^GPU_Texture
 }
 
 //////////////////////////////////////////////////////////////////////

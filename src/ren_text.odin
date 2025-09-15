@@ -96,7 +96,7 @@ step_text :: proc (entity: ^Text_Entity, immediate: bool) {
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)
 	indices := make([]u32, indices_needed, context.temp_allocator)
 
-  atlas_size: [2]int = { globals.assets.font_atlas.width, globals.assets.font_atlas.height }
+  atlas_size: [2]int = globals.assets.font_atlas.size_px
 
 	text_cursor: [2]f32
 	for byte, glyph_index in entity.text {

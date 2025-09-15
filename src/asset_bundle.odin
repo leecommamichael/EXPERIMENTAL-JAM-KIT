@@ -18,15 +18,17 @@ import "core:image/tga"
 import "core:image/png"
 import aseprite "third-party/odin-aseprite"
 import aseprite_utils "third-party/odin-aseprite/utils"
+import gl "nord_gl"
 
 //////////////////////////////////////////////////////////////////////
 // Interface
 //////////////////////////////////////////////////////////////////////
 Asset_Bundle :: struct {
-	font_infos: map[string]stbtt.fontinfo,
-	font_atlas: ^tga.Image,
-	images: map[string]Image,
-	sprites: map[string]Sprite,
+	font_infos:    map[string]stbtt.fontinfo,
+	images:        map[string]Image,
+	sprites:       map[string]Sprite,
+	font_atlas:    GPU_Texture,
+	texture_atlas: GPU_Texture,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -62,6 +64,7 @@ asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 FONT_ATLAS_METADATA :: "./font_atlas_metadata.cbor"
 FONT_ATLAS_PATH :: "./font_atlas.tga"
 
+
 load_bundled_fonts :: proc () {
 	log_time("read_atlas_metadata_from_disk")
 	metadata_file, err_opening_metadata_file := os2.open(FONT_ATLAS_METADATA, {.Read})
@@ -90,8 +93,44 @@ assert(err == nil)
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
 	}
-	globals.assets.font_atlas = img
+	log_time("upload_atlas_to_gpu")
+	globals.assets.font_atlas.wrap_ST = { .REPEAT, .REPEAT }
+	globals.assets.font_atlas.minify_filter = .LINEAR
+	globals.assets.font_atlas.magnify_filter = .LINEAR
+	globals.assets.font_atlas.format = .RGB8
+	globals.assets.font_atlas.target = .TEXTURE_2D
+	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
+
+	globals.assets.images[FONT_ATLAS_PATH] = Image {
+		FONT_ATLAS_PATH,
+		{0,0, 1,1}, // does this even go here?
+		&globals.assets.font_atlas,
+	}
+	log_time("upload_atlas_to_gpu")
 }
+
+// 	GPU_Texture :: struct {
+// 	target:         gl.Texture_Target,
+// 	texture:        gl.Texture, // TODO: associate this to prebundlefilenames
+// 		// For copying
+// 	format: gl.Internal_Color_Format,
+// 	size_px: int,
+// 	level:   int,
+// 		// Texture Unit State (all fields below are optional)
+// 	magnify_filter: gl.Texture_Mag_Filter,
+// 	minify_filter:  gl.Texture_Min_Filter,
+// 	wrap_ST:        [2]gl.Texture_Wrap_Mode,
+// 		// Fields below are more likely to matter in 3D.
+// 	wrap_R:         gl.Texture_Wrap_Mode,
+// 	base_level:     uint,
+// 	max_level:      uint,
+// 	min_LOD:        f32,
+// 	max_LOD:        f32,
+// 	compare_func:   gl.Compare_Func,
+// 	compare_mode:   gl.Texture_Compare_Mode,
+// }
+
+
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
 MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
@@ -323,26 +362,25 @@ TEXTURE_ATLAS_METADATA :: "./texture_atlas_metadata.cbor"
 TEXTURE_ATLAS_PATH :: "./texture_atlas.tga"
 
 bundle_textures :: proc () {
-	rect_id :: #force_inline proc (filename: string, frame_index:int) -> string {
-		return fmt.tprintf("%s_frame%d", filename, frame_index)
+	// This is more leaning into the 
+	Packable_Image :: struct {
+		using image: Image,
+		size_px:     [2]int `cbor:"-" fmt:"-"`,
+		pixels:      []u8  `cbor:"-" fmt:"-"`,
 	}
-
-	Image_With_Pixels :: struct {
-		using _: Image,
-		pixels: []u8 `cbor:"-" fmt:"-"`,
+	Packable_Sprite :: struct {
+		using sprite: Sprite,
+		size_px:      [2]int  `cbor:"-" fmt:"-"`,
+		pixels:       [][]u8 `cbor:"-" fmt:"-"`,
 	}
-	Sprite_With_Pixels :: struct {
-		using _: Sprite,
-		pixels: [][]u8 `cbor:"-" fmt:"-"`,
-	}
-	Packable_Asset :: union {
-		Image_With_Pixels,
-		Sprite_With_Pixels,
+	Atlas_Entry :: union {
+		Packable_Image,
+		Packable_Sprite,
 	}
 
 	log_time("Texture Bundler")
-// 1. Gather Rects ///////////////////////////////////////////////////////////////////////
-	pack_list := make([dynamic]Packable_Asset)
+// 1. Gather Packables ///////////////////////////////////////////////////////////////////
+	pack_list := make([dynamic]Atlas_Entry)
 	for file in asset_files {
 		switch {
 		case strings.ends_with(file.name, ".png"):
@@ -354,8 +392,12 @@ bundle_textures :: proc () {
 					file.name, img_err)
 				continue
 			}
-			append(&pack_list, Image_With_Pixels{
-				Image{file.name, {img.width, img.height}, {}, 0, 0},
+			// To pack an image, I need its size, but the size is stored in the binding pointer.
+			// The binding is a result of loading an image.
+			// So it pack an image you've got to load it. Doesn't make the most sense.
+			append(&pack_list, Packable_Image{
+				Image{file.name, {}, nil},
+				{img.width, img.height},
 				img.pixels.buf[:]
 			})
 		// If there are tags, only frames in tags will be saved.
@@ -381,13 +423,14 @@ bundle_textures :: proc () {
 				if len(ase_info.tags) >= 1 {
 					// Take only the frames which reside in tags.
 					log.infof("ase TAGGED_ANIMATIONS(%d): %s", len(ase_info.tags), file.name)
-					sprite := Sprite_With_Pixels {
+					sprite := Packable_Sprite {
 						Sprite{
 							file.name,
-							{ ase_info.md.width, ase_info.md.height },
 							make([]Sprite_Animation_Frame, len(ase_info.frames)),
-							{}, 
+							{},
+							nil
 						},
+						{ ase_info.md.width, ase_info.md.height },
 						make([][]u8, len(ase_info.frames)),
 					}
 					for frame, i in ase_info.frames {
@@ -413,13 +456,14 @@ bundle_textures :: proc () {
 				} else {
 					// No tags, but multiple frames. Take all frames.
 					log.infof("ase INFER_ANIMATION(%d): %s", len(ase_info.frames), file.name)
-					sprite := Sprite_With_Pixels {
+					sprite := Packable_Sprite {
 						Sprite{
 							file.name,
-							{ ase_info.md.width, ase_info.md.height },
 							make([]Sprite_Animation_Frame, len(ase_info.frames)),
 							{}, 
+							nil
 						},
+						{ ase_info.md.width, ase_info.md.height },
 						make([][]u8, len(ase_info.frames)),
 					}
 					for frame, i in ase_info.frames {
@@ -447,14 +491,15 @@ bundle_textures :: proc () {
 				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
 				aseprite_ok(file.name, error_making_first_frame) or_continue
 				append(&pack_list, 
-					Image_With_Pixels{Image{file.name, {img.width, img.height}, {}, 0, 0},
+					Packable_Image{Image{file.name, {}, nil},
+					{img.width, img.height},
 					img.data
 				})
 			}
 		}
 	}
 
-// 2. Pack & Render //////////////////////////////////////////////////////////////////////
+// 2. Pack  //////////////////////////////////////////////////////////////////////////////
 	n_chan :: 4 // it's the job of the program to expand to 4 (and premult alpha) by now.
 	pad_px :: 1 // pixels
 	rects := make([dynamic]stbrp.Rect)
@@ -462,14 +507,14 @@ bundle_textures :: proc () {
 		assert(i <= cast(int) max(i16))
 		id := [2]i16 { cast(i16)i, -1 } // if -1 use index naively
 		switch asset in packable_union {
-		case Image_With_Pixels:
-			size_px := asset.size_in_pixels
+		case Packable_Image:
+			size_px := asset.size_px
 			append(&rects, stbrp.Rect {
 				id = transmute(i32) id,
 				w  = stbrp.Coord(size_px.x + (2*pad_px)),
 				h  = stbrp.Coord(size_px.y + (2*pad_px)),
 			})
-		case Sprite_With_Pixels:
+		case Packable_Sprite:
 			size_px := asset.size_px
 			for frame, frame_index in asset.frames {
 				id.y = cast(i16) frame_index
@@ -488,32 +533,49 @@ bundle_textures :: proc () {
 	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
 	stbrp.pack_rects(&ctx, raw_data(rects), cast(i32) num_rects)
 	delete(nodes)
-	size: [2]i32
+	atlas_size: [2]i32 = { MAX_ATLAS_PIXELS, 0 } // don't crop X
 	for stb_rect in rects {
-assert(stb_rect.was_packed == true)
+		assert(stb_rect.was_packed == true)
 		x2 := i32(stb_rect.x + stb_rect.w)
-		if x2 > size.x { size.x = x2 }
+		if x2 > atlas_size.x { atlas_size.x = x2 }
 		y2 := i32(stb_rect.y + stb_rect.h)
-		if y2 > size.y { size.y = y2 }
-assert(size.x > 0 && size.y > 0)
+		if y2 > atlas_size.y { atlas_size.y = y2 }
+		assert(atlas_size.x > 0 && atlas_size.y > 0)
+	}
+	atlas_sizef: [2]f32 = array_cast(atlas_size, f32)
+// 3. Render  ////////////////////////////////////////////////////////////////////////////
+	for stb_rect in rects {
 		atlas_stride := n_chan*MAX_ATLAS_PIXELS
-		px_line_of_write := (int(stb_rect.y) + pad_px)
-		px_offset_into_line := (int(stb_rect.x) + pad_px)
+		px_line_of_write := int(stb_rect.y) + pad_px
+		px_offset_into_line := int(stb_rect.x) + pad_px
 		atlas_subrect_topleft := (atlas_stride*px_line_of_write) + (n_chan*px_offset_into_line)
 		id := transmute([2]i16) stb_rect.id
-		packable_asset := pack_list[id.x]
-		frame_index := id.y
-		asset_channels :: 4 // TODO: find a way to ensure this.
-		switch asset in packable_asset {
-		case Image_With_Pixels:
-			asset_stride := asset_channels * size_of(u8) * asset.size_in_pixels.x
-			for row in 0..< asset.size_in_pixels.y {
+		packable_asset := &pack_list[id.x]
+		asset_channels :: 4 // TODO: Skip if it isn't 4 channels in step 1 (gather assets)
+		switch &asset in packable_asset {
+		case Packable_Image:
+			asset.uv_rect = {
+				f32(px_offset_into_line) / atlas_sizef.x,
+				f32(px_line_of_write) / atlas_sizef.y,
+				f32(asset.size_px.x) / atlas_sizef.x,
+				f32(asset.size_px.y) / atlas_sizef.y,
+			}
+			asset_stride := asset_channels * size_of(u8) * asset.size_px.x
+			for row in 0..< asset.size_px.y {
 				src_start := (row * asset_stride)
 				src_end := src_start + asset_stride
 				copy(atlas_rgba[atlas_subrect_topleft + (row*atlas_stride):],
 				     asset.pixels[src_start: src_end])
 			}
-		case Sprite_With_Pixels:
+		case Packable_Sprite:
+			frame_index := id.y
+			assert(frame_index >= 0) // defaults to -1 for images.
+			asset.frames[frame_index].uv_rect = {
+				f32(px_offset_into_line) / atlas_sizef.x,
+				f32(px_line_of_write) / atlas_sizef.y,
+				f32(asset.size_px.x) / atlas_sizef.x,
+				f32(asset.size_px.y) / atlas_sizef.y,
+			}
 			asset_stride := asset_channels * size_of(u8) * asset.size_px.x
 			for row in 0..< asset.size_px.y {
 				src_start := (row * asset_stride)
@@ -523,20 +585,70 @@ assert(size.x > 0 && size.y > 0)
 			}
 		}
 	}
-	log.infof("texture atlas size: %v", size)
+	log.infof("texture atlas size: %v", atlas_size)
 	log_time("write_texture_atlas_to_disk")
 	ok := cast(b32) stbi.write_tga(
 		TEXTURE_ATLAS_PATH,
 		w=cast(i32)MAX_ATLAS_PIXELS,
-		h=cast(i32)size.y,
+		h=cast(i32)atlas_size.y,
 		comp=4,
 		data=raw_data(atlas_rgba))
 	log_time("write_texture_atlas_to_disk")
 	if !ok {
 		log.errorf("STBI failed to write the RGBA atlas.")
 	}
-
 	log_time("Texture Bundler")
+// x. TEMPORARY: LOAD FUNC ///////////////////////////////////////////////////////////// THIS IS THE LOAD FUNC
+	log_time("Load Texture Atlas")
+// 	err, atlas := gl.CreateTexture()
+
+// 	log_time("read_atlas_from_disk")
+// 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
+// 	log_time("read_atlas_from_disk")
+// assert(err == nil)
+// 	log_time("decode_atlas_to_pixels")
+// 	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
+// 	log_time("decode_atlas_to_pixels")
+// 	log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
+// 	if img_err != nil {
+// 		log.errorf("%v", img_err)
+// 		assert(img_err == nil)
+// 	}
+// 	globals.assets.font_atlas.wrap_ST = { .REPEAT, .REPEAT }
+// 	globals.assets.font_atlas.minify_filter = .LINEAR
+// 	globals.assets.font_atlas.magnify_filter = .LINEAR
+// 	globals.assets.font_atlas.format = .RGB8
+// 	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
+
+// 	globals.assets.images[FONT_ATLAS_PATH] = Image {
+// 		FONT_ATLAS_PATH,
+// 		{0,0, 1,1}, // does this even go here?
+// 		&globals.assets.font_atlas,
+// 	}
+// 	for &packable in pack_list {
+// 		switch &asset in packable {
+// 		case Packable_Image:
+// 			asset.image.gpu_handle = atlas
+// 			globals.assets.images[asset.filename] = asset.image
+// 		case Packable_Sprite:
+// 			asset.sprite.gpu_handle = atlas
+// 			globals.assets.sprites[asset.filename] = asset.sprite
+// 		}
+// 	}
+	log_time("Load Texture Atlas")
+// 4. Write Metadata /////////////////////////////////////////////////////////////////////
+// 	log_time("Texture Metadata Bundling")
+// 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
+// 	defer os2.close(file)
+// assert(err == nil)
+// 	writer := os2.to_writer(file)
+
+// 	Asset :: union {
+// 		Image,
+// 		Sprite,
+// 	}
+// 	cbor.marshal_into_writer(writer, pack_list)
+// 	log_time("Texture Metadata Bundling")
 }
 
 @(private="file")
@@ -555,13 +667,6 @@ aseprite_ok :: #force_inline proc (
 // TODO: 
 load_textures :: proc () {
 }
-	// #load Textureatlas
-	// #load Textureatlasmetadata
-	// cbor unmarshal meta
-	// treat atlas as png (but tga was better?) (but no premult alpha)
-	//
-	// unpack into types I actually care to use.
-	// No reason those types can't be the app types, either.
 
 // Diagnostic :: struct {
 // layer
@@ -569,3 +674,11 @@ load_textures :: proc () {
 // resolution
 // rationale | nil
 // }
+
+//////////////////////////////////////////////////////////////////////
+// Implementation (3/3) Texture Lifecycle
+//////////////////////////////////////////////////////////////////////
+
+upload_textures :: proc () {
+}
+

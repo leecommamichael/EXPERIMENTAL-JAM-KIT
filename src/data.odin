@@ -129,7 +129,7 @@ Ren :: struct {
 	prev_cmd:  Draw_Command,
 	frame_UBO: gl.Buffer,
 	programs:  [Game_Shader]gl.Program, // constant
-	textures: [16]Texture_Binding
+	textures: [16]GPU_Texture
 }
 
 Game_Shader :: enum {
@@ -165,7 +165,7 @@ Draw_Command :: struct {
 	program:      gl.Program,
 	VAO:          gl.VertexArrayObject,
 	// attributes:   []Attribute_Binding, // easy to add. might do for debug.
-	textures:     []Texture_Binding,
+	textures:     []GPU_Texture,
 	index_buffer: gl.Buffer,
 	index_count:  int,
 		// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
@@ -173,15 +173,14 @@ Draw_Command :: struct {
 }
 #assert(size_of(Draw_Command) < 90, "Be mindful of this increasing.")
 
-Texture_Binding :: struct {
+GPU_Texture :: struct {
 	texture_unit:   u32, // binding point
 	target:         gl.Texture_Target,
 	texture:        gl.Texture, // TODO: associate this to prebundlefilenames
 		// For copying
 	format: gl.Internal_Color_Format,
-	width:  int,
-	height: int,
-	level:  int,
+	size_px: [2]int,
+	level:   int,
 		// Texture Unit State (all fields below are optional)
 	magnify_filter: gl.Texture_Mag_Filter,
 	minify_filter:  gl.Texture_Min_Filter,

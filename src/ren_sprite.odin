@@ -19,9 +19,9 @@ Sprite_Entity :: struct {
 
 Sprite :: struct {
 	filename:   string,
-	size_px:    [2]int,
 	frames:     []Sprite_Animation_Frame,
 	animations: map[string]Sprite_Animation,
+	texture:    ^GPU_Texture
 }
 
 /**/	Sprite_Animation_Frame :: struct {

@@ -11,6 +11,7 @@ window:
     {
       0.337979:
       {
+        selected
         watch:
         {
           expression: ""
@@ -47,10 +48,9 @@ window:
       }
       0.274248:
       {
-        watch: expression: "query:call_stack"
+        watch: selected expression: "query:call_stack"
         disasm:
         {
-          selected
           expression: ""
           query: input: ""
         }
@@ -59,7 +59,6 @@ window:
     }
     0.580108:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
@@ -95,9 +94,9 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_text.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 58
+        cursor_line: 53
         cursor_column: 1
-        mark_line: 58
+        mark_line: 53
         mark_column: 1
       }
       text:
@@ -105,13 +104,14 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 401
+        cursor_line: 102
         cursor_column: 1
-        mark_line: 401
+        mark_line: 102
         mark_column: 1
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -119,26 +119,25 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 150
-        cursor_column: 11
-        mark_line: 150
-        mark_column: 11
+        cursor_line: 483
+        cursor_column: 1
+        mark_line: 483
+        mark_column: 1
       }
       text:
       {
-        selected
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/third-party/odin-aseprite/utils/animation.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/nord_gl/interface.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 47
+        cursor_line: 27
         cursor_column: 1
-        mark_line: 47
+        mark_line: 27
         mark_column: 1
       }
     }
   }
   split_x
-  pos: 1710 258
+  pos: 1532 156
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0

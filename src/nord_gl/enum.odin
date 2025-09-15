@@ -516,71 +516,71 @@ Pixel_Data_Type :: enum GLenum {
 
 Internal_Color_Format :: enum GLenum {
 	// Unsized Formats. Use with UNSIGNED_BYTE
-  RGB,
-  RGBA,
-  ALPHA,
-  LUMINANCE,
-  LUMINANCE_ALPHA,
+  RGB = RGB,
+  RGBA = RGBA,
+  ALPHA = ALPHA ,
+  LUMINANCE = LUMINANCE,
+  LUMINANCE_ALPHA = LUMINANCE_ALPHA,
 	// Color-Renderable & Texture-Filterable Formats
-	R8,
-	RG8,
-	RGB8,
-	RGBA4,
-	RGBA8,
+	R8 = R8,
+	RG8 = RG8,
+	RGB8 = RGB8,
+	RGBA4 = RGBA4,
+	RGBA8 = RGBA8,
 
-	RGB565,
-	RGB5_A1,
-	RGB10_A2,
-	SRGB8_ALPHA8,
+	RGB565 = RGB565,
+	RGB5_A1 = RGB5_A1,
+	RGB10_A2 = RGB10_A2,
+	SRGB8_ALPHA8 = SRGB8_ALPHA8,
 	// Color-Renderable Format (not Texture Filterable)
-	RGB10_A2UI,
-	R8I,
-	R8UI,
-	R16I,
-	R16UI,
-	R32I,
-	R32UI,
-	RG8I,
-	RG8UI,
-	RG16I,
-	RG16UI,
-	RG32I,
-	RG32UI,
-	RGBA8I,
-	RGBA8UI,
-	RGBA16I,
-	RGBA16UI,
-	RGBA32I,
-	RGBA32UI,
+	RGB10_A2UI = RGB10_A2UI,
+	R8I = R8I,
+	R8UI = R8UI,
+	R16I = R16I,
+	R16UI = R16UI,
+	R32I = R32I,
+	R32UI = R32UI,
+	RG8I = RG8I,
+	RG8UI = RG8UI,
+	RG16I = RG16I,
+	RG16UI = RG16UI,
+	RG32I = RG32I,
+	RG32UI = RG32UI,
+	RGBA8I = RGBA8I,
+	RGBA8UI = RGBA8UI,
+	RGBA16I = RGBA16I,
+	RGBA16UI = RGBA16UI,
+	RGBA32I = RGBA32I,
+	RGBA32UI = RGBA32UI,
 	// Texture-Filterable Formats (not Color-Renderable)
-	R8_SNORM,
-	RG8_SNORM,
-	RGB8_SNORM,
-	RGBA8_SNORM,
-	SRGB8,
-	R16F,
-	RG16F,
-	RGB16F,
-	RGBA16F,
-	R11F_G11F_B10F,
-	RGB9_E5,
+	R8_SNORM = R8_SNORM,
+	RG8_SNORM = RG8_SNORM,
+	RGB8_SNORM = RGB8_SNORM,
+	RGBA8_SNORM = RGBA8_SNORM,
+	SRGB8 = SRGB8,
+	R16F = R16F,
+	RG16F = RG16F,
+	RGB16F = RGB16F,
+	RGBA16F = RGBA16F,
+	R11F_G11F_B10F = R11F_G11F_B10F,
+	RGB9_E5 = RGB9_E5,
 	// Neither Color-Renderable nor Texture-Filterable
-	RGB8UI,
-	RGB16UI,
-	RGB32UI,
-	RGB8I,
-	RGB16I,
-	RGB32I,
-	R32F,
-	RG32F,
-	RGB32F,
-	RGBA32F,
+	RGB8UI = RGB8UI,
+	RGB16UI = RGB16UI,
+	RGB32UI = RGB32UI,
+	RGB8I = RGB8I,
+	RGB16I = RGB16I,
+	RGB32I = RGB32I,
+	R32F = R32F,
+	RG32F = RG32F,
+	RGB32F = RGB32F,
+	RGBA32F = RGBA32F,
 	// Depth-Renderable
-	DEPTH_COMPONENT16,
-	DEPTH_COMPONENT24,
-	DEPTH_COMPONENT32F,
-	DEPTH24_STENCIL8,
-	DEPTH32F_STENCIL8,
+	DEPTH_COMPONENT16 = DEPTH_COMPONENT16,
+	DEPTH_COMPONENT24 = DEPTH_COMPONENT24,
+	DEPTH_COMPONENT32F = DEPTH_COMPONENT32F,
+	DEPTH24_STENCIL8 = DEPTH24_STENCIL8,
+	DEPTH32F_STENCIL8 = DEPTH32F_STENCIL8,
 }
 
 Texture_Format_Capability :: enum {
@@ -597,7 +597,7 @@ Color_Format_Info :: struct {
 	capabilities: bit_set[Texture_Format_Capability]
 }
 
-Internal_Format_Infos : [Internal_Color_Format]Color_Format_Info : {
+Internal_Format_Infos : #sparse[Internal_Color_Format]Color_Format_Info = {
 	// Unsized Formats. Use with UNSIGNED_BYTE
 	.RGB = { 
 		gl_name = RGB8,
@@ -633,19 +633,19 @@ Internal_Format_Infos : [Internal_Color_Format]Color_Format_Info : {
 	.R8 = {
 		gl_name = R8,
 		format = .RED,
-		type = .BYTE,
+		type = .UNSIGNED_BYTE,
 		capabilities = { .Color_Renderable, .Texture_Filterable }
 	},
 	.RG8 = {
 		gl_name = RG8,
 		format = .RG,
-		type = .BYTE,
+		type = .UNSIGNED_BYTE,
 		capabilities = { .Color_Renderable, .Texture_Filterable }
 	},
 	.RGB8 = {
 		gl_name = RGB8,
 		format = .RGB,
-		type = .BYTE,
+		type = .UNSIGNED_BYTE,
 		capabilities = { .Color_Renderable, .Texture_Filterable }
 	},
 	.RGBA4 = {
@@ -657,7 +657,7 @@ Internal_Format_Infos : [Internal_Color_Format]Color_Format_Info : {
 	.RGBA8 = {
 		gl_name = RGBA8,
 		format = .RGBA,
-		type = .BYTE,
+		type = .UNSIGNED_BYTE,
 		capabilities = { .Color_Renderable, .Texture_Filterable }
 	},
 	.RGB565 = {
@@ -681,9 +681,10 @@ Internal_Format_Infos : [Internal_Color_Format]Color_Format_Info : {
 	.SRGB8_ALPHA8 = {
 		gl_name = SRGB8_ALPHA8,
 		format = .RGBA,
-		type = .BYTE,
+		type = .UNSIGNED_BYTE,
 		capabilities = { .Color_Renderable, .Texture_Filterable }
 	},
+	// TODO: The rest--------------------------------------------- The rest
 	// Color-Renderable Format (not Texture Filterable)
 	.RGB10_A2UI = {
 		gl_name = RGB10_A2UI,
@@ -767,21 +768,21 @@ Internal_Format_Infos : [Internal_Color_Format]Color_Format_Info : {
 // RGBA             |  UNSIGNED_SHORT_4_4_4_4 |  RGBA4
 
 Pixel_Format :: enum GLenum {
-	RED,
-	RG,
-	RGB,
-	RGBA,
+	RED = RED,
+	RG = RG,
+	RGB = RGB,
+	RGBA = RGBA,
 
-	RED_INTEGER,
-	RG_INTEGER,
-	RGB_INTEGER,
-	RGBA_INTEGER,
+	RED_INTEGER = RED_INTEGER,
+	RG_INTEGER = RG_INTEGER,
+	RGB_INTEGER = RGB_INTEGER,
+	RGBA_INTEGER = RGBA_INTEGER,
 
-	DEPTH_COMPONENT,
-	DEPTH_STENCIL,
-	LUMINANCE_ALPHA,
-	LUMINANCE,
-	ALPHA,
+	DEPTH_COMPONENT = DEPTH_COMPONENT,
+	DEPTH_STENCIL = DEPTH_STENCIL,
+	LUMINANCE_ALPHA = LUMINANCE_ALPHA,
+	LUMINANCE = LUMINANCE,
+	ALPHA = ALPHA,
 }
 
 /* WIP

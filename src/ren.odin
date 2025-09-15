@@ -146,7 +146,7 @@ ren_draw :: proc (ren: ^Ren) {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Section: Shading & Asset
+// Section: Draw Commands
 //////////////////////////////////////////////////////////////////////
 
 // Creates and initializes:
@@ -460,61 +460,116 @@ slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
 	return 1
 }
 
-ren_make_texture_binding :: proc (
-	binding: ^Texture_Binding
-) {
-	err, tex := gl.CreateTexture()
-	assert(err == .NO_ERROR) // TODO: Not sure how I wanna deal with this yet.
-	binding.texture = tex
+//////////////////////////////////////////////////////////////////////
+// Section: Textures
+//////////////////////////////////////////////////////////////////////
+
+bind_texture_to_unit :: proc (texture_unit: uint, texture: GPU_Texture) {
+	gl.glActiveTexture(gl.TEXTURE0 + texture_unit)
+	gl.BindTexture(texture.target, texture.texture)
 }
 
-ren_set_texture_state :: proc (
-	binding: ^Texture_Binding
-) {
-	assert(binding.texture_unit <= GLES_MAX_FRAGMENT_TEXTURES)
+init_and_upload_texture :: proc (texture_unit: uint, texture: ^GPU_Texture, pixels: []$T, size_px: [2]int) -> bool {
+	assert(texture.texture == 0)
+	assert(pixels != nil)
+	err, new_texture_name := gl.CreateTexture()
+	if err != nil { return false }
+	texture.texture = new_texture_name
+	texture.size_px = size_px
 
-	err, tex := gl.CreateTexture()
-	assert(err == .NO_ERROR) // TODO: Not sure how I wanna deal with this yet.
-	binding.texture = tex
-	gl.glActiveTexture(gl.TEXTURE0 + uint(binding.texture_unit))
-	gl.BindTexture(binding.target, binding.texture)
-	// TODO: No variant of a binding for a cubemap. Implement one to find an API.
-	parameter_target := gl.parameter_for_target(binding.target)
-	if binding.magnify_filter != nil {
-		gl.Set_Texture_Mag_Filter(parameter_target, binding.magnify_filter)
+	bind_texture_to_unit(texture_unit, texture^)
+
+	info: gl.Color_Format_Info = gl.Internal_Format_Infos[texture.format]
+	err = gl.TexImage2D(
+		auto_cast texture.target, // TODO auto_cast
+		texture.level,
+		cast(int) texture.format,
+		size_px.x,
+		size_px.y,
+		cast(uint) info.format,
+		cast(uint) info.type,
+		pixels)
+	if err != nil { return false }
+
+	set_texture_state(texture^)
+	return true
+}
+
+// TODO casts in this function
+upload_pixels_to_texture :: proc (texture: ^GPU_Texture, pixels: []u8, size_px: [2]int) {
+	info: gl.Color_Format_Info = gl.Internal_Format_Infos[texture.format]
+	gl.TexSubImage2D(
+		auto_cast texture.target, // TODO
+		texture.level,
+		0,0, // offset into image
+		size_px.x,
+		size_px.y,
+		cast(uint) info.format,
+		cast(uint) info.type,
+		pixels
+	)
+}
+
+// uses the presently bound texture unit and texture.
+// set_active_texture_unit_state :: proc (texture: GPU_Texture) {
+// 	assert(texture.texture != 0)
+// 	tex := gl.parameter_for_target(texture.target)
+// 	gl.Set_Texture_Min_Filter(tex, texture.minify_filter)
+// 	gl.Set_Texture_Mag_Filter(tex, texture.magnify_filter)
+// 	gl.Set_Texture_Wrap_S    (tex, texture.wrap_ST[0])
+// 	gl.Set_Texture_Wrap_T    (tex, texture.wrap_ST[1])
+// 	gl.Set_Texture_Wrap_R    (tex, texture.wrap_R)
+// 	gl.Set_Texture_Base_Level(tex, texture.base_level)
+// 	gl.Set_Texture_Max_Level (tex, texture.max_level)
+// 	gl.Set_Texture_Min_LOD   (tex, texture.min_LOD)
+// 	gl.Set_Texture_Max_LOD   (tex, texture.max_LOD)
+// 	gl.Set_Texture_Compare_Func(tex, texture.compare_func)
+// 	gl.Set_Texture_Compare_Mode(tex, texture.compare_mode)
+// }
+
+// TODO: Can't set to defaults using nil, could enable a path for that?
+set_texture_state :: proc (texture: GPU_Texture) {
+	assert(texture.texture_unit <= GLES_MAX_FRAGMENT_TEXTURES)
+	// TODO: No variant of a texture for a cubemap. Implement one to find an API.
+	parameter_target := gl.parameter_for_target(texture.target)
+	if texture.magnify_filter != nil {
+		gl.Set_Texture_Mag_Filter(parameter_target, texture.magnify_filter)
 	}
-	if binding.minify_filter != nil {
-		gl.Set_Texture_Min_Filter(parameter_target, binding.minify_filter)
+	if texture.minify_filter != nil {
+		gl.Set_Texture_Min_Filter(parameter_target, texture.minify_filter)
 	}
-	if binding.wrap_ST[0] != nil {
-		gl.Set_Texture_Wrap_S(parameter_target, binding.wrap_ST[0])
+	if texture.wrap_ST[0] != nil {
+		gl.Set_Texture_Wrap_S(parameter_target, texture.wrap_ST[0])
 	}
-	if binding.wrap_ST[1] != nil {
-		gl.Set_Texture_Wrap_T(parameter_target, binding.wrap_ST[1])
+	if texture.wrap_ST[1] != nil {
+		gl.Set_Texture_Wrap_T(parameter_target, texture.wrap_ST[1])
 	}
-	if binding.wrap_R != nil {
-		gl.Set_Texture_Wrap_R(parameter_target, binding.wrap_R)
+	if texture.wrap_R != nil {
+		gl.Set_Texture_Wrap_R(parameter_target, texture.wrap_R)
 	}
-	if binding.base_level != 0 {
-		gl.Set_Texture_Base_Level(parameter_target, binding.base_level)
+	if texture.base_level != 0 {
+		gl.Set_Texture_Base_Level(parameter_target, texture.base_level)
 	}
-	if binding.max_level != 0 {
-		gl.Set_Texture_Max_Level(parameter_target, binding.max_level)
+	if texture.max_level != 0 {
+		gl.Set_Texture_Max_Level(parameter_target, texture.max_level)
 	}
-	if binding.min_LOD != 0 {
-		gl.Set_Texture_Min_LOD(parameter_target, binding.min_LOD)
+	if texture.min_LOD != 0 {
+		gl.Set_Texture_Min_LOD(parameter_target, texture.min_LOD)
 	}
-	if binding.max_LOD != 0 {
-		gl.Set_Texture_Max_LOD(parameter_target, binding.max_LOD)
+	if texture.max_LOD != 0 {
+		gl.Set_Texture_Max_LOD(parameter_target, texture.max_LOD)
 	}
-	if binding.compare_func != nil {
-		gl.Set_Texture_Compare_Func(parameter_target, binding.compare_func)
+	if texture.compare_func != nil {
+		gl.Set_Texture_Compare_Func(parameter_target, texture.compare_func)
 	}
-	if binding.compare_mode != nil {
-		gl.Set_Texture_Compare_Mode(parameter_target, binding.compare_mode)
+	if texture.compare_mode != nil {
+		gl.Set_Texture_Compare_Mode(parameter_target, texture.compare_mode)
 	}
 }
 
+//////////////////////////////////////////////////////////////////////
+// Section: Shaders
+//////////////////////////////////////////////////////////////////////
 
 version :: "#version 300 es\n"
 
@@ -544,9 +599,6 @@ fragment_preamble ::
 	precision_defaults +
 	frame_uniforms
 
-////////////////////////////////////////////////////////////////////////////////
-// Shaders /////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
 // Basic ///////////////////////////////////////////////////////////////////////
 basic_vertex_inputs :: `
 	layout (location = 0) in vec3 v_position;
@@ -720,7 +772,3 @@ make_triagle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
   append(&indices, 2)
   return verts[:], indices[:]
 }
-
-//////////////////////////////////////////////////////////////////////
-// Section: UI Nodes
-//////////////////////////////////////////////////////////////////////
