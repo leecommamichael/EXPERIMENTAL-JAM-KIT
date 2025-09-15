@@ -39,16 +39,18 @@ Asset_Bundle :: struct {
 // file I/O procedure to overwrite the cache.
 
 asset_init :: proc () {
-	log_time("Asset Bundler")
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	when ODIN_OS != .JS {
+	when ODIN_OS != .JS && !ODIN_DEBUG {
+		log_time("make_bundle")
 		bundle_fonts()
 		bundle_textures()
+		log_time("make_bundle")
 	}
+	log_time("load_bundle")
 	load_bundled_fonts()
 	load_bundled_textures()
-	log_time("Asset Bundler")
+	log_time("load_bundle")
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -67,7 +69,6 @@ FONT_ATLAS_PATH :: "./font_atlas.tga"
 
 
 load_bundled_fonts :: proc () {
-	log_time("read_atlas_metadata_from_disk")
 	metadata_file, err_opening_metadata_file := os2.open(FONT_ATLAS_METADATA, {.Read})
 	if err_opening_metadata_file != nil {
 		log.errorf("%v", err_opening_metadata_file)
@@ -80,21 +81,14 @@ load_bundled_fonts :: proc () {
 		globals.fonts[font.usage][font.variant].data = font.packed_char
 	}
 assert(unmarshal_error == nil)
-	log_time("read_atlas_metadata_from_disk")
 
-	log_time("read_atlas_from_disk")
 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
-	log_time("read_atlas_from_disk")
 assert(err == nil)
-	log_time("decode_atlas_to_pixels")
 	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
-	log_time("decode_atlas_to_pixels")
-	log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
 	}
-	log_time("upload_atlas_to_gpu")
 	globals.assets.font_atlas = {
 		target = .TEXTURE_2D,
 		minify_filter = .LINEAR,
@@ -109,7 +103,6 @@ assert(err == nil)
 		{0,0, 1,1}, // does this even go here?
 		&globals.assets.font_atlas,
 	}
-	log_time("upload_atlas_to_gpu")
 }
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
@@ -125,7 +118,6 @@ bundle_fonts :: proc () {
 		range: stbtt.pack_range,
 		font:  ^Font,
 	}
-	log_time("1. Gather Rects")
 	atlas_size: [2]int
 	pack_ctx: stbtt.pack_context
 	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
@@ -164,7 +156,7 @@ bundle_fonts :: proc () {
 		case inter:   usages = inter_usages
 		case cousine: usages = cousine_usages
 		case:
-			log.debugf("FYI: Unrecognized Font (not loaded) %v", font_file.name)
+			log.infof("FYI: Unrecognized Font (not loaded) %v", font_file.name)
 			continue
 		}
 		height_px_for_usage: [Font_Usage]f32 = {
@@ -206,7 +198,6 @@ bundle_fonts :: proc () {
 					ok = cast(bool) stbtt.InitFont(&out_font.info, raw_data(file_bytes), offset = 0)
 					if ok {
 						globals.assets.font_infos[name] = out_font.info
-						log.debugf("FYI: Loaded Font %v", name)
 					}
 				}
 				return
@@ -258,12 +249,8 @@ bundle_fonts :: proc () {
 			}
 		} // for usage
 	} // for file
-	log_time("1. Gather Rects")
 
-	log_time("2. Pack Rects")
 	stbtt.PackFontRangesPackRects(&pack_ctx, raw_data(rects), total_rects)
-	log_time("2. Pack Rects")
-	log_time("3. Render Into Rects")
 	for &pack_range in pack_ranges {
 		ok := cast(bool) stbtt.PackFontRangesRenderIntoRects(
 			&pack_ctx,
@@ -275,7 +262,6 @@ bundle_fonts :: proc () {
 			continue
 		} // else continue to adjust atlas dimensions 
 	}
-	log_time("3. Render Into Rects")
 
 	for r in rects {
 		x := cast(int) r.x + cast(int) r.w
@@ -287,28 +273,23 @@ bundle_fonts :: proc () {
 			atlas_size.y = y
 		}
 	} // for rect
-	log_time("4. Resize Atlas")
 	cropped_atlas_bytes := make([]u8, MAX_ATLAS_PIXELS*atlas_size.y)
 	copy(cropped_atlas_bytes, atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
-	log_time("4. Resize Atlas")
 	delete(atlas_bytes)
-	log.debugf("FYI: Atlas Size = %v", atlas_size)
+	log.infof("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
 
-	log_time("write_atlas_to_disk")
 	ok := cast(b32) stbi.write_tga(
 		FONT_ATLAS_PATH,
 		w=cast(i32)MAX_ATLAS_PIXELS,
 		h=cast(i32)atlas_size.y,
 		comp=1,
 		data=raw_data(cropped_atlas_bytes))
-	log_time("write_atlas_to_disk")
 	if !ok {
 		log.errorf("STBI failed to write the font atlas.")
 	}
 	delete(pack_ranges)
 	delete(rects)
-	log_time("write_atlas_metadata")
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
 	i: int
 	for usage in Font_Usage {
@@ -329,7 +310,6 @@ bundle_fonts :: proc () {
 assert(err == nil)
 	writer := os2.to_writer(file)
 	cbor.marshal_into_writer(writer, serialized_fonts)
-	log_time("write_atlas_metadata")
 	delete(serialized_fonts)
 	delete(cropped_atlas_bytes)
 }
@@ -358,7 +338,6 @@ bundle_textures :: proc () {
 		Packable_Sprite,
 	}
 
-	log_time("Texture Bundler")
 // 1. Gather Packables ///////////////////////////////////////////////////////////////////
 	pack_list := make([dynamic]Atlas_Entry)
 	for file in asset_files {
@@ -402,7 +381,6 @@ bundle_textures :: proc () {
 			if len(ase_info.frames) > 1 {
 				if len(ase_info.tags) >= 1 {
 					// Take only the frames which reside in tags.
-					log.infof("ase TAGGED_ANIMATIONS(%d): %s", len(ase_info.tags), file.name)
 					sprite := Packable_Sprite {
 						Sprite{
 							file.name,
@@ -435,7 +413,6 @@ bundle_textures :: proc () {
 					append(&pack_list, sprite)
 				} else {
 					// No tags, but multiple frames. Take all frames.
-					log.infof("ase INFER_ANIMATION(%d): %s", len(ase_info.frames), file.name)
 					sprite := Packable_Sprite {
 						Sprite{
 							file.name,
@@ -467,7 +444,6 @@ bundle_textures :: proc () {
 				}
 			} else {
 				// Consider it an image. Take first frame.
-				log.infof("ase IMAGE: %s", file.name)
 				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
 				aseprite_ok(file.name, error_making_first_frame) or_continue
 				append(&pack_list, 
@@ -565,21 +541,16 @@ bundle_textures :: proc () {
 			}
 		}
 	}
-	log.infof("texture atlas size: %v", atlas_size)
-	log_time("write_texture_atlas_to_disk")
 	ok := cast(b32) stbi.write_tga(
 		TEXTURE_ATLAS_PATH,
 		w=cast(i32)MAX_ATLAS_PIXELS,
 		h=cast(i32)atlas_size.y,
 		comp=4,
 		data=raw_data(atlas_rgba))
-	log_time("write_texture_atlas_to_disk")
 	if !ok {
 		log.errorf("STBI failed to write the RGBA atlas.")
 	}
-	log_time("Texture Bundler")
 // 4. Write Metadata /////////////////////////////////////////////////////////////////////
-	log_time("Texture Metadata Write")
 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
 assert(err == nil)
@@ -595,7 +566,6 @@ assert(err == nil)
 	}
 	cbor.marshal_into_writer(writer, entries)
 	delete(pack_list)
-	log_time("Texture Metadata Write")
 }
 
 Serialized_Texture_Atlas_Entries :: struct {
@@ -604,15 +574,9 @@ Serialized_Texture_Atlas_Entries :: struct {
 }
 
 load_bundled_textures :: proc () {
-	log_time("Load Texture Atlas")
-	log_time("read_texture_atlas_from_disk")
 	texture_atlas_bytes, err2 := os2.read_entire_file_from_path(TEXTURE_ATLAS_PATH, context.allocator)
-	log_time("read_texture_atlas_from_disk")
 assert(err2 == nil)
-	log_time("decode_texture_atlas_to_pixels")
 	img, img_err := tga.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
-	log_time("decode_texture_atlas_to_pixels")
-	log.infof("Loaded image %s: %v", TEXTURE_ATLAS_PATH, img)
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
@@ -632,7 +596,6 @@ assert(err2 == nil)
 		&globals.assets.texture_atlas,
 	}
 
-	log_time("read_atlas_metadata_from_disk")
 	metadata_file, err_opening_metadata_file := os2.open(TEXTURE_ATLAS_METADATA, {.Read})
 	if err_opening_metadata_file != nil {
 		log.errorf("%v", err_opening_metadata_file)
@@ -662,8 +625,6 @@ log.assertf(eerr == nil, "to diagnostic error: %v", eerr)
 		fmt.println(diagnosis)
 	}
 
-	log_time("read_atlas_metadata_from_disk")
-	log_time("Load Texture Atlas")
 }
 
 @(private="file")
