@@ -1,16 +1,21 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "../../applications (compilers)/odin/base/runtime/entry_windows.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
+recent_file: path: "src/main_entrypoint.odin"
+recent_file: path: "src/main_framework.odin"
+recent_file: path: "src/asset_bundle.odin"
+recent_file: path: "../../applications (compilers)/odin/core/fmt/fmt.odin"
+recent_file: path: "../../applications (compilers)/odin/core/encoding/cbor/coding.odin"
+recent_file: path: "../../applications (compilers)/odin/core/io/io.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/ren_text.odin"
 recent_file: path: "src/nord_gl/interface.odin"
 recent_file: path: "src/nord_gl/impl_desktop.odin"
-recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/error_checks.odin"
 recent_file: path: "src/third-party/odin-aseprite/utils/animation.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
-recent_file: path: "src/main_framework.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
 recent_file: path: "../../applications (compilers)/odin/core/image/png/png.odin"
 recent_file: path: "../../applications (compilers)/odin/core/compress/common.odin"
 recent_file: path: "../../applications (compilers)/odin/core/image/PNG"
@@ -19,7 +24,6 @@ recent_file: path: "src/main_game.odin"
 recent_file: path: "src/ren_util.odin"
 recent_file: path: "../../applications (compilers)/odin/core/mem/alloc.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/internal.odin"
-recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "src/main_app.odin"
 recent_file: path: "src/sugar/sugar.odin"
 recent_file: path: "src/main.odin"
@@ -57,6 +61,21 @@ watch_pin:
 }
 breakpoint:
 {
-  source_location: "src/ren.odin:483:1"
+  source_location: "src/asset_bundle.odin:650:1"
   hit_count: 1
+}
+breakpoint:
+{
+  source_location: "../../applications (compilers)/odin/core/encoding/cbor/coding.odin:134:1"
+  hit_count: 30
+}
+breakpoint:
+{
+  source_location: "../../applications (compilers)/odin/core/encoding/cbor/coding.odin:168:1"
+  hit_count: 3
+}
+breakpoint:
+{
+  source_location: "../../applications (compilers)/odin/core/encoding/cbor/coding.odin:493:1"
+  hit_count: 3
 }

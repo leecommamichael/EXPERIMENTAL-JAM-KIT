@@ -24,11 +24,11 @@ import gl "nord_gl"
 // Interface
 //////////////////////////////////////////////////////////////////////
 Asset_Bundle :: struct {
+	font_atlas:    GPU_Texture,
 	font_infos:    map[string]stbtt.fontinfo,
+	texture_atlas: GPU_Texture,
 	images:        map[string]Image,
 	sprites:       map[string]Sprite,
-	font_atlas:    GPU_Texture,
-	texture_atlas: GPU_Texture,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -47,6 +47,7 @@ asset_init :: proc () {
 		bundle_textures()
 	}
 	load_bundled_fonts()
+	load_bundled_textures()
 	log_time("Asset Bundler")
 }
 
@@ -94,11 +95,13 @@ assert(err == nil)
 		assert(img_err == nil)
 	}
 	log_time("upload_atlas_to_gpu")
-	globals.assets.font_atlas.wrap_ST = { .REPEAT, .REPEAT }
-	globals.assets.font_atlas.minify_filter = .LINEAR
-	globals.assets.font_atlas.magnify_filter = .LINEAR
-	globals.assets.font_atlas.format = .RGB8
-	globals.assets.font_atlas.target = .TEXTURE_2D
+	globals.assets.font_atlas = {
+		target = .TEXTURE_2D,
+		minify_filter = .LINEAR,
+		magnify_filter = .LINEAR,
+		format = .RGB8,
+		wrap_ST = { .REPEAT, .REPEAT }
+	}
 	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
 
 	globals.assets.images[FONT_ATLAS_PATH] = Image {
@@ -108,29 +111,6 @@ assert(err == nil)
 	}
 	log_time("upload_atlas_to_gpu")
 }
-
-// 	GPU_Texture :: struct {
-// 	target:         gl.Texture_Target,
-// 	texture:        gl.Texture, // TODO: associate this to prebundlefilenames
-// 		// For copying
-// 	format: gl.Internal_Color_Format,
-// 	size_px: int,
-// 	level:   int,
-// 		// Texture Unit State (all fields below are optional)
-// 	magnify_filter: gl.Texture_Mag_Filter,
-// 	minify_filter:  gl.Texture_Min_Filter,
-// 	wrap_ST:        [2]gl.Texture_Wrap_Mode,
-// 		// Fields below are more likely to matter in 3D.
-// 	wrap_R:         gl.Texture_Wrap_Mode,
-// 	base_level:     uint,
-// 	max_level:      uint,
-// 	min_LOD:        f32,
-// 	max_LOD:        f32,
-// 	compare_func:   gl.Compare_Func,
-// 	compare_mode:   gl.Texture_Compare_Mode,
-// }
-
-
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
 MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
@@ -598,57 +578,92 @@ bundle_textures :: proc () {
 		log.errorf("STBI failed to write the RGBA atlas.")
 	}
 	log_time("Texture Bundler")
-// x. TEMPORARY: LOAD FUNC ///////////////////////////////////////////////////////////// THIS IS THE LOAD FUNC
-	log_time("Load Texture Atlas")
-// 	err, atlas := gl.CreateTexture()
-
-// 	log_time("read_atlas_from_disk")
-// 	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
-// 	log_time("read_atlas_from_disk")
-// assert(err == nil)
-// 	log_time("decode_atlas_to_pixels")
-// 	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
-// 	log_time("decode_atlas_to_pixels")
-// 	log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
-// 	if img_err != nil {
-// 		log.errorf("%v", img_err)
-// 		assert(img_err == nil)
-// 	}
-// 	globals.assets.font_atlas.wrap_ST = { .REPEAT, .REPEAT }
-// 	globals.assets.font_atlas.minify_filter = .LINEAR
-// 	globals.assets.font_atlas.magnify_filter = .LINEAR
-// 	globals.assets.font_atlas.format = .RGB8
-// 	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
-
-// 	globals.assets.images[FONT_ATLAS_PATH] = Image {
-// 		FONT_ATLAS_PATH,
-// 		{0,0, 1,1}, // does this even go here?
-// 		&globals.assets.font_atlas,
-// 	}
-// 	for &packable in pack_list {
-// 		switch &asset in packable {
-// 		case Packable_Image:
-// 			asset.image.gpu_handle = atlas
-// 			globals.assets.images[asset.filename] = asset.image
-// 		case Packable_Sprite:
-// 			asset.sprite.gpu_handle = atlas
-// 			globals.assets.sprites[asset.filename] = asset.sprite
-// 		}
-// 	}
-	log_time("Load Texture Atlas")
 // 4. Write Metadata /////////////////////////////////////////////////////////////////////
-// 	log_time("Texture Metadata Bundling")
-// 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
-// 	defer os2.close(file)
-// assert(err == nil)
-// 	writer := os2.to_writer(file)
+	log_time("Texture Metadata Write")
+	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
+	defer os2.close(file)
+assert(err == nil)
+	writer := os2.to_writer(file)
+	entries := Serialized_Texture_Atlas_Entries {}
+	for packable in pack_list {
+		switch asset in packable {
+		case Packable_Image:
+			entries.images[asset.filename] = asset.image
+		case Packable_Sprite:
+			entries.sprites[asset.filename] = asset.sprite
+		}
+	}
+	cbor.marshal_into_writer(writer, entries)
+	delete(pack_list)
+	log_time("Texture Metadata Write")
+}
 
-// 	Asset :: union {
-// 		Image,
-// 		Sprite,
-// 	}
-// 	cbor.marshal_into_writer(writer, pack_list)
-// 	log_time("Texture Metadata Bundling")
+Serialized_Texture_Atlas_Entries :: struct {
+	images:  map[string]Image,
+	sprites: map[string]Sprite,
+}
+
+load_bundled_textures :: proc () {
+	log_time("Load Texture Atlas")
+	log_time("read_texture_atlas_from_disk")
+	texture_atlas_bytes, err2 := os2.read_entire_file_from_path(TEXTURE_ATLAS_PATH, context.allocator)
+	log_time("read_texture_atlas_from_disk")
+assert(err2 == nil)
+	log_time("decode_texture_atlas_to_pixels")
+	img, img_err := tga.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
+	log_time("decode_texture_atlas_to_pixels")
+	log.infof("Loaded image %s: %v", TEXTURE_ATLAS_PATH, img)
+	if img_err != nil {
+		log.errorf("%v", img_err)
+		assert(img_err == nil)
+	}
+
+	globals.assets.texture_atlas = {
+		target = .TEXTURE_2D,
+		minify_filter = .LINEAR,
+		magnify_filter = .LINEAR,
+		format = .RGB8,
+		wrap_ST = { .REPEAT, .REPEAT }
+	}
+	init_and_upload_texture(1, &globals.assets.texture_atlas, img.pixels.buf[:], {img.width, img.height})
+	globals.assets.images[TEXTURE_ATLAS_PATH] = Image {
+		TEXTURE_ATLAS_PATH,
+		{0,0, 1,1}, // does this even go here?
+		&globals.assets.texture_atlas,
+	}
+
+	log_time("read_atlas_metadata_from_disk")
+	metadata_file, err_opening_metadata_file := os2.open(TEXTURE_ATLAS_METADATA, {.Read})
+	if err_opening_metadata_file != nil {
+		log.errorf("%v", err_opening_metadata_file)
+		assert(false)
+	}
+	metadata_reader := os2.to_reader(metadata_file)
+	entries: Serialized_Texture_Atlas_Entries
+	unmarshal_error := cbor.unmarshal_from_reader(metadata_reader, &entries)
+	globals.assets.images = entries.images
+	globals.assets.sprites = entries.sprites
+	// TODO: this pointer-wiring feels stupid... is it?
+	for k, &i in globals.assets.images {
+		i.texture = &globals.assets.texture_atlas
+	}
+	for k, &s in globals.assets.sprites {
+		s.texture = &globals.assets.texture_atlas
+	}
+	if unmarshal_error != nil {
+		log.errorf("Failed to load texture atlas: %v", unmarshal_error)
+		decoded, derr := cbor.decode(metadata_reader)
+log.assertf(derr == nil, "decode error: %v", derr)
+		defer cbor.destroy(decoded)
+
+		diagnosis, eerr := cbor.to_diagnostic_format(decoded)
+log.assertf(eerr == nil, "to diagnostic error: %v", eerr)
+		defer delete(diagnosis)
+		fmt.println(diagnosis)
+	}
+
+	log_time("read_atlas_metadata_from_disk")
+	log_time("Load Texture Atlas")
 }
 
 @(private="file")
@@ -663,22 +678,3 @@ aseprite_ok :: #force_inline proc (
 	}
 	return true
 }
-
-// TODO: 
-load_textures :: proc () {
-}
-
-// Diagnostic :: struct {
-// layer
-// issue
-// resolution
-// rationale | nil
-// }
-
-//////////////////////////////////////////////////////////////////////
-// Implementation (3/3) Texture Lifecycle
-//////////////////////////////////////////////////////////////////////
-
-upload_textures :: proc () {
-}
-

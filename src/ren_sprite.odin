@@ -21,7 +21,7 @@ Sprite :: struct {
 	filename:   string,
 	frames:     []Sprite_Animation_Frame,
 	animations: map[string]Sprite_Animation,
-	texture:    ^GPU_Texture
+	texture:    ^GPU_Texture `cbor:"-"`
 }
 
 /**/	Sprite_Animation_Frame :: struct {

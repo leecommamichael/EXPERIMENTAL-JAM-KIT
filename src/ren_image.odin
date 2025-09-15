@@ -13,7 +13,7 @@ Image_Entity :: struct {
 Image :: struct {
 	filename: string, // TODO?: call it ID? name/id. name.
 	uv_rect:  [4]f32, // .xy = top_left, .w = width, .z = height
-	texture:  ^GPU_Texture
+	texture:  ^GPU_Texture `cbor:"-"`
 }
 
 //////////////////////////////////////////////////////////////////////

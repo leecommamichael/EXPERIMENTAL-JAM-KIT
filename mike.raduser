@@ -11,7 +11,6 @@ window:
     {
       0.337979:
       {
-        selected
         watch:
         {
           expression: ""
@@ -48,6 +47,7 @@ window:
       }
       0.274248:
       {
+        selected
         watch: selected expression: "query:call_stack"
         disasm:
         {
@@ -74,9 +74,9 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 13
+        cursor_line: 27
         cursor_column: 1
-        mark_line: 13
+        mark_line: 27
         mark_column: 1
       }
       text:
@@ -84,9 +84,9 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 64
+        cursor_line: 48
         cursor_column: 1
-        mark_line: 64
+        mark_line: 48
         mark_column: 1
       }
       text:
@@ -104,14 +104,13 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 102
+        cursor_line: 50
         cursor_column: 1
-        mark_line: 102
+        mark_line: 50
         mark_column: 1
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -126,12 +125,17 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/nord_gl/interface.odin\".data"
+        selected
+        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/base/runtime/entry_windows.odin\".data"
         auto: 1
-        query: input: ""
-        cursor_line: 27
+        query:
+        {
+          input: ""
+          cmd: search
+        }
+        cursor_line: 47
         cursor_column: 1
-        mark_line: 27
+        mark_line: 47
         mark_column: 1
       }
     }

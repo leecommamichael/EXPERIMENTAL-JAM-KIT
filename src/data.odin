@@ -174,7 +174,6 @@ Draw_Command :: struct {
 #assert(size_of(Draw_Command) < 90, "Be mindful of this increasing.")
 
 GPU_Texture :: struct {
-	texture_unit:   u32, // binding point
 	target:         gl.Texture_Target,
 	texture:        gl.Texture, // TODO: associate this to prebundlefilenames
 		// For copying

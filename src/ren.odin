@@ -33,10 +33,10 @@ ren_make :: proc () -> ^Ren {
 	gl.BufferData(.ARRAY_BUFFER, globals.immediate_glyph_staging[:], .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
-	ren.programs[.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
-	ren.programs[.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
-	ren.programs[.Text]  = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
-	ren.programs[.Image] = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
+	ren.programs[Game_Shader.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
+	ren.programs[Game_Shader.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
+	ren.programs[Game_Shader.Text]  = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
+	ren.programs[Game_Shader.Image] = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 
 	return ren
 }
@@ -510,26 +510,8 @@ upload_pixels_to_texture :: proc (texture: ^GPU_Texture, pixels: []u8, size_px: 
 	)
 }
 
-// uses the presently bound texture unit and texture.
-// set_active_texture_unit_state :: proc (texture: GPU_Texture) {
-// 	assert(texture.texture != 0)
-// 	tex := gl.parameter_for_target(texture.target)
-// 	gl.Set_Texture_Min_Filter(tex, texture.minify_filter)
-// 	gl.Set_Texture_Mag_Filter(tex, texture.magnify_filter)
-// 	gl.Set_Texture_Wrap_S    (tex, texture.wrap_ST[0])
-// 	gl.Set_Texture_Wrap_T    (tex, texture.wrap_ST[1])
-// 	gl.Set_Texture_Wrap_R    (tex, texture.wrap_R)
-// 	gl.Set_Texture_Base_Level(tex, texture.base_level)
-// 	gl.Set_Texture_Max_Level (tex, texture.max_level)
-// 	gl.Set_Texture_Min_LOD   (tex, texture.min_LOD)
-// 	gl.Set_Texture_Max_LOD   (tex, texture.max_LOD)
-// 	gl.Set_Texture_Compare_Func(tex, texture.compare_func)
-// 	gl.Set_Texture_Compare_Mode(tex, texture.compare_mode)
-// }
-
 // TODO: Can't set to defaults using nil, could enable a path for that?
 set_texture_state :: proc (texture: GPU_Texture) {
-	assert(texture.texture_unit <= GLES_MAX_FRAGMENT_TEXTURES)
 	// TODO: No variant of a texture for a cubemap. Implement one to find an API.
 	parameter_target := gl.parameter_for_target(texture.target)
 	if texture.magnify_filter != nil {

@@ -25,8 +25,7 @@ resource_type(data)
 
 Or make "immediate resources".
 
-Terraluna Milledec
-	Machine:
+Machine:
 	1 GPU
 	1 CPU Core
 	4GB RAM
