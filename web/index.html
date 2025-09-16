@@ -1,5 +1,6 @@
 <head>
 	<script type="text/javascript" src="odin.js"></script>
+	<script type="text/javascript" src="kv5.js"></script>
 </head>
 <body style="background-color: antiquewhite;">
 	<canvas id="the_canvas"
@@ -12,6 +13,10 @@
 		height="200"
 		></pre>
 	<script defer type="text/javascript">
-		odin.runWasm("game.wasm", document.getElementById("the_output"));
+		const wasmMemoryInterface = new WasmMemoryInterface();
+		const foreignImports = {
+			"kv5": kv5_create_module(wasmMemoryInterface),
+		}
+		odin.runWasm("game.wasm", document.getElementById("the_output"), foreignImports);
 	</script>
 </body>
