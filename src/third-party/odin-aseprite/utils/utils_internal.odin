@@ -43,7 +43,7 @@ fast_log_str_num :: proc(lvl: log.Level, str: string, val: $T, sep := " ", loc :
     if lvl < logger.lowest_level { return }
 
     nb: [32]u8
-    s := strconv.append_int(nb[:], i64(val), 10)
+    s := strconv.write_int(nb[:], i64(val), 10)
     buf := make([]u8, len(str) + len(sep) + len(s))
     defer delete(buf)
 

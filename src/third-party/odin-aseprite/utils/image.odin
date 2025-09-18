@@ -347,7 +347,7 @@ write_cel :: proc (
                 return .Cel_Size_Not_Of_BPP
             }
         case:
-            fast_log(.Error, "Invalid Color Mode: ", md.bpp)
+            fast_log_str_num(.Error, "Invalid Color Mode: ", md.bpp)
             return .Invalid_BPP
         }
     }
