@@ -243,7 +243,7 @@ ren_make_text_draw_cmd :: proc (
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
 ) -> (cmd: Draw_Command) {
-	cmd.program = globals.ren.programs[.Image]
+	cmd.program = globals.ren.programs[.Text]
 	gl.GenVertexArrays(1, &cmd.VAO)
 	gl.BindVertexArray(cmd.VAO)
 
