@@ -11,6 +11,7 @@ window:
     {
       0.357141:
       {
+        selected
         watch:
         {
           selected
@@ -22,6 +23,7 @@ window:
           watch: "ren.frame_UBO"
           watch: "globals.ren.frame_UBO"
           watch: x
+          watch: img
         }
         watch: expression: "query:types"
         watch:
@@ -61,7 +63,6 @@ window:
     }
     0.580108:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
@@ -114,18 +115,17 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
         {
-          input: FRAME_UNIFORM_INDEX
+          input: ""
           cmd: search
         }
-        cursor_line: 74
-        cursor_column: 58
-        mark_line: 74
-        mark_column: 39
+        cursor_line: 51
+        cursor_column: 1
+        mark_line: 51
+        mark_column: 1
       }
       text:
       {
@@ -139,6 +139,17 @@ window:
         cursor_line: 1
         cursor_column: 1
         mark_line: 1
+        mark_column: 1
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query: input: ""
+        cursor_line: 27
+        cursor_column: 1
+        mark_line: 27
         mark_column: 1
       }
     }

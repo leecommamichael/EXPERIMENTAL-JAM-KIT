@@ -95,7 +95,7 @@ Entity :: struct {
 Transform :: struct {
 	position: Vec3,
 	rotation: Vec3,
-	scale:    f32, // PUNT nonuniform scale
+	scale:    Vec3,
 }
 
 
@@ -105,7 +105,7 @@ Entity_Memory :: struct #packed {
 	using variant: struct #raw_union {
 		text: Text,
 		image: ^Image,
-		sprite: Sprite,
+		sprite: Sprite_State,
 	},
 }
 

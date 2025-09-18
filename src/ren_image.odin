@@ -50,7 +50,7 @@ image_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 	out vec2 uv;
 
 	void main() {
-		uv = v_texcoord;//i_uv_xform.xy + (v_texcoord * i_uv_xform.zw);
+		uv = i_uv_xform.xy + (v_texcoord * i_uv_xform.zw);
 		io_color = i_color;
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
@@ -68,7 +68,6 @@ image_fragment_shader_source :: fragment_preamble +
 	out vec4 outColor;
 
 	void main() {
-		// i_uv_xform is a vec4
 		vec4 tex_color = texture(texture_atlas, uv);
 		outColor = tex_color;
 	}

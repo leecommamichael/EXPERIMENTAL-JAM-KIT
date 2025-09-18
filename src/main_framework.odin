@@ -159,7 +159,7 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	case .None:
 	case .Text: step_text(transmute(^Text_Entity)entity, immediate=false)
 	case .Sprite: step_sprite(transmute(^Sprite_Entity)entity, immediate=false)
-	case .Image:
+	case .Image: step_image(transmute(^Image_Entity)entity, immediate=false)
 	}
 
 	instance: ^Any_Instance = entity.instance

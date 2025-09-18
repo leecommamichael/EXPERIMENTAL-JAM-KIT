@@ -24,9 +24,12 @@ game_init :: proc () {
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
 	img := image(`gameplayboard.aseprite`)
-	img.scale = 1000
+	img.scale.xy = ((array_cast(img.image.texture.size_px, f32)) * img.image.uv_rect.zw)
+	img.scale.y *=  -1
+	img.scale *= 2
+	log.infof("subimagesize is %v", img.scale.xy)
 	img.color = 1
-	img.position = Vec3{ 0=100, 1=100 }
+	img.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{300,300,1}
 	// spr := sprite(`berserker.aseprite`)
 	// hello = text(`hello`)
 	// hello.color = Vec4{1,0,0,1}

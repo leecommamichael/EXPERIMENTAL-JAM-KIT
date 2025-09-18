@@ -1,9 +1,10 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/main_game.odin"
+recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/nord_gl/interface.odin"
 recent_file: path: "src/nord_gl/impl_desktop.odin"
-recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/entry_windows.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
 recent_file: path: "src/main_entrypoint.odin"
@@ -20,7 +21,6 @@ recent_file: path: "../../applications (compilers)/odin/core/image/png/png.odin"
 recent_file: path: "../../applications (compilers)/odin/core/compress/common.odin"
 recent_file: path: "../../applications (compilers)/odin/core/image/PNG"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/misc/amd64/chkstk.asm"
-recent_file: path: "src/main_game.odin"
 recent_file: path: "src/ren_util.odin"
 recent_file: path: "../../applications (compilers)/odin/core/mem/alloc.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/internal.odin"
@@ -62,7 +62,7 @@ watch_pin:
 breakpoint:
 {
   source_location: "src/asset_bundle.odin:650:1"
-  hit_count: 0
+  hit_count: 1
 }
 breakpoint:
 {
@@ -78,4 +78,9 @@ breakpoint:
 {
   source_location: "../../applications (compilers)/odin/core/encoding/cbor/coding.odin:493:1"
   hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main_game.odin:27:1"
+  hit_count: 1
 }

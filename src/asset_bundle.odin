@@ -94,7 +94,6 @@ assert(err == nil)
 		minify_filter = .LINEAR,
 		magnify_filter = .LINEAR,
 		format = .RGB8,
-		wrap_ST = { .REPEAT, .REPEAT }
 	}
 	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
 
@@ -584,10 +583,9 @@ assert(err2 == nil)
 
 	globals.assets.texture_atlas = {
 		target = .TEXTURE_2D,
-		minify_filter = .LINEAR,
-		magnify_filter = .LINEAR,
-		format = .RGB8,
-		wrap_ST = { .REPEAT, .REPEAT }
+		minify_filter = .NEAREST,
+		magnify_filter = .NEAREST,
+		format = .RGBA8,
 	}
 	init_and_upload_texture(1, &globals.assets.texture_atlas, img.pixels.buf[:], {img.width, img.height})
 	globals.assets.images[TEXTURE_ATLAS_PATH] = Image {
