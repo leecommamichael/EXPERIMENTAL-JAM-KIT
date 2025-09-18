@@ -1,1 +1,0 @@
-package aseprite_extentions 
