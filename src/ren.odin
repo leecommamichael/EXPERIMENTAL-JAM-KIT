@@ -72,11 +72,11 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
 	log.infof("%v: fas %v, tas %v", program, font_atlas_sampler, texture_atlas_sampler)
 	if font_atlas_sampler != -1 {
-		gl.glUniform1i(cast(i32)font_atlas_sampler, 0)
+		gl.glUniform1i(font_atlas_sampler, 0)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	if texture_atlas_sampler != -1 {
-		gl.glUniform1i(cast(i32)texture_atlas_sampler, 1)
+		gl.glUniform1i(texture_atlas_sampler, 1)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	// Link Uniform Block
