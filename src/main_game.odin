@@ -30,18 +30,21 @@ game_init :: proc () {
 	log.infof("subimagesize is %v", img.scale.xy)
 	img.color = 1
 	img.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{300,300,1}
+
 	// spr := sprite(`berserker.aseprite`)
-	// hello = text(`hello`)
-	// hello.color = Vec4{1,0,0,1}
-	// hello.position.x = 100
-	// hello.position.y = 100
+
+	hello = text(`hello`)
+	hello.color = Vec4{1,0,0,1}
+	hello.position.x = 200
+	hello.position.y = 300
+	hello.position.z = 4
 }
 
 hello: ^Text_Entity
-offset: f32
+
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
-	// do_text(`immediately!`, hello.position)
+	do_text(`immediately!`, hello.position)
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	// step_water(dt)
 }
