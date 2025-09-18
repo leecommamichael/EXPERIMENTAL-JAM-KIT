@@ -440,6 +440,13 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 
 
 
+GetUniformLocation :: proc (p: Program, name: string, allocator := context.temp_allocator) -> int {
+	return glGetUniformLocation(cast(uint)p, (name))
+}
+
+
+
+
 TexImage2D :: proc (
 	target: Texture_2D_Target,
 	level: int,

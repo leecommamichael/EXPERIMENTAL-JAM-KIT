@@ -477,6 +477,15 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 
 
 
+GetUniformLocation :: proc (p: Program, _name: string, allocator := context.allocator) -> int {
+	name := strings.clone_to_cstring(_name, allocator)
+	defer delete(name)
+	return cast(int) cast(i32) glGetUniformLocation(cast(uint)p, (name))
+}
+
+
+
+
 TexImage2D :: proc {
 	make_texture_2D,
 	TexImage2D_verbatim

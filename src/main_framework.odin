@@ -52,6 +52,7 @@ framework_init :: proc () {
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
 	ren_clear()
+	globals.dt = dt
 	globals.uniforms.tau_time += f32(dt)
 	overflow := linalg.TAU - globals.uniforms.tau_time
 	if overflow >= 0 {
@@ -68,7 +69,7 @@ framework_step :: proc (dt: f64) {
 		}
 	}
 ////////////////////////////////////////////////////////////////////////////////
-	game_step(dt)
+	game_step()
 ////////////////////////////////////////////////////////////////////////////////
 	for &entity in globals.entities {
 		entity_step(entity) or_continue
@@ -112,12 +113,19 @@ make_entity_variant :: proc ($T: typeid) -> ^T where type_uses(T, Entity) {
 	for &mem, i in globals._entity_storage {
 		if !mem.used {
 			init_entity_memory(&mem, cast(Entity_ID) i)
-			if T == Text_Entity {
+			switch typeid_of(T) {
+			case Entity:
+				mem.type = Entity_Type.None
+			case Text_Entity:
 				mem.variant = {}
 				mem.type = Entity_Type.Text
-			} else if T == Entity {
-				mem.type = Entity_Type.None
-			} else {
+			case Image_Entity:
+				mem.variant = {}
+				mem.type = Entity_Type.Image
+			case Sprite_Entity:
+				mem.variant = {}
+				mem.type = Entity_Type.Sprite
+			case:
 				panic("Unimplemented Entity Variant")
 			}
 			entity := transmute(^T) &mem
@@ -150,6 +158,8 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	switch entity.type {
 	case .None:
 	case .Text: step_text(transmute(^Text_Entity)entity, immediate=false)
+	case .Sprite: step_sprite(transmute(^Sprite_Entity)entity, immediate=false)
+	case .Image:
 	}
 
 	instance: ^Any_Instance = entity.instance

@@ -23,13 +23,18 @@ Image :: struct {
 image :: proc (filename: string) -> ^Image_Entity {
 	image: ^Image = &globals.assets.images[filename]
 	entity: ^Image_Entity = make_entity(Image_Entity)
+	mesh: Geom_Mesh2 = geom_make_quad(1)
+	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	entity.image = image
 	return entity
 }
 
-do_image :: proc (filename: string, position: Vec3) {
+do_image :: proc (id: string, filename: string, position: Vec3) {
 	entity: ^Image_Entity = make_entity(Image_Entity)
 	entity.position = position
+	entity.color = 1
+	mesh: Geom_Mesh2 = geom_make_quad(1)
+	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	step_image(entity, immediate=true)
 	ren_draw_entity(globals.ren, transmute(^Entity) entity)
 	free_entity(entity)
@@ -45,15 +50,17 @@ image_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 	out vec2 uv;
 
 	void main() {
-		uv = v_texcoord;
+		uv = v_texcoord;//i_uv_xform.xy + (v_texcoord * i_uv_xform.zw);
 		io_color = i_color;
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
 	}
 `
 
-image_fragment_shader_source :: fragment_preamble + `
+image_fragment_shader_source :: fragment_preamble + 
+`
 	uniform sampler2D font_atlas;
+	uniform sampler2D texture_atlas;
 
 	in vec4 io_color;
 	in vec2 uv;
@@ -61,14 +68,18 @@ image_fragment_shader_source :: fragment_preamble + `
 	out vec4 outColor;
 
 	void main() {
-		vec4 tex_color = texture(font_atlas, uv);
-		tex_color = mix(tex_color, io_color, tex_color.r);
-		tex_color = mix(tex_color, vec4(0,0,0,0), 1.-tex_color.r);
+		// i_uv_xform is a vec4
+		vec4 tex_color = texture(texture_atlas, uv);
 		outColor = tex_color;
 	}
 `
 
-ren_make_image_draw_cmd :: proc (
+step_image :: proc (entity: ^Image_Entity, immediate: bool) {
+	globals.instance_staging[cast(int) entity.id].uv_transform = entity.uv_rect
+	// ...
+}
+
+image_make_draw_command :: proc (
 	instance_buffer: gl.Buffer,
 	instance_index: int,
 	vertices: []Ren_Vertex_Base,
@@ -77,8 +88,4 @@ ren_make_image_draw_cmd :: proc (
 	cmd = ren_make_basic_draw_cmd(instance_buffer, instance_index, vertices, indices)
 	cmd.program = globals.ren.programs[Game_Shader.Image]
 	return cmd
-}
-
-step_image :: proc (entity: ^Image_Entity, immediate: bool) {
-	// ...
 }

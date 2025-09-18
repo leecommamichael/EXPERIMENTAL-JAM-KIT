@@ -8,7 +8,11 @@ import log "core:log"
 //////////////////////////////////////////////////////////////////////
 // for play/pause/speed use entity.time_scale
 Sprite_Entity :: struct {
-	using base:      Entity,
+	using base:  Entity,
+	using state: Sprite_State
+}
+
+Sprite_State :: struct {
 	sprite:          ^Sprite,
 	repetitions:     int,
 	animation:       ^Sprite_Animation,
@@ -58,7 +62,7 @@ sprite :: proc (filename: string) -> ^Sprite_Entity {
 
 do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_Event]) {
 	entity := sprite(filename)
-	events = step_sprite(0.16, entity, immediate=true)
+	events = step_sprite(entity, immediate=true)
 	ren_draw_entity(globals.ren, transmute(^Entity) entity)
 	free_entity(entity)
 	return
@@ -115,6 +119,7 @@ sprite_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 
 sprite_fragment_shader_source :: fragment_preamble + `
 	uniform sampler2D font_atlas;
+	uniform sampler2D texture_atlas;
 
 	in vec4 io_color;
 	in vec2 uv;
@@ -122,7 +127,7 @@ sprite_fragment_shader_source :: fragment_preamble + `
 	out vec4 outColor;
 
 	void main() {
-		vec4 tex_color = texture(font_atlas, uv);
+		vec4 tex_color = texture(texture_atlas, uv);
 		tex_color = mix(tex_color, io_color, tex_color.r);
 		tex_color = mix(tex_color, vec4(0,0,0,0), 1.-tex_color.r);
 		outColor = tex_color;
@@ -141,8 +146,8 @@ ren_make_sprite_draw_cmd :: proc (
 }
 
 // If instance data needs to be mutated from properites mutated during `step`, do it here.
-step_sprite :: proc (_dt: f64, it: ^Sprite_Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
-	dt := _dt* it.time_scale
+step_sprite :: proc (it: ^Sprite_Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
+	dt := globals.dt * it.time_scale
 	assert(is_real(dt))
 	seconds_left := it.frame_seconds_remaining - dt
 	if it.animation.frame_count < 2 { return } // Single frame, no work.

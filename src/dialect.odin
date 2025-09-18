@@ -112,3 +112,5 @@ log_time :: proc (id: string) {
 ////////////////////////////////////////////////////////////////////////////////
 type_uses :: intrinsics.type_is_subtype_of
 array_cast :: linalg.array_cast
+clone_to_cstring :: strings.clone_to_cstring
+unsafe_string_to_cstring :: strings.unsafe_string_to_cstring

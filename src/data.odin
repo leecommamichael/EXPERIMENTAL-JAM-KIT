@@ -14,6 +14,7 @@ import stbtt "vendor:stb/truetype"
 globals: Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 Globals :: struct {
+	dt: f64,
 	// Assets
 	assets: Asset_Bundle,
 	fonts: [Font_Usage]Font_Family,
@@ -26,6 +27,7 @@ Globals :: struct {
 	entities:        [dynamic]^Entity,
 	entities_2D:     [dynamic]^Entity,
 	entities_3D:     [dynamic]^Entity,
+	immediate_state: map[string]Entity_Memory,
 	// This instance data is shared by across many (all?) shaders.
 	// That means no intelligent BufferSubData to minimize traffic.
 	// I must write to it everything which is needed by any draw command.
@@ -102,6 +104,8 @@ Entity_Memory :: struct #packed {
 	using entity: Entity,
 	using variant: struct #raw_union {
 		text: Text,
+		image: ^Image,
+		sprite: Sprite,
 	},
 }
 
@@ -118,7 +122,9 @@ Entity_Memory :: struct #packed {
 
 Entity_Type :: enum {
 	None, // Generic, Any, Basic, Base
-	Text
+	Text,
+	Image,
+	Sprite
 }
 
 //////////////////////////////////////////////////////////////////////

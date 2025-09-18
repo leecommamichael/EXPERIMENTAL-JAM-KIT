@@ -3,6 +3,7 @@ package main
 import "core:log"
 import "core:mem"
 import "core:slice"
+import "core:strings"
 import "core:math/linalg"
 import gl "nord_gl"
 
@@ -33,10 +34,11 @@ ren_make :: proc () -> ^Ren {
 	gl.BufferData(.ARRAY_BUFFER, globals.immediate_glyph_staging[:], .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
-	ren.programs[Game_Shader.Basic] = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
-	ren.programs[Game_Shader.Water] = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
-	ren.programs[Game_Shader.Text]  = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
-	ren.programs[Game_Shader.Image] = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
+	ren.programs[Game_Shader.Basic]  = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
+	ren.programs[Game_Shader.Water]  = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
+	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
+	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
+	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
 
 	return ren
 }
@@ -62,7 +64,21 @@ INSTANCE_UNIFORM_INDEX :: 1
 ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	// Compile program
 	program, ok := gl.load_shaders_source(vert, frag)
+	gl.UseProgram(program)
+	defer gl.UseProgram(0)
 	log.assertf(ok, "A shader failed to compile/link.\n%s\n%s", vert, frag)
+
+	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
+	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
+	log.infof("%v: fas %v, tas %v", program, font_atlas_sampler, texture_atlas_sampler)
+	if font_atlas_sampler != -1 {
+		gl.glUniform1i(cast(i32)font_atlas_sampler, 0)
+		assert(gl.glGetError() == gl.NO_ERROR)
+	}
+	if texture_atlas_sampler != -1 {
+		gl.glUniform1i(cast(i32)texture_atlas_sampler, 1)
+		assert(gl.glGetError() == gl.NO_ERROR)
+	}
 	// Link Uniform Block
 	//   TODO: apparently this is global and only needs to happen once
 	//   if all programs share the same name + layout.
@@ -126,10 +142,7 @@ ren_draw :: proc (ren: ^Ren) {
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 
 	for entity in globals.entities_3D {
-		switch entity.type {
-		case .None: ren_draw_entity(ren, entity)
-		case .Text: ren_draw_entity(ren, entity)
-		}
+		ren_draw_entity(ren, entity)
 	}
 
 	// TODO: Just use a different shader for 2D things. Don't have to copy this.
@@ -138,10 +151,7 @@ ren_draw :: proc (ren: ^Ren) {
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	for entity in globals.entities_2D {
-		switch entity.type {
-		case .None: ren_draw_entity(ren, entity)
-		case .Text: ren_draw_entity(ren, entity)
-		}
+		ren_draw_entity(ren, entity)
 	}
 }
 
@@ -461,6 +471,47 @@ slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
 }
 
 //////////////////////////////////////////////////////////////////////
+// Section: Basic GL ESSL Parse
+//////////////////////////////////////////////////////////////////////
+// WHY IS THIS COMMENTED?
+// Because I don't have to parse it if I use the same variable names across shaders.
+// 
+// uniform SAMPLER_TYPE identifier;
+// samplers :: []string {
+// 	// float kinds
+// 	"sampler2D",
+// 	"sampler3D",
+// 	"samplerCube",
+// 	"samplerCubeShadow",
+// 	"sampler2DShadow",
+// 	"sampler2DArray",
+// 	"sampler2DArrayShadow",
+// 	// int kinds
+// 	"isampler2D",
+// 	"isampler3D",
+// 	"isamplerCube",
+// 	"isampler2DArray",
+// 	// uint kinds
+// 	"usampler2D",
+// 	"usampler3D",
+// 	"usamplerCube",
+// 	"usampler2DArray",
+// }
+
+// // returns a map of uniform names paired with their integer values.
+// extract_samplers_from_program :: proc (vs, fs: string) -> []string {
+// 	start_of_line: bool
+// 	for c in vs {
+// 		switch c {
+// 		case 's': 
+// 		case 'i': 
+// 		case 'u': 
+// 		case ';':
+// 		}
+// 	}
+// }
+
+//////////////////////////////////////////////////////////////////////
 // Section: Textures
 //////////////////////////////////////////////////////////////////////
 
@@ -743,7 +794,7 @@ make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u
   return verts[:], indices[:]
 }
 
-make_triagle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
+make_triangle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
   verts := make([dynamic]Ren_Vertex_Base)
   append(&verts, Ren_Vertex_Base{position = Vec3{-1,1,0}})
   append(&verts, Ren_Vertex_Base{position = Vec3{1,1,0}})

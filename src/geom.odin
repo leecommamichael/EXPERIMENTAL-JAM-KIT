@@ -14,8 +14,8 @@ Geom_Mesh :: struct {
 }
 
 Geom_Mesh2 :: struct {
-  vertices: [dynamic]Ren_Vertex_Base,
-  indices:  [dynamic]u32,
+  vertices: []Ren_Vertex_Base,
+  indices:  []u32,
 }
 
 // Prior to transformation, points are:
@@ -152,20 +152,20 @@ using glsl
 // On the XY plane
 geom_make_quad :: proc (
   size: Vec2,
-) -> Geom_Mesh {
+) -> (m: Geom_Mesh2) {
 using glsl
   p :: 0.5
   TL :: Vec3{ -p, p, 0, }
   TR :: Vec3{  p, p, 0, }
   BL :: Vec3{ -p,-p, 0, }
   BR :: Vec3{  p,-p, 0, }
-  m: Geom_Mesh
-  m.vertices = make([dynamic]vec3, 0, 4)
-  m.indices = make([dynamic]u32, 0, 6)
-  m.vertices[0] = { TL.x * size.x , TL.y * size.y , 0 }
-  m.vertices[1] = { TR.x * size.x , TR.y * size.y , 0 }
-  m.vertices[2] = { BL.x * size.x , BL.y * size.y , 0 }
-  m.vertices[3] = { BR.x * size.x , BR.y * size.y , 0 }
+  m.vertices = make([]Ren_Vertex_Base, 4)
+  m.indices = make([]u32, 6)
+  //                position                            | tex  | norm
+  m.vertices[0] = {{ TL.x * size.x , TL.y * size.y , 0 }, {0,0}, {}}
+  m.vertices[1] = {{ TR.x * size.x , TR.y * size.y , 0 }, {1,0}, {}}
+  m.vertices[2] = {{ BL.x * size.x , BL.y * size.y , 0 }, {0,1}, {}}
+  m.vertices[3] = {{ BR.x * size.x , BR.y * size.y , 0 }, {1,1}, {}}
   m.indices[0] = 0 // TL
   m.indices[1] = 2 // BL
   m.indices[2] = 1 // TR
@@ -173,11 +173,6 @@ using glsl
   m.indices[4] = 1 // TR
   m.indices[5] = 2 // BL
 
-  m.texcoord = make([dynamic]vec2, 0, 4)
-  m.texcoord[0] = { 0 , 0 } // TL
-  m.texcoord[1] = { 1 , 0 } // TR
-  m.texcoord[2] = { 0 , 1 } // BL
-  m.texcoord[3] = { 1 , 1 } // BR 
   return m
 }
 
@@ -197,10 +192,10 @@ geom_make_xz_plane :: proc (
 ) -> (result: Geom_Mesh2) {
   axis_vert_count: u32 = (squares_per_axis+1)
   axis_vert_count_squared := axis_vert_count * axis_vert_count
-  result.vertices = make([dynamic]Ren_Vertex_Base, 0, axis_vert_count_squared)
+  vertices := make([dynamic]Ren_Vertex_Base, 0, axis_vert_count_squared)
   indices_per_square :: 6
   indices_needed := squares_per_axis * squares_per_axis * indices_per_square
-  result.indices = make([dynamic]u32, 0, indices_needed)
+  indices := make([dynamic]u32, 0, indices_needed)
 
   z: u32 = 0
   // 0 1 2 3 4 5
@@ -209,7 +204,7 @@ geom_make_xz_plane :: proc (
   for i in 0 ..< axis_vert_count_squared {
     x := i % axis_vert_count
     z := i / axis_vert_count
-    append(&result.vertices, Ren_Vertex_Base{
+    append(&vertices, Ren_Vertex_Base{
       position = Vec3{
         f32(x),
         0,
@@ -229,11 +224,13 @@ geom_make_xz_plane :: proc (
     BR:u32 = i + 1
     TL:u32 = i + axis_vert_count
     TR:u32 = i + axis_vert_count + 1
-    append(&result.indices,
+    append(&indices,
       TL, BL, TR, // Triangle 1
       BR, TR, BL) // Triangle 2
   }
 
+  result.vertices = vertices[:]
+  result.indices = indices[:]
   return
 }
 

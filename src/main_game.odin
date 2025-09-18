@@ -23,20 +23,23 @@ game_init :: proc () {
 	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
-	sprite :: proc (a:string) -> int { return 0 }
-	spr := sprite(`berserker.aseprite`)
-	hello = text(`hello`)
-	hello.color = Vec4{1,0,0,1}
-	hello.position.x = 100
-	hello.position.y = 100
+	img := image(`gameplayboard.aseprite`)
+	img.scale = 1000
+	img.color = 1
+	img.position = Vec3{ 0=100, 1=100 }
+	// spr := sprite(`berserker.aseprite`)
+	// hello = text(`hello`)
+	// hello.color = Vec4{1,0,0,1}
+	// hello.position.x = 100
+	// hello.position.y = 100
 }
 
 hello: ^Text_Entity
 offset: f32
 // Mixed-scope between renderer and game entities.
-game_step :: proc (dt: f64) {
-	do_text(`immediately!`, hello.position)
-	globals.game_view = tick_mouse_camera(&globals.camera, f32(dt))
+game_step :: proc () {
+	// do_text(`immediately!`, hello.position)
+	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	// step_water(dt)
 }
 
