@@ -6,11 +6,6 @@ import log "core:log"
 //////////////////////////////////////////////////////////////////////
 // Entity Variant
 //////////////////////////////////////////////////////////////////////
-// for play/pause/speed use entity.time_scale
-Sprite_Entity :: struct {
-	using base:  Entity,
-	using state: Sprite_State
-}
 
 Sprite_State :: struct {
 	sprite:          ^Sprite,
@@ -76,7 +71,7 @@ do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_
 /**/		Frame_Advanced,
 /**/	}
 
-set_animation :: proc (it: ^Sprite_Entity, name: string) {
+set_animation :: proc (it: ^Sprite_State, name: string) {
 	if !(name in it.sprite.animations) {
 		log.errorf("animation not found in sprite.")
 		return
@@ -85,7 +80,7 @@ set_animation :: proc (it: ^Sprite_Entity, name: string) {
 	reset_animation(it)
 }
 
-reset_animation :: proc (it: ^Sprite_Entity) {
+reset_animation :: proc (it: ^Sprite_State) {
 	switch it.animation.playback_mode {
 		case .Forward: 
 			it.frame_index = it.animation.first_frame_index
