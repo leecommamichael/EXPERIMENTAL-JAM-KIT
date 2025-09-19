@@ -41,7 +41,7 @@ Asset_Bundle :: struct {
 asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	when ODIN_OS != .JS && ODIN_DEBUG {
+	when ODIN_OS != .JS && !ODIN_DEBUG {
 		log_time("make_bundle")
 		bundle_fonts()
 		bundle_textures()
@@ -64,26 +64,19 @@ Serialized_Atlas_Font :: struct {
 
 asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 
-FONT_ATLAS_METADATA :: "./font_atlas_metadata.cbor"
-FONT_ATLAS_PATH :: "./font_atlas.tga"
+FONT_ATLAS_METADATA :: "font_atlas_metadata.cbor"
+FONT_ATLAS_PATH :: "font_atlas.tga"
 
 
 load_bundled_fonts :: proc () {
-	metadata_file, err_opening_metadata_file := os2.open(FONT_ATLAS_METADATA, {.Read})
-	if err_opening_metadata_file != nil {
-		log.errorf("%v", err_opening_metadata_file)
-		assert(false)
-	}
-	metadata_reader := os2.to_reader(metadata_file)
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
-	unmarshal_error := cbor.unmarshal_from_reader(metadata_reader, &serialized_fonts)
+	unmarshal_error := cbor.unmarshal_from_bytes(#load(FONT_ATLAS_METADATA), &serialized_fonts)
 	for font in serialized_fonts {
 		globals.fonts[font.usage][font.variant].data = font.packed_char
 	}
 assert(unmarshal_error == nil)
 
-	font_atlas_bytes, err := os2.read_entire_file_from_path(FONT_ATLAS_PATH, context.allocator)
-assert(err == nil)
+	font_atlas_bytes := #load(FONT_ATLAS_PATH)
 	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
 	if img_err != nil {
 		log.errorf("%v", img_err)
@@ -317,8 +310,8 @@ assert(err == nil)
 // Implementation (2/2) Texture Atlas                (4 channel image)
 //////////////////////////////////////////////////////////////////////
 MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
-TEXTURE_ATLAS_METADATA :: "./texture_atlas_metadata.cbor"
-TEXTURE_ATLAS_PATH :: "./texture_atlas.tga"
+TEXTURE_ATLAS_METADATA :: "texture_atlas_metadata.cbor"
+TEXTURE_ATLAS_PATH :: "texture_atlas.tga"
 
 bundle_textures :: proc () {
 	// This is more leaning into the 
@@ -572,9 +565,9 @@ Serialized_Texture_Atlas_Entries :: struct {
 	sprites: map[string]Sprite_Asset,
 }
 
+texture_atlas_bytes: []u8 = #load(TEXTURE_ATLAS_PATH)
+texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
 load_bundled_textures :: proc () {
-	texture_atlas_bytes, err2 := os2.read_entire_file_from_path(TEXTURE_ATLAS_PATH, context.allocator)
-assert(err2 == nil)
 	img, img_err := tga.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
 	if img_err != nil {
 		log.errorf("%v", img_err)
@@ -594,14 +587,8 @@ assert(err2 == nil)
 		&globals.assets.texture_atlas,
 	}
 
-	metadata_file, err_opening_metadata_file := os2.open(TEXTURE_ATLAS_METADATA, {.Read})
-	if err_opening_metadata_file != nil {
-		log.errorf("%v", err_opening_metadata_file)
-		assert(false)
-	}
-	metadata_reader := os2.to_reader(metadata_file)
 	entries: Serialized_Texture_Atlas_Entries
-	unmarshal_error := cbor.unmarshal_from_reader(metadata_reader, &entries)
+	unmarshal_error := cbor.unmarshal_from_bytes(texture_atlas_metadata, &entries)
 	globals.assets.images = entries.images
 	globals.assets.sprites = entries.sprites
 	// TODO: this pointer-wiring feels stupid... is it?
@@ -611,18 +598,6 @@ assert(err2 == nil)
 	for k, &s in globals.assets.sprites {
 		s.texture = &globals.assets.texture_atlas
 	}
-	if unmarshal_error != nil {
-		log.errorf("Failed to load texture atlas: %v", unmarshal_error)
-		decoded, derr := cbor.decode(metadata_reader)
-log.assertf(derr == nil, "decode error: %v", derr)
-		defer cbor.destroy(decoded)
-
-		diagnosis, eerr := cbor.to_diagnostic_format(decoded)
-log.assertf(eerr == nil, "to diagnostic error: %v", eerr)
-		defer delete(diagnosis)
-		fmt.println(diagnosis)
-	}
-
 }
 
 @(private="file")
