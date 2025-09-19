@@ -41,7 +41,7 @@ Asset_Bundle :: struct {
 asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	when ODIN_OS != .JS && !ODIN_DEBUG {
+	when ODIN_OS != .JS && ODIN_DEBUG {
 		log_time("make_bundle")
 		bundle_fonts()
 		bundle_textures()

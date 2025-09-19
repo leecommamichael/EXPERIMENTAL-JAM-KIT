@@ -9,9 +9,12 @@ import "sugar"
 
 create_sublime_text_logger :: proc () -> log.Logger {
 		return log.create_console_logger(lowest = log.Level.Debug, opt = { .Level, })
-} 
+}
+
+frame_number: uint = 0
 
 main :: proc() {
+	log_time("first_paint")
 	log_time("initializing platform")
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
@@ -45,6 +48,10 @@ main :: proc() {
 // The context is defaulted each time you enter. Related: `runtime.default_context_ptr()`
 @export
 step :: proc (dt: f64) -> bool {
+	frame_number += 1
+	if frame_number == 2 {
+		log_time("first_paint")
+	}
 	defer free_all(context.temp_allocator)
 	switch sugar.poll_events() {
 	case .Should_Exit: return false

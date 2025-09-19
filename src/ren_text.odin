@@ -13,11 +13,6 @@ import "core:math/linalg"
 // Entity Variant
 //////////////////////////////////////////////////////////////////////
 
-Text_Entity :: struct {
-	using base:  Entity,
-	using variant: Text,
-}
-
 Text :: struct {
 	text: string,
 	font: ^Font,
@@ -31,10 +26,12 @@ text :: proc (
 	message: string,
 	usage:   Font_Usage   = .body,
 	variant: Font_Variant = .regular,
-) -> ^Text_Entity {
-	entity: ^Text_Entity = make_entity(Text_Entity)
-	entity.font = &globals.fonts[usage][variant]
-	entity.text = message
+) -> ^Entity {
+	entity: ^Entity = make_entity()
+	entity.variant = Text {
+		message,
+		&globals.fonts[usage][variant],
+	}
 	return entity
 }
 
@@ -44,7 +41,7 @@ do_text :: proc (
 	usage:    Font_Usage   = .body,
 	variant:  Font_Variant = .regular,
 ) {
-	entity: ^Text_Entity = text(message, usage, variant)
+	entity: ^Entity = text(message, usage, variant)
 	entity.position = position
 	entity.color = 1
 	step_text(entity, immediate=true)
@@ -89,20 +86,20 @@ Font :: struct {
 // Framework Integration Implementation
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
-step_text :: proc (entity: ^Text_Entity, immediate: bool) {
-	font: ^Font = entity.font
-	verts_needed   := len(entity.text) * 4
-	indices_needed := len(entity.text) * 6
+step_text :: proc (entity: ^Entity, immediate: bool) {
+	variant := entity.variant.(Text)
+	verts_needed   := len(variant.text) * 4
+	indices_needed := len(variant.text) * 6
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)
 	indices := make([]u32, indices_needed, context.temp_allocator)
 
   atlas_size: [2]int = globals.assets.font_atlas.size_px
 
 	text_cursor: [2]f32
-	for byte, glyph_index in entity.text {
+	for byte, glyph_index in variant.text {
 		chardata_index := i32(byte - 32)
 		quad: stbtt.aligned_quad
-		stbtt.GetPackedQuad(raw_data(font.data),
+		stbtt.GetPackedQuad(raw_data(variant.font.data),
 			cast(i32) atlas_size.x,
 			cast(i32) atlas_size.y,
 			chardata_index,

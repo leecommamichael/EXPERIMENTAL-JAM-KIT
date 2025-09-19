@@ -91,8 +91,8 @@ framework_step :: proc (dt: f64) {
 // Entity 
 ////////////////////////////////////////////////////////////////////////////////
 
-init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
-	entity^ = {} // zero
+init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
+	entity^ = {} // zero all fields
 	entity.id = id
 	entity.used = true
 	entity.scale = 1
@@ -100,36 +100,12 @@ init_entity_memory :: proc (entity: ^Entity_Memory, id: Entity_ID) {
 	entity.time_scale = 1
 }
 
-make_entity :: proc {
-	make_entity_basic,
-	make_entity_variant
-}
-
-make_entity_basic :: proc () -> ^Entity {
-	return make_entity_variant(Entity)
-}
-
-make_entity_variant :: proc ($T: typeid) -> ^T where type_uses(T, Entity) {
+make_entity :: proc () -> ^Entity {
 	for &mem, i in globals._entity_storage {
 		if !mem.used {
 			init_entity_memory(&mem, cast(Entity_ID) i)
-			switch typeid_of(T) {
-			case Entity:
-				mem.type = Entity_Type.None
-			case Text_Entity:
-				mem.variant = {}
-				mem.type = Entity_Type.Text
-			case Image_Entity:
-				mem.variant = {}
-				mem.type = Entity_Type.Image
-			case Sprite_Entity:
-				mem.variant = {}
-				mem.type = Entity_Type.Sprite
-			case:
-				panic("Unimplemented Entity Variant")
-			}
-			entity := transmute(^T) &mem
-			append(&globals.entities, entity)
+			entity := &mem
+			append(&globals.entities, &mem)
 			return entity
 		}
 	}
@@ -155,11 +131,11 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 		return false
 	}
 
-	switch entity.type {
-	case .None:
-	case .Text: step_text(transmute(^Text_Entity)entity, immediate=false)
-	case .Sprite: step_sprite(transmute(^Sprite_Entity)entity, immediate=false)
-	case .Image: step_image(transmute(^Image_Entity)entity, immediate=false)
+	switch &variant in entity.variant {
+	case nil:
+	case Text: step_text(entity, immediate=false)
+	case ^Image: step_image(entity, immediate=false)
+	case Sprite_State: step_sprite(entity, immediate=false)
 	}
 
 	instance: ^Any_Instance = entity.instance

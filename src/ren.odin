@@ -66,7 +66,6 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 
 	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
 	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
-	log.infof("%v: fas %v, tas %v", program, font_atlas_sampler, texture_atlas_sampler)
 	if font_atlas_sampler != -1 {
 		gl.glUniform1i(font_atlas_sampler, 0)
 		assert(gl.glGetError() == gl.NO_ERROR)

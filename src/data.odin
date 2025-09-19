@@ -23,17 +23,12 @@ Globals :: struct {
 	ren:         ^Ren,
 	// Entity Service
 	// ubo_instance_data: Aligned_Array(Any_Instance), // TODO: Unused. Make it lights some day?
-	_entity_storage: [max(Entity_ID)]Entity_Memory,
+	_entity_storage: [max(Entity_ID)]Entity,
 	entities:        [dynamic]^Entity,
 	entities_2D:     [dynamic]^Entity,
 	entities_3D:     [dynamic]^Entity,
-	immediate_state: map[string]Entity_Memory,
 	// This instance data is shared by across many (all?) shaders.
 	// That means no intelligent BufferSubData to minimize traffic.
-	// I must write to it everything which is needed by any draw command.
-	// It also means that persistent data between runs of a command must be
-	// managed separately. Probably attached to Entity variants, if not global.
-	// TODO: rename entity_instance_staging
 	instance_staging: [max(Entity_ID)]Any_Instance,
 	instance_buffer:  gl.Buffer,
 
@@ -72,7 +67,6 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	type:  Entity_Type,
 	id:    Entity_ID,  // index in storage.
 	used:  bool,       // like "allocated | free"
 	is_3D: bool,       // 2D object anchored at origin in top-left (0,0)
@@ -81,46 +75,19 @@ Entity :: struct {
 	distance_from_camera: f32,
 	parent:          ^Entity,
 	using transform: Transform,
-	// sometimes things will program in terms of these fields.
-	// - animations choose different uvs,
-	// - 3d needs to sort by position
-	// - color is useful for debugging.
-	// This means a singular (non-instanced) thing needs to be 
-	using instance: ^Any_Instance, // This will be copied.
+	using instance: ^Any_Instance, // ptr greatly reduces traffic between CPU:GPU
 	hidden:   bool,
+	variant: union {
+		Text,
+		^Image,
+		Sprite_State,
+	},
 }
 
 Transform :: struct {
 	position: Vec3,
 	rotation: Vec3,
 	scale:    Vec3,
-}
-
-
-// ASSUMES: All variants are subtypes of Entity.
-Entity_Memory :: struct #packed {
-	using entity: Entity,
-	using variant: struct #raw_union {
-		text: Text,
-		image: ^Image,
-		sprite: Sprite_State,
-	},
-}
-
-// This enables a safe specializing cast to a variant.
-#assert(
-	offset_of(Entity_Memory, entity) <
-	offset_of(Entity_Memory, variant)
-)
-
-// So here's an assert that serves as a reminder to keep variants small.
-#assert(size_of(Entity_Memory) < 512) // arbitary, but FYI (512 * 1<<16) = 6 MB 
-
-Entity_Type :: enum {
-	None, // Generic, Any, Basic, Base
-	Text,
-	Image,
-	Sprite
 }
 
 //////////////////////////////////////////////////////////////////////

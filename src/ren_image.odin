@@ -20,17 +20,17 @@ Image :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-image :: proc (filename: string) -> ^Image_Entity {
+image :: proc (filename: string) -> ^Entity {
+	entity: ^Entity = make_entity()
 	image: ^Image = &globals.assets.images[filename]
-	entity: ^Image_Entity = make_entity(Image_Entity)
+	entity.variant = image
 	mesh: Geom_Mesh2 = geom_make_quad(1)
 	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
-	entity.image = image
 	return entity
 }
 
 do_image :: proc (id: string, filename: string, position: Vec3) {
-	entity: ^Image_Entity = make_entity(Image_Entity)
+	entity: ^Entity = make_entity()
 	entity.position = position
 	entity.color = 1
 	mesh: Geom_Mesh2 = geom_make_quad(1)
@@ -73,8 +73,9 @@ image_fragment_shader_source :: fragment_preamble +
 	}
 `
 
-step_image :: proc (entity: ^Image_Entity, immediate: bool) {
-	globals.instance_staging[cast(int) entity.id].uv_transform = entity.uv_rect
+step_image :: proc (entity: ^Entity, immediate: bool) {
+	variant := entity.variant.(^Image)
+	globals.instance_staging[cast(int) entity.id].uv_transform = variant.uv_rect
 	// ...
 }
 

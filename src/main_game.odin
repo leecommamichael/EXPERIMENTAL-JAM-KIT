@@ -24,7 +24,7 @@ game_init :: proc () {
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
 	img := image(`gameplayboard.aseprite`)
-	img.scale.xy = ((array_cast(img.image.texture.size_px, f32)) * img.image.uv_rect.zw)
+	img.scale.xy = ((array_cast(img.variant.(^Image).texture.size_px, f32)) * img.variant.(^Image).uv_rect.zw)
 	img.scale.y *=  -1
 	img.scale *= 2
 	log.infof("subimagesize is %v", img.scale.xy)
@@ -40,7 +40,7 @@ game_init :: proc () {
 	hello.position.z = 4
 }
 
-hello: ^Text_Entity
+hello: ^Entity
 
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {

@@ -53,10 +53,11 @@ Sprite :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-sprite :: proc (filename: string) -> ^Sprite_Entity {
-	sprite: ^Sprite = &globals.assets.sprites[filename]
-	entity: ^Sprite_Entity = make_entity(Sprite_Entity)
-	entity.sprite = sprite
+sprite :: proc (filename: string) -> ^Entity {
+	entity: ^Entity = make_entity()
+	entity.variant = Sprite_State {
+		sprite = &globals.assets.sprites[filename]
+	}
 	return entity
 }
 
@@ -146,8 +147,9 @@ ren_make_sprite_draw_cmd :: proc (
 }
 
 // If instance data needs to be mutated from properites mutated during `step`, do it here.
-step_sprite :: proc (it: ^Sprite_Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
-	dt := globals.dt * it.time_scale
+step_sprite :: proc (entity: ^Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
+	it := entity.variant.(Sprite_State)
+	dt := globals.dt * entity.time_scale
 	assert(is_real(dt))
 	seconds_left := it.frame_seconds_remaining - dt
 	if it.animation.frame_count < 2 { return } // Single frame, no work.
@@ -162,11 +164,11 @@ step_sprite :: proc (it: ^Sprite_Entity, immediate: bool) -> (events: bit_set[Sp
 			if it.frame_index > it.animation.final_frame_index {
 				switch it.animation.playback_mode {
 				case .Forward:
-					count_repetition(it, &events) or_break
+					count_repetition(&it, &events) or_break
 					it.frame_index = it.animation.first_frame_index
 				case .Reverse: assert(false)
 				case .Ping_Pong:
-					count_repetition(it, &events) or_break
+					count_repetition(&it, &events) or_break
 					it.frame_index = it.animation.final_frame_index - 1
 					it._play_in_reverse = !it._play_in_reverse
 				case .Ping_Pong_Reverse:
@@ -177,13 +179,13 @@ step_sprite :: proc (it: ^Sprite_Entity, immediate: bool) -> (events: bit_set[Sp
 				switch it.animation.playback_mode {
 				case .Forward: assert(false)
 				case .Reverse:
-					count_repetition(it, &events) or_break
+					count_repetition(&it, &events) or_break
 					it.frame_index = it.animation.final_frame_index
 				case .Ping_Pong:
 					it.frame_index = it.animation.first_frame_index + 1
 					it._play_in_reverse = !it._play_in_reverse
 				case .Ping_Pong_Reverse:
-					count_repetition(it, &events) or_break
+					count_repetition(&it, &events) or_break
 					it.frame_index = it.animation.first_frame_index + 1
 					it._play_in_reverse = !it._play_in_reverse
 				}
@@ -203,7 +205,7 @@ step_sprite :: proc (it: ^Sprite_Entity, immediate: bool) -> (events: bit_set[Sp
 
 // TODO: rename to loop, cycle, loop_cycle?
 count_repetition :: proc (
-	it: ^Sprite_Entity,
+	it: ^Sprite_State,
 	events: ^bit_set[Sprite_Event]
 ) -> (animation_complete: bool) {
 	it.repetitions -= 1
