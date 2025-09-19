@@ -78,8 +78,8 @@ Entity :: struct {
 	using instance: ^Any_Instance, // ptr greatly reduces traffic between CPU:GPU
 	hidden:   bool,
 	variant: union {
-		Text,
-		^Image,
+		Text_State,
+		Image_State,
 		Sprite_State,
 	},
 }

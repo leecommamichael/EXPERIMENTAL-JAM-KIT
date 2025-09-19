@@ -5,6 +5,8 @@ package main
 import "base:runtime"
 import "core:time"
 import "core:log"
+import "core:math/linalg"
+import "core:math/linalg/glsl"
 import "sugar"
 
 create_sublime_text_logger :: proc () -> log.Logger {
@@ -68,3 +70,25 @@ step :: proc (dt: f64) -> bool {
 	sugar.end_input_frame()
 	return true
 }
+
+// TODO: Read various data from Globals such that the game
+//       can program the camera simply by setting parameters.
+resolution_changed :: proc (res: [2]int) {
+	aspect_ratio := cast(f32)res.x / cast(f32)res.y
+	globals.game_camera = linalg.matrix4_perspective_f32(
+		fovy   = linalg.to_radians(f32(90.0)),
+		aspect = aspect_ratio,
+		near   = .1,
+		far    = 1000,
+		flip_z_axis = false
+	)
+	globals.ui_orthographic = glsl.mat4Ortho3d(
+		left   = 0,
+		right  = cast(f32) res.x,
+		top    = 0,
+		bottom = cast(f32) res.y,
+		near   = -10,
+		far    = 1000
+	)
+}
+

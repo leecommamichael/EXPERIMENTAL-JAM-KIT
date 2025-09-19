@@ -10,6 +10,8 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
+hello: ^Entity
+
 game_init :: proc () {
 	globals.camera.position.y = 5
 	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
@@ -24,7 +26,8 @@ game_init :: proc () {
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
 	img := image(`gameplayboard.aseprite`)
-	img.scale.xy = ((array_cast(img.variant.(^Image).texture.size_px, f32)) * img.variant.(^Image).uv_rect.zw)
+	img_asset := img.variant.(Image_State).asset
+	img.scale.xy = ((array_cast(img_asset.texture.size_px, f32)) * img_asset.uv_rect.zw)
 	img.scale.y *=  -1
 	img.scale *= 2
 	log.infof("subimagesize is %v", img.scale.xy)
@@ -39,8 +42,6 @@ game_init :: proc () {
 	hello.position.y = 300
 	hello.position.z = 4
 }
-
-hello: ^Entity
 
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {

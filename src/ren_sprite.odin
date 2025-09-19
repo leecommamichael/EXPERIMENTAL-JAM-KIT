@@ -8,7 +8,7 @@ import log "core:log"
 //////////////////////////////////////////////////////////////////////
 
 Sprite_State :: struct {
-	sprite:          ^Sprite,
+	sprite:          ^Sprite_Asset,
 	repetitions:     int,
 	animation:       ^Sprite_Animation,
 	frame_index:     int,
@@ -16,7 +16,7 @@ Sprite_State :: struct {
 	_play_in_reverse: bool,
 }
 
-Sprite :: struct {
+Sprite_Asset :: struct {
 	filename:   string,
 	frames:     []Sprite_Animation_Frame,
 	animations: map[string]Sprite_Animation,

@@ -13,7 +13,7 @@ import "core:math/linalg"
 // Entity Variant
 //////////////////////////////////////////////////////////////////////
 
-Text :: struct {
+Text_State :: struct {
 	text: string,
 	font: ^Font,
 }
@@ -28,7 +28,7 @@ text :: proc (
 	variant: Font_Variant = .regular,
 ) -> ^Entity {
 	entity: ^Entity = make_entity()
-	entity.variant = Text {
+	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
 	}
@@ -87,7 +87,7 @@ Font :: struct {
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
 step_text :: proc (entity: ^Entity, immediate: bool) {
-	variant := entity.variant.(Text)
+	variant := entity.variant.(Text_State)
 	verts_needed   := len(variant.text) * 4
 	indices_needed := len(variant.text) * 6
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)

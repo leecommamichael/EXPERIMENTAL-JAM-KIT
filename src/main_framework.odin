@@ -22,13 +22,6 @@ framework_init :: proc () {
 		log.infof("OpenGL Platform Constants ---\n%#v", globals.gl_standard)
 	}
 	init_gl_constants()
-	// META: The below assert is out of date. My instances aren't in UBOs.
-	// #assert(size_of(Any_Instance) < (1 << 14), "Instances may not fit in one Uniform Block")
-	// globals.ubo_instance_data = make_aligned_array(
-	// 	Ren_Instance,
-	// 	cast(int) max(Entity_ID),
-	// 	cast(int) globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT
-	// )
 
 	globals.game_view = 1
 	globals.ui_view = 1
@@ -132,9 +125,9 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	}
 
 	switch &variant in entity.variant {
-	case nil:
-	case Text: step_text(entity, immediate=false)
-	case ^Image: step_image(entity, immediate=false)
+	case nil: // general-purpose entity
+	case Text_State:   step_text(entity, immediate=false)
+	case Image_State:  step_image(entity, immediate=false)
 	case Sprite_State: step_sprite(entity, immediate=false)
 	}
 
@@ -152,26 +145,5 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	}
 
 	return true
-}
-
-// TODO: Read various data from Globals such that the game
-//       can program the camera simply by setting parameters.
-resolution_changed :: proc (res: [2]int) {
-	aspect_ratio := cast(f32)res.x / cast(f32)res.y
-	globals.game_camera = linalg.matrix4_perspective_f32(
-		fovy   = linalg.to_radians(f32(90.0)),
-		aspect = aspect_ratio,
-		near   = .1,
-		far    = 1000,
-		flip_z_axis = false
-	)
-	globals.ui_orthographic = glsl.mat4Ortho3d(
-		left   = 0,
-		right  = cast(f32) res.x,
-		top    = 0,
-		bottom = cast(f32) res.y,
-		near   = -10,
-		far    = 1000
-	)
 }
 

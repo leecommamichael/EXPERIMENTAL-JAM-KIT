@@ -6,7 +6,11 @@ import gl "nord_gl"
 // Entity Variant
 //////////////////////////////////////////////////////////////////////
 
-Image :: struct {
+Image_State :: struct {
+	asset: ^Image_Asset,
+}
+
+Image_Asset :: struct {
 	filename: string, // TODO?: call it ID? name/id. name.
 	uv_rect:  [4]f32, // .xy = top_left, .w = width, .z = height
 	texture:  ^GPU_Texture `cbor:"-"`
@@ -18,7 +22,9 @@ Image :: struct {
 
 image :: proc (filename: string) -> ^Entity {
 	entity: ^Entity = make_entity()
-	image: ^Image = &globals.assets.images[filename]
+	image := Image_State {
+		asset = &globals.assets.images[filename]
+	}
 	entity.variant = image
 	mesh: Geom_Mesh2 = geom_make_quad(1)
 	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
@@ -70,8 +76,8 @@ image_fragment_shader_source :: fragment_preamble +
 `
 
 step_image :: proc (entity: ^Entity, immediate: bool) {
-	variant := entity.variant.(^Image)
-	globals.instance_staging[cast(int) entity.id].uv_transform = variant.uv_rect
+	variant := entity.variant.(Image_State)
+	globals.instance_staging[cast(int) entity.id].uv_transform = variant.asset.uv_rect
 	// ...
 }
 

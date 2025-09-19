@@ -27,8 +27,8 @@ Asset_Bundle :: struct {
 	font_atlas:    GPU_Texture,
 	font_infos:    map[string]stbtt.fontinfo,
 	texture_atlas: GPU_Texture,
-	images:        map[string]Image,
-	sprites:       map[string]Sprite,
+	images:        map[string]Image_Asset,
+	sprites:       map[string]Sprite_Asset,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ assert(err == nil)
 	}
 	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
 
-	globals.assets.images[FONT_ATLAS_PATH] = Image {
+	globals.assets.images[FONT_ATLAS_PATH] = Image_Asset {
 		FONT_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
 		&globals.assets.font_atlas,
@@ -323,12 +323,12 @@ TEXTURE_ATLAS_PATH :: "./texture_atlas.tga"
 bundle_textures :: proc () {
 	// This is more leaning into the 
 	Packable_Image :: struct {
-		using image: Image,
+		using image: Image_Asset,
 		size_px:     [2]int `cbor:"-" fmt:"-"`,
 		pixels:      []u8  `cbor:"-" fmt:"-"`,
 	}
 	Packable_Sprite :: struct {
-		using sprite: Sprite,
+		using sprite: Sprite_Asset,
 		size_px:      [2]int  `cbor:"-" fmt:"-"`,
 		pixels:       [][]u8 `cbor:"-" fmt:"-"`,
 	}
@@ -354,7 +354,7 @@ bundle_textures :: proc () {
 			// The binding is a result of loading an image.
 			// So it pack an image you've got to load it. Doesn't make the most sense.
 			append(&pack_list, Packable_Image{
-				Image{file.name, {}, nil},
+				Image_Asset{file.name, {}, nil},
 				{img.width, img.height},
 				img.pixels.buf[:]
 			})
@@ -381,7 +381,7 @@ bundle_textures :: proc () {
 				if len(ase_info.tags) >= 1 {
 					// Take only the frames which reside in tags.
 					sprite := Packable_Sprite {
-						Sprite{
+						Sprite_Asset{
 							file.name,
 							make([]Sprite_Animation_Frame, len(ase_info.frames)),
 							{},
@@ -413,7 +413,7 @@ bundle_textures :: proc () {
 				} else {
 					// No tags, but multiple frames. Take all frames.
 					sprite := Packable_Sprite {
-						Sprite{
+						Sprite_Asset{
 							file.name,
 							make([]Sprite_Animation_Frame, len(ase_info.frames)),
 							{}, 
@@ -446,7 +446,7 @@ bundle_textures :: proc () {
 				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
 				aseprite_ok(file.name, error_making_first_frame) or_continue
 				append(&pack_list, 
-					Packable_Image{Image{file.name, {}, nil},
+					Packable_Image{Image_Asset{file.name, {}, nil},
 					{img.width, img.height},
 					img.data
 				})
@@ -568,8 +568,8 @@ assert(err == nil)
 }
 
 Serialized_Texture_Atlas_Entries :: struct {
-	images:  map[string]Image,
-	sprites: map[string]Sprite,
+	images:  map[string]Image_Asset,
+	sprites: map[string]Sprite_Asset,
 }
 
 load_bundled_textures :: proc () {
@@ -588,7 +588,7 @@ assert(err2 == nil)
 		format = .RGBA8,
 	}
 	init_and_upload_texture(1, &globals.assets.texture_atlas, img.pixels.buf[:], {img.width, img.height})
-	globals.assets.images[TEXTURE_ATLAS_PATH] = Image {
+	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
 		TEXTURE_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
 		&globals.assets.texture_atlas,
