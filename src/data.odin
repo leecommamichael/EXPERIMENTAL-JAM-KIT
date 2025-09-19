@@ -41,8 +41,6 @@ Globals :: struct {
 	glyph_staging:    [MAX_GLYPHS_PER_FRAME]Any_Instance,
 	glyph_buffer:     gl.Buffer,
 	glpyh_offset:     int,
-	immediate_glyph_staging: [MAX_GLYPHS_PER_FRAME]Any_Instance,
-	immediate_glyph_buffer:  gl.Buffer,
 
 	// Render+Entity Integration
 	uniforms:        Uniforms,
@@ -115,8 +113,6 @@ Entity_Memory :: struct #packed {
 	offset_of(Entity_Memory, variant)
 )
 
-// I think ASAN implicated the wrong line of code, BUT:
-// When I had Font as a non-pointer the program crashed.
 // So here's an assert that serves as a reminder to keep variants small.
 #assert(size_of(Entity_Memory) < 512) // arbitary, but FYI (512 * 1<<16) = 6 MB 
 

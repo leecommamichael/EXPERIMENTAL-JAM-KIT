@@ -29,10 +29,6 @@ ren_make :: proc () -> ^Ren {
 	gl.BindBuffer(.ARRAY_BUFFER, globals.glyph_buffer)
 	gl.BufferData(.ARRAY_BUFFER, globals.glyph_staging[:], .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
-	gl.GenBuffers(1, &globals.immediate_glyph_buffer)
-	gl.BindBuffer(.ARRAY_BUFFER, globals.immediate_glyph_buffer)
-	gl.BufferData(.ARRAY_BUFFER, globals.immediate_glyph_staging[:], .STREAM_DRAW)
-	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
 	ren.programs[Game_Shader.Basic]  = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[Game_Shader.Water]  = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
