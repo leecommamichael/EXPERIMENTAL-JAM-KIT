@@ -47,10 +47,8 @@ ren_init :: proc (ren: ^Ren) {
 
 	gl.Enable(.DEPTH_TEST)
 
-	// TODO: When you've got multiple entities,
-	//       and more geometry going on, turn this on and fix issues.
-	// gl.Enable(.CULL_FACE)
-	// gl.CullFace(.BACK)
+	gl.Enable(.CULL_FACE)
+	gl.CullFace(.BACK)
 	gl.FrontFace(.CCW)
 }
 
