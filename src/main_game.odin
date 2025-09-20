@@ -10,8 +10,6 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
-// hello: ^Entity
-
 game_init :: proc () {
 	globals.camera.position.y = 5
 	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
