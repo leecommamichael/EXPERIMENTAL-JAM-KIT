@@ -8,7 +8,7 @@ import log "core:log"
 //////////////////////////////////////////////////////////////////////
 
 Sprite_State :: struct {
-	sprite:          ^Sprite_Asset,
+	asset:          ^Sprite_Asset,
 	repetitions:     int,
 	animation:       ^Sprite_Animation,
 	frame_index:     int,
@@ -50,19 +50,36 @@ Sprite_Asset :: struct {
 
 sprite :: proc (filename: string) -> ^Entity {
 	entity: ^Entity = make_entity()
-	entity.variant = Sprite_State {
-		sprite = &globals.assets.sprites[filename]
+	asset := &globals.assets.sprites[filename]
+	sprite_state := Sprite_State {
+		asset = asset
 	}
+
+	assert(len(sprite_state.asset.frames) > 0)
+	assert(len(sprite_state.asset.animations) > 0)
+	if "default" in sprite_state.asset.animations {
+		set_animation(&sprite_state, "default")
+	} else {
+		// Fallback "first" animation. (maps are unordered, so it's unpredictable.)
+		for _, &v in asset.animations {
+			set_animation(&sprite_state, &v)
+			sprite_state.animation = &v;
+			break 
+		}
+	}
+	entity.variant = sprite_state
+	mesh: Geom_Mesh2 = geom_make_quad(1)
+	entity.draw_command = sprite_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	return entity
 }
 
-do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_Event]) {
-	entity := sprite(filename)
-	events = step_sprite(entity, immediate=true)
-	ren_draw_entity(globals.ren, transmute(^Entity) entity)
-	free_entity(entity)
-	return
-}
+// do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_Event]) {
+// 	entity := sprite(filename)
+// 	events = step_sprite(entity, immediate=true)
+// 	ren_draw_entity(globals.ren, transmute(^Entity) entity)
+// 	free_entity(entity)
+// 	return
+// }
 
 /**/	Sprite_Event :: enum {
 /**/		None,
@@ -71,12 +88,22 @@ do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_
 /**/		Frame_Advanced,
 /**/	}
 
-set_animation :: proc (it: ^Sprite_State, name: string) {
-	if !(name in it.sprite.animations) {
+set_animation :: proc {
+	set_animation_by_name,
+	set_animation_by_value,
+}
+
+set_animation_by_name :: proc (it: ^Sprite_State, name: string) {
+	if !(name in it.asset.animations) {
 		log.errorf("animation not found in sprite.")
 		return
 	}
-	it.animation = &it.sprite.animations[name]
+	it.animation = &it.asset.animations[name]
+	reset_animation(it)
+}
+
+set_animation_by_value :: proc (it: ^Sprite_State, value: ^Sprite_Animation) {
+	it.animation = value
 	reset_animation(it)
 }
 
@@ -100,50 +127,10 @@ reset_animation :: proc (it: ^Sprite_State) {
 // Implementation
 //////////////////////////////////////////////////////////////////////
 
-sprite_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
-`
-	out vec4 io_color;
-	out vec2 uv;
-
-	void main() {
-		uv = v_texcoord;
-		io_color = i_color;
-		mat4 mvp = frame.projection * frame.view * i_model_mat;
-		gl_Position = mvp * vec4(v_position, 1);
-	}
-`
-
-sprite_fragment_shader_source :: fragment_preamble + `
-	uniform sampler2D font_atlas;
-	uniform sampler2D texture_atlas;
-
-	in vec4 io_color;
-	in vec2 uv;
-
-	out vec4 outColor;
-
-	void main() {
-		vec4 tex_color = texture(texture_atlas, uv);
-		tex_color = mix(tex_color, io_color, tex_color.r);
-		tex_color = mix(tex_color, vec4(0,0,0,0), 1.-tex_color.r);
-		outColor = tex_color;
-	}
-`
-
-ren_make_sprite_draw_cmd :: proc (
-	instance_buffer: gl.Buffer,
-	instance_index: int,
-	vertices: []Ren_Vertex_Base,
-	indices:  []u32,
-) -> (cmd: Draw_Command) {
-	cmd = ren_make_basic_draw_cmd(instance_buffer, instance_index, vertices, indices)
-	cmd.program = globals.ren.programs[Game_Shader.Sprite]
-	return cmd
-}
-
 // If instance data needs to be mutated from properites mutated during `step`, do it here.
 step_sprite :: proc (entity: ^Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
-	it := entity.variant.(Sprite_State)
+	it: ^Sprite_State = &entity.variant.(Sprite_State)
+	defer entity.instance.uv_transform = it.asset.frames[it.frame_index].uv_rect
 	dt := globals.dt * entity.time_scale
 	assert(is_real(dt))
 	seconds_left := it.frame_seconds_remaining - dt
@@ -154,16 +141,16 @@ step_sprite :: proc (entity: ^Entity, immediate: bool) -> (events: bit_set[Sprit
 		seconds_to_spend := dt - it.frame_seconds_remaining
 		for seconds_to_spend > 0 {
 			offset := -1 if it._play_in_reverse else 1
-			it.frame_index = (it.frame_index + offset) % len(it.sprite.frames)
+			it.frame_index = it.frame_index + offset
 // Decide on the next frame_index.
 			if it.frame_index > it.animation.final_frame_index {
 				switch it.animation.playback_mode {
 				case .Forward:
-					count_repetition(&it, &events) or_break
+					count_completed_loop(it, &events) or_break
 					it.frame_index = it.animation.first_frame_index
 				case .Reverse: assert(false)
 				case .Ping_Pong:
-					count_repetition(&it, &events) or_break
+					count_completed_loop(it, &events) or_break
 					it.frame_index = it.animation.final_frame_index - 1
 					it._play_in_reverse = !it._play_in_reverse
 				case .Ping_Pong_Reverse:
@@ -174,32 +161,32 @@ step_sprite :: proc (entity: ^Entity, immediate: bool) -> (events: bit_set[Sprit
 				switch it.animation.playback_mode {
 				case .Forward: assert(false)
 				case .Reverse:
-					count_repetition(&it, &events) or_break
+					count_completed_loop(it, &events) or_break
 					it.frame_index = it.animation.final_frame_index
 				case .Ping_Pong:
 					it.frame_index = it.animation.first_frame_index + 1
 					it._play_in_reverse = !it._play_in_reverse
 				case .Ping_Pong_Reverse:
-					count_repetition(&it, &events) or_break
+					count_completed_loop(it, &events) or_break
 					it.frame_index = it.animation.first_frame_index + 1
 					it._play_in_reverse = !it._play_in_reverse
 				}
 			}
+			it.frame_index %= len(it.asset.frames)
 			events += { .Frame_Advanced }
-			it.frame_seconds_remaining = it.sprite.frames[it.frame_index].seconds
+			it.frame_seconds_remaining = it.asset.frames[it.frame_index].seconds
 			seconds_to_spend -= it.frame_seconds_remaining
 		}
 	} else {
 		it.frame_seconds_remaining = seconds_left
 	}
-	uv_xform := it.sprite.frames[it.frame_index].uv_rect
 // Can just use a single static draw call and shared instance data.
 // just assign the instance's uv_xform and you're done.
 	return events
 }
 
 // TODO: rename to loop, cycle, loop_cycle?
-count_repetition :: proc (
+count_completed_loop :: proc (
 	it: ^Sprite_State,
 	events: ^bit_set[Sprite_Event]
 ) -> (animation_complete: bool) {
@@ -212,3 +199,47 @@ count_repetition :: proc (
 		return false
 	}
 }
+
+//////////////////////////////////////////////////////////////////////
+// Shader
+//////////////////////////////////////////////////////////////////////
+
+sprite_make_draw_command :: proc (
+	instance_buffer: gl.Buffer,
+	instance_index: int,
+	vertices: []Ren_Vertex_Base,
+	indices:  []u32,
+) -> (cmd: Draw_Command) {
+	cmd = ren_make_basic_draw_cmd(instance_buffer, instance_index, vertices, indices)
+	cmd.program = globals.ren.programs[Game_Shader.Sprite]
+	return cmd
+}
+
+sprite_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
+`
+	out vec4 io_color;
+	out vec2 uv;
+
+	void main() {
+		uv = i_uv_xform.xy + (v_texcoord * i_uv_xform.zw);
+		io_color = i_color;
+		mat4 mvp = frame.projection * frame.view * i_model_mat;
+		gl_Position = mvp * vec4(v_position, 1);
+	}
+`
+
+sprite_fragment_shader_source :: fragment_preamble +
+`
+	uniform sampler2D font_atlas;
+	uniform sampler2D texture_atlas;
+
+	in vec4 io_color;
+	in vec2 uv;
+
+	out vec4 outColor;
+
+	void main() {
+		vec4 tex_color = texture(texture_atlas, uv);
+		outColor = tex_color;
+	}
+`

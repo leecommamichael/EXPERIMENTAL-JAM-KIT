@@ -114,3 +114,9 @@ type_uses :: intrinsics.type_is_subtype_of
 array_cast :: linalg.array_cast
 clone_to_cstring :: strings.clone_to_cstring
 unsafe_string_to_cstring :: strings.unsafe_string_to_cstring
+// assert_non_empty :: proc {
+//   assert_non_empty_slice,
+//   assert_non_empty_map
+// }
+// assert_non_empty_slice :: #force_inline proc (slice: $Indistinct/[]$T) { assert(len(slice) > 0) }
+// assert_non_empty_map :: #force_inline proc (m: $Indistinct/map[$K]$V) { assert(len(m) > 0) }

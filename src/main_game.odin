@@ -10,7 +10,7 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
-hello: ^Entity
+// hello: ^Entity
 
 game_init :: proc () {
 	globals.camera.position.y = 5
@@ -31,13 +31,19 @@ game_init :: proc () {
 	img.scale.y *=  -1
 	img.scale *= 2
 	log.infof("subimagesize is %v", img.scale.xy)
-	img.color = 1
-	img.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{300,300,1}
+	img.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{300,300,2}
 
-	// spr := sprite(`berserker.aseprite`)
+	spr := sprite(`berserker.aseprite`)
+	spr_state := &spr.variant.(Sprite_State)
+	spr_state.repetitions = 10
+	spr_asset := spr.variant.(Sprite_State).asset
+	spr.scale.xy = ((array_cast(spr_asset.texture.size_px, f32)) * spr_asset.frames[0].uv_rect.zw)
+	spr.scale.y *=  -1
+	spr.scale *= 5
+	spr.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{200,300,3}
 
-	hello = text(`hello`)
-	hello.color = Vec4{1,0,0,1}
+	hello := text(`hello`)
+	hello.color = Vec4{1,1,0, 1}
 	hello.position.x = 200
 	hello.position.y = 300
 	hello.position.z = 4
@@ -45,7 +51,7 @@ game_init :: proc () {
 
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
-	do_text(`immediately!`, hello.position)
+	// do_text(`immediately!`, {200,300,4})
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	// step_water(dt)
 }

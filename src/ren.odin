@@ -47,8 +47,8 @@ ren_init :: proc (ren: ^Ren) {
 
 	gl.Enable(.DEPTH_TEST)
 
-	gl.Enable(.CULL_FACE)
-	gl.CullFace(.BACK)
+	// gl.Enable(.CULL_FACE)
+	// gl.CullFace(.BACK)
 	gl.FrontFace(.CCW)
 }
 
