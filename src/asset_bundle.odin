@@ -650,6 +650,10 @@ load_audio :: proc () {
 		// PULLING INPUT API
 		err: stbv.Error
 		decoder: ^stbv.vorbis = stbv.open_memory(raw_data(file.data), cast(c.int) asset.samples, &err, nil)
+		if err != nil {
+			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.samples, file.name)
+			continue
+		}
 		num_seconds := stbv.stream_length_in_seconds(decoder)
 		windows_play_sound(asset)
 
