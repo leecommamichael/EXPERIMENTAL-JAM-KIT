@@ -14,6 +14,7 @@ import "core:encoding/cbor"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
+import stbv "vendor:stb/vorbis"
 import "core:image/tga"
 import "core:image/png"
 import aseprite "third-party/odin-aseprite"
@@ -29,6 +30,7 @@ Asset_Bundle :: struct {
 	texture_atlas: GPU_Texture,
 	images:        map[string]Image_Asset,
 	sprites:       map[string]Sprite_Asset,
+	audio:         map[string]Audio_Asset,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -39,18 +41,20 @@ Asset_Bundle :: struct {
 // file I/O procedure to overwrite the cache.
 
 asset_init :: proc () {
-	bundle := &globals.assets
-	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	when ODIN_OS != .JS && !ODIN_DEBUG {
-		log_time("make_bundle")
-		bundle_fonts()
-		bundle_textures()
-		log_time("make_bundle")
-	}
-	log_time("load_bundle")
-	load_bundled_fonts()
-	load_bundled_textures()
-	log_time("load_bundle")
+	load_audio()
+	os2.exit(-1)
+	// bundle := &globals.assets
+	// bundle.font_infos = make(map[string]stbtt.fontinfo)
+	// when ODIN_OS != .JS && !ODIN_DEBUG {
+	// 	log_time("make_bundle")
+	// 	bundle_fonts()
+	// 	bundle_textures()
+	// 	log_time("make_bundle")
+	// }
+	// log_time("load_bundle")
+	// load_bundled_fonts()
+	// load_bundled_textures()
+	// log_time("load_bundle")
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -612,3 +616,87 @@ aseprite_ok :: #force_inline proc (
 	}
 	return true
 }
+
+//////////////////////////////////////////////////////////////////////
+// Implementation (3/3) Audio
+//////////////////////////////////////////////////////////////////////
+
+Audio_Asset :: struct {
+	filename: string,
+	duration: time.Duration,
+}
+
+load_audio :: proc () {
+	for file in asset_files {
+		(strings.ends_with(file.name, ".ogg")) or_continue
+		asset: Audio_Asset
+		asset.filename = file.name
+		channels: c.int
+		sample_rate: c.int 
+		oggv_out: [^]c.short
+		num_samples: c.int = stbv.decode_memory(raw_data(file.data),
+																				 cast(c.int) len(file.data),
+																				 &channels,
+																				 &sample_rate,
+																				 &oggv_out)
+		if num_samples < 1 {
+			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", num_samples, file.name)
+			continue
+		}
+		// oggv := oggv_out[:data_len]
+		// PULLING INPUT API
+		err: stbv.Error
+		decoder: ^stbv.vorbis = stbv.open_memory(raw_data(file.data), num_samples, &err, nil)
+		// num_samples := stbv.stream_length_in_samples(decoder)
+		num_seconds := stbv.stream_length_in_seconds(decoder)
+		{// play_soundd
+			ok: bool
+			result: windows.HRESULT
+			result = windows.CoInitializeEx()
+		// false means it's already initialized.
+		// RPC_E_CHANGED_MODE is the only documented error, but it's not defined in Odin.
+		assert(result == windows.S_OK || result == windows.S_FALSE)
+			xaudio: ^xa2.IXAudio2
+			result, ok = win.ok(xa2.Create(&xaudio))
+			// This result is logged, it's just unclear whether Create will cause an error.
+		assert(ok)
+			mastering_voice: ^xa2.IXAudio2MasteringVoice
+			result, ok = win.ok(xaudio->CreateMasteringVoice(&mastering_voice))
+		assert(ok)
+			// ----------------- PLAY SOUND ------------------------- //
+			wave_format: xa2.WAVEFORMATEX
+			wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
+			wave_format.nChannels  = cast(u16) channels
+			wave_format.wBitsPerSample = 16 // bits per sample
+			wave_format.nSamplesPerSec = cast(c.uint) sample_rate
+			wave_format.nBlockAlign = wave_format.nChannels * wave_format.wBitsPerSample / 8 // block align 2 channels sending 16bits (kind of a stride)
+			wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * u32(wave_format.nBlockAlign) //avgbytes/sec
+
+			buffer: xa2.BUFFER
+			buffer.AudioBytes = cast(u32) num_samples * (2 * 16 / 8)
+			buffer.pAudioData = cast([^]u8) oggv_out
+			buffer.Flags = { .END_OF_STREAM }
+			source_voice: ^xa2.IXAudio2SourceVoice
+			result = xaudio->CreateSourceVoice(&source_voice, &wave_format)
+		  switch result {
+	  	case xa2.INVALID_CALL        : assert(false)
+	  	case xa2.XMA_DECODER_ERROR   : assert(false)
+	  	case xa2.XAPO_CREATION_FAILED: assert(false)
+	  	case xa2.DEVICE_INVALIDATED  : assert(false)
+		  }
+
+		assert(ok)
+			result, ok = win.ok(source_voice->SubmitSourceBuffer(&buffer))
+		assert(ok)
+			result, ok = win.ok(source_voice->Start())
+		assert(ok)
+			windows.Sleep(6100)
+		}
+
+		return // WIP
+	}
+}
+
+import "core:sys/windows"
+import xa2 "vendor:windows/XAudio2"
+import win "windows"

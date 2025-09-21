@@ -7,13 +7,12 @@ window:
   size: 2936 1775
   panels:
   {
-    0.511488:
+    0.352053:
     {
       0.357141:
       {
         watch:
         {
-          selected
           expression: ""
           watch: globals
           watch: "info.frames"
@@ -24,10 +23,13 @@ window:
           watch: x
           watch: img
           watch: it
+          watch: result
+          root_type: 0.486283 0.363717 0.150000
         }
         watch: expression: "query:types"
         watch:
         {
+          selected
           expression: "query:locals"
           normal: 0.350000 0.410432 0.239568
         }
@@ -52,7 +54,6 @@ window:
       }
       0.274248:
       {
-        selected
         watch: expression: "query:call_stack"
         disasm:
         {
@@ -68,8 +69,9 @@ window:
         }
       }
     }
-    0.488510:
+    0.647945:
     {
+      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
@@ -96,12 +98,13 @@ window:
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 601
+        cursor_line: 691
         cursor_column: 1
-        mark_line: 601
+        mark_line: 691
         mark_column: 1
       }
       text:
@@ -126,17 +129,16 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/ren.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/windows/windows.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 147
+        cursor_line: 51
         cursor_column: 1
-        mark_line: 147
+        mark_line: 51
         mark_column: 1
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_text.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
