@@ -20,6 +20,7 @@ import "core:image/png"
 import aseprite "third-party/odin-aseprite"
 import aseprite_utils "third-party/odin-aseprite/utils"
 import gl "nord_gl"
+import "audio"
 
 //////////////////////////////////////////////////////////////////////
 // Interface
@@ -623,14 +624,12 @@ aseprite_ok :: #force_inline proc (
 
 Audio_Asset :: struct {
 	filename: string,
-	duration: time.Duration,
-	channels: int,
-	samples:  int,
-	sample_rate: int,
-	bytes: []u8
+	using clip: audio.Clip,
 }
 
 load_audio :: proc () {
+	sys, ok := audio.init()
+	assert(ok)
 	for file in asset_files {
 		(strings.ends_with(file.name, ".ogg")) or_continue
 		asset: Audio_Asset
@@ -655,56 +654,8 @@ load_audio :: proc () {
 			continue
 		}
 		num_seconds := stbv.stream_length_in_seconds(decoder)
-		windows_play_sound(asset)
+		audio.play(sys, asset)
 
 		return // WIP
 	}
-}
-
-import "core:sys/windows"
-import xa2 "vendor:windows/XAudio2"
-import win "windows"
-
-windows_play_sound :: proc (it: Audio_Asset) {
-	ok: bool
-	result: windows.HRESULT
-	result = windows.CoInitializeEx()
-// false means it's already initialized.
-// RPC_E_CHANGED_MODE is the only documented error, but it's not defined in Odin.
-assert(result == windows.S_OK || result == windows.S_FALSE)
-	xaudio: ^xa2.IXAudio2
-	result, ok = win.ok(xa2.Create(&xaudio))
-	// This result is logged, it's just unclear whether Create will cause an error.
-assert(ok)
-	mastering_voice: ^xa2.IXAudio2MasteringVoice
-	result, ok = win.ok(xaudio->CreateMasteringVoice(&mastering_voice))
-assert(ok)
-	// ----------------- PLAY SOUND ------------------------- //
-	wave_format: xa2.WAVEFORMATEX
-	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
-	wave_format.nChannels  = cast(u16) it.channels
-	wave_format.wBitsPerSample = 16 // bits per sample
-	wave_format.nSamplesPerSec = cast(c.uint) it.sample_rate
-	wave_format.nBlockAlign = wave_format.nChannels * wave_format.wBitsPerSample / 8 // block align 2 channels sending 16bits (kind of a stride)
-	wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * u32(wave_format.nBlockAlign) //avgbytes/sec
-
-	buffer: xa2.BUFFER
-	buffer.AudioBytes = cast(u32) it.samples * (2 * 16 / 8)
-	buffer.pAudioData = raw_data(it.bytes)
-	buffer.Flags = { .END_OF_STREAM }
-	source_voice: ^xa2.IXAudio2SourceVoice
-	result = xaudio->CreateSourceVoice(&source_voice, &wave_format)
-  switch result {
-	case xa2.INVALID_CALL        : assert(false)
-	case xa2.XMA_DECODER_ERROR   : assert(false)
-	case xa2.XAPO_CREATION_FAILED: assert(false)
-	case xa2.DEVICE_INVALIDATED  : assert(false)
-  }
-
-assert(ok)
-	result, ok = win.ok(source_voice->SubmitSourceBuffer(&buffer))
-assert(ok)
-	result, ok = win.ok(source_voice->Start())
-assert(ok)
-	windows.Sleep(60100)
 }
