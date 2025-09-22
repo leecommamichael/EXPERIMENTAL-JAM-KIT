@@ -26,6 +26,7 @@ assert(ok)
 assert(ok)
 	return
 }
+
 // A clip. A collection of samples.
 Clip :: struct {
 	bytes: []u8,

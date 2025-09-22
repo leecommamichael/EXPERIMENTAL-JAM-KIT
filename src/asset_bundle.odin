@@ -42,20 +42,24 @@ Asset_Bundle :: struct {
 // file I/O procedure to overwrite the cache.
 
 asset_init :: proc () {
+	bundle := &globals.assets
+	bundle.font_infos = make(map[string]stbtt.fontinfo)
+	when ODIN_OS != .JS && !ODIN_DEBUG {
+		log_time("make_bundle")
+		bundle_fonts()
+		bundle_textures()
+		log_time("make_bundle")
+	}
+	// I'll definitely want threading to cut this down.
+	log_time("1. fonts")
+	load_bundled_fonts()
+	log_time("1. fonts")
+	log_time("2. textures")
+	load_bundled_textures()
+	log_time("2. textures")
+	log_time("3. audio")
 	load_audio()
-	os2.exit(-1)
-	// bundle := &globals.assets
-	// bundle.font_infos = make(map[string]stbtt.fontinfo)
-	// when ODIN_OS != .JS && !ODIN_DEBUG {
-	// 	log_time("make_bundle")
-	// 	bundle_fonts()
-	// 	bundle_textures()
-	// 	log_time("make_bundle")
-	// }
-	// log_time("load_bundle")
-	// load_bundled_fonts()
-	// load_bundled_textures()
-	// log_time("load_bundle")
+	log_time("3. audio")
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -638,6 +642,5 @@ load_audio :: proc () {
 			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.samples, file.name)
 			continue
 		}
-		audio.play(sys, asset)
 	}
 }
