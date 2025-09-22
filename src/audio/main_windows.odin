@@ -58,7 +58,6 @@ load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
 }
 
 play :: proc (sys: System, it: Clip) {
-	// ----------------- PLAY SOUND ------------------------- //
 	wave_format: xa2.WAVEFORMATEX
 	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
 	wave_format.nChannels  = cast(u16) it.channels
@@ -84,5 +83,4 @@ play :: proc (sys: System, it: Clip) {
 assert(ok)
 	result, ok = win.ok(source_voice->Start())
 assert(ok)
-	windows.Sleep(60100)
 }
