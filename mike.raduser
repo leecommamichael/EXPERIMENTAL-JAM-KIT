@@ -7,7 +7,7 @@ window:
   size: 2936 1775
   panels:
   {
-    0.352053:
+    0.303155:
     {
       0.357141:
       {
@@ -15,16 +15,8 @@ window:
         {
           expression: ""
           watch: globals
-          watch: "info.frames"
-          watch: s
-          watch: f
-          watch: "ren.frame_UBO"
-          watch: "globals.ren.frame_UBO"
-          watch: x
-          watch: img
-          watch: it
-          watch: result
           root_type: 0.486283 0.363717 0.150000
+          watch: "clip.seconds"
         }
         watch: expression: "query:types"
         watch:
@@ -69,7 +61,7 @@ window:
         }
       }
     }
-    0.647945:
+    0.696843:
     {
       selected
       text:
@@ -98,13 +90,12 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 691
+        cursor_line: 642
         cursor_column: 1
-        mark_line: 691
+        mark_line: 642
         mark_column: 1
       }
       text:
@@ -151,10 +142,25 @@ window:
         mark_line: 45
         mark_column: 1
       }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/audio/main_windows.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query:
+        {
+          input: seconds
+          cmd: search
+        }
+        cursor_line: 86
+        cursor_column: 37
+        mark_line: 86
+        mark_column: 30
+      }
     }
   }
   split_x
-  pos: 1532 156
+  pos: 2372 156
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0

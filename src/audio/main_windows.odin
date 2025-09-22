@@ -28,7 +28,7 @@ assert(ok)
 }
 // A clip. A collection of samples.
 Clip :: struct {
-	bytes: []u8,
+	bytes: [^]c.short,
 	samples: int,
 	seconds: f64,
 	channels: int,
@@ -36,13 +36,11 @@ Clip :: struct {
 }
 
 load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
-	oggv_out: [^]c.short
 	clip.samples = cast(int) stbv.decode_memory(raw_data(bytes),
 																					cast(c.int) len(bytes),
 																					cast(^c.int) &clip.channels,
 																					cast(^c.int) &clip.sample_rate,
-																					&oggv_out)
-	clip.bytes = slice.reinterpret([]u8, oggv_out[:clip.samples])
+																					&clip.bytes)
 	// taking ptr address of rawdata doesnt make sense for c interop. it cant init a slice.
 	if clip.samples < 1 {
 		return {}, false
@@ -53,7 +51,8 @@ load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
 	if err != nil {
 		return {}, false
 	}
-	clip.seconds = cast(f64) stbv.stream_length_in_seconds(decoder)
+	clip.seconds = cast(f64) clip.samples / cast(f64) clip.sample_rate
+	assert(clip.seconds > 0)
 	return clip, true
 }
 
@@ -68,7 +67,7 @@ play :: proc (sys: System, it: Clip) {
 
 	buffer: xa2.BUFFER
 	buffer.AudioBytes = cast(u32) it.samples * (2 * 16 / 8)
-	buffer.pAudioData = raw_data(it.bytes)
+	buffer.pAudioData = cast([^]u8) (it.bytes)
 	buffer.Flags = { .END_OF_STREAM }
 	source_voice: ^xa2.IXAudio2SourceVoice
 	result := sys.xaudio->CreateSourceVoice(&source_voice, &wave_format)
@@ -83,4 +82,5 @@ play :: proc (sys: System, it: Clip) {
 assert(ok)
 	result, ok = win.ok(source_voice->Start())
 assert(ok)
+	windows.Sleep(cast(u32) (it.seconds * 1000))
 }

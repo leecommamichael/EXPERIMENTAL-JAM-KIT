@@ -633,29 +633,11 @@ load_audio :: proc () {
 	for file in asset_files {
 		(strings.ends_with(file.name, ".ogg")) or_continue
 		asset: Audio_Asset
-		asset.filename = file.name
-		oggv_out: [^]c.short
-		asset.samples = cast(int) stbv.decode_memory(raw_data(file.data),
-																						cast(c.int) len(file.data),
-																						cast(^c.int) &asset.channels,
-																						cast(^c.int) &asset.sample_rate,
-																						&oggv_out)
-		asset.bytes = slice.reinterpret([]u8, oggv_out[:asset.samples])
-		// taking ptr address of rawdata doesnt make sense for c interop. it cant init a slice.
-		if asset.samples < 1 {
+		asset.clip, ok = audio.load_from_bytes(file.data)
+		if !ok {
 			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.samples, file.name)
 			continue
 		}
-		// PULLING INPUT API
-		err: stbv.Error
-		decoder: ^stbv.vorbis = stbv.open_memory(raw_data(file.data), cast(c.int) asset.samples, &err, nil)
-		if err != nil {
-			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.samples, file.name)
-			continue
-		}
-		num_seconds := stbv.stream_length_in_seconds(decoder)
 		audio.play(sys, asset)
-
-		return // WIP
 	}
 }

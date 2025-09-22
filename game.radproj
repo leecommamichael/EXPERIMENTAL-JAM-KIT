@@ -1,5 +1,6 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/audio/main_windows.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/windows/windows.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
@@ -84,10 +85,15 @@ breakpoint:
 breakpoint:
 {
   source_location: "src/asset_bundle.odin:691:1"
-  hit_count: 1
+  hit_count: 0
 }
 breakpoint:
 {
   source_location: "src/windows/windows.odin:43:1"
   hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/audio/main_windows.odin:39:1"
+  hit_count: 1
 }
