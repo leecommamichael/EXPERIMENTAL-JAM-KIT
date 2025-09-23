@@ -13,6 +13,7 @@ import "core:time"
 import "core:fmt"
 import "core:encoding/cbor"
 import "core:image/tga"
+import "core:image/png"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
@@ -46,7 +47,7 @@ Asset_Bundle :: struct {
 asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	when ODIN_OS != .JS && ODIN_DEBUG {
+	when ODIN_OS != .JS && !ODIN_DEBUG {
 		log_time("make_bundle")
 		bundle_fonts()
 		bundle_textures()
@@ -383,9 +384,9 @@ bundle_textures :: proc () {
 	pack_list := make([dynamic]Atlas_Entry)
 	for file in asset_files {
 		switch {
-		case strings.ends_with(file.name, ".tga"):
-			log.infof("tga IMAGE: %s", file.name)
-			img, img_err := tga.load_from_bytes(file.data, { .alpha_premultiply })
+		case strings.ends_with(file.name, ".png"):
+			log.infof("png IMAGE: %s", file.name)
+			img, img_err := png.load_from_bytes(file.data, { .alpha_premultiply })
 			log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
 			if img_err != nil {
 				log.errorf("Failed to load %s as a PNG. %v",
