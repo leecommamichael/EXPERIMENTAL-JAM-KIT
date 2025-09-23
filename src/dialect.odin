@@ -108,6 +108,12 @@ log_time :: proc (id: string) {
   }
 }
 
+startup_tick := time.tick_now()
+log_runtime :: proc (message: string) {
+  duration := time.tick_diff(startup_tick, time.tick_now())
+  fmt.printfln("[TIMER] % 6.1fms into run. %s", f64(duration) / f64(time.Millisecond), message)
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

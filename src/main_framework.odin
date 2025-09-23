@@ -38,7 +38,6 @@ framework_init :: proc () {
 	globals.ren = ren_make()
 
 	ren_init(globals.ren)
-	asset_init()
 	log.info("---------------------------------------- framework initialized.")
 	game_init()
 }

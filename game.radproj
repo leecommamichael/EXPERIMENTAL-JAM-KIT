@@ -1,9 +1,10 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "../../applications (compilers)/odin/core/image/qoi/qoi.odin"
+recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/sugar/input_windows.odin"
 recent_file: path: "src/sugar/sugar.odin"
 recent_file: path: "src/main_entrypoint.odin"
-recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/audio/main_windows.odin"
 recent_file: path: "src/windows/windows.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
@@ -56,5 +57,10 @@ breakpoint:
 breakpoint:
 {
   source_location: "src/sugar/input_windows.odin:72:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/asset_bundle.odin:597:1"
   hit_count: 1
 }

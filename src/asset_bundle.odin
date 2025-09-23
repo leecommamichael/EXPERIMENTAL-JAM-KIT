@@ -11,9 +11,11 @@ import "core:image"
 import "core:mem"
 import "core:time"
 import "core:fmt"
+import "core:bytes"
 import "core:encoding/cbor"
-import "core:image/tga"
-import "core:image/png"
+import "core:image/qoi" // texture atlas
+import "core:image/tga" // font atlas
+import "core:image/png" // make bundle
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
@@ -57,11 +59,10 @@ asset_init :: proc () {
 	font_thread := thread.create_and_start_with_poly_data(&globals.assets.bw_atlas_image, load_bundled_fonts, context)
 	tex_thread := thread.create_and_start_with_poly_data(&globals.assets.rgba_atlas_image, load_bundled_textures, context)
 	audio_thread := thread.create_and_start(load_audio, context)
-	thread.join_multiple(font_thread, tex_thread, audio_thread)
+	thread.join_multiple(font_thread, tex_thread)
 	thread.destroy(font_thread)
 	thread.destroy(tex_thread)
-	thread.destroy(audio_thread)
-	upload_textures()
+	// TODO when to join and destroy audio thread? store thread somewhere else in engine?
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -98,7 +99,8 @@ assert(unmarshal_error == nil)
 	result^ = img^
 }
 
-upload_textures :: proc () {
+asset_upload :: proc () {
+	texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
 	log_time("UPLOAD_GPU_TEXTURES")
 	defer log_time("UPLOAD_GPU_TEXTURES")
 	//////////////////////////////////////////////////////////////////////	
@@ -361,7 +363,7 @@ assert(err == nil)
 //////////////////////////////////////////////////////////////////////
 MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
 TEXTURE_ATLAS_METADATA :: "texture_atlas_metadata.cbor"
-TEXTURE_ATLAS_PATH :: "texture_atlas.tga"
+TEXTURE_ATLAS_PATH :: "texture_atlas.qoi"
 
 bundle_textures :: proc () {
 	// This is more leaning into the 
@@ -583,15 +585,32 @@ bundle_textures :: proc () {
 			}
 		}
 	}
-	ok := cast(b32) stbi.write_tga(
-		TEXTURE_ATLAS_PATH,
-		w=cast(i32)MAX_ATLAS_PIXELS,
-		h=cast(i32)atlas_size.y,
-		comp=4,
-		data=raw_data(atlas_rgba))
-	if !ok {
-		log.errorf("STBI failed to write the RGBA atlas.")
+	img: image.Image
+	img.width = MAX_ATLAS_PIXELS
+	img.height = cast(int) atlas_size.y
+	img.channels = 4
+	img.depth = 8
+	img.pixels.buf = slice.clone_to_dynamic(atlas_rgba[:img.width*img.height*img.channels])
+	buffer: bytes.Buffer
+	err2 := qoi.save_to_buffer(&buffer, &img)
+	if err2 != nil {
+		log.errorf("QOI failed to write %v", err2)
+		assert(err2 == nil)
+		return
 	}
+	file2, err3 := os2.open(TEXTURE_ATLAS_PATH, {.Read, .Trunc, .Create})
+	if err3 != nil {
+		log.errorf("QOI file open failed %v", err3)
+		assert(err3 == nil)
+		return
+	}
+	num_bytes, err4 := os2.write(file2, buffer.buf[:])
+	if err4 != nil {
+		log.errorf("QOI file open failed", err4)
+		assert(err4 == nil)
+		return
+	}
+
 // 4. Write Metadata /////////////////////////////////////////////////////////////////////
 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
@@ -615,12 +634,12 @@ Serialized_Texture_Atlas_Entries :: struct {
 	sprites: map[string]Sprite_Asset,
 }
 
-texture_atlas_bytes: []u8 = #load(TEXTURE_ATLAS_PATH)
-texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
+// Load textures /////////////////////////////////////////////////////////////////////////
+texture_atlas_bytes: []u8 = #load(TEXTURE_ATLAS_PATH) or_else {}
 load_bundled_textures :: proc (result: ^image.Image) {
 	log_time("LOAD_TEXTURES")
 	defer log_time("LOAD_TEXTURES")
-	img, img_err := tga.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
+	img, img_err := qoi.load_from_bytes(texture_atlas_bytes)
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
@@ -653,12 +672,11 @@ Audio_Asset :: struct {
 load_audio :: proc () {
 	log_time("LOAD_AUDIO")
 	defer log_time("LOAD_AUDIO")
-	sys, ok := audio.init()
-	assert(ok)
 	for file in asset_files {
 		(strings.ends_with(file.name, ".ogg")) or_continue
 		asset: Audio_Asset
-		asset.clip, ok = audio.load_from_bytes(file.data)
+		clip, ok := audio.load_from_bytes(file.data)
+		asset.clip = clip
 		if !ok {
 			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.samples, file.name)
 			continue

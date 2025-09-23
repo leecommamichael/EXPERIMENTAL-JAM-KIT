@@ -8,6 +8,7 @@ import "core:log"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
 import "sugar"
+import "audio"
 
 create_sublime_text_logger :: proc () -> log.Logger {
 		return log.create_console_logger(lowest = log.Level.Debug, opt = { .Level, })
@@ -16,8 +17,9 @@ create_sublime_text_logger :: proc () -> log.Logger {
 frame_number: uint = 0
 
 main :: proc() {
+	_, k := audio.init(); assert(k)
 	sugar.init_input()
-	log_time("first_paint")
+	asset_init()
 	log_time("initializing platform")
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
@@ -30,6 +32,7 @@ main :: proc() {
 	log_time("initializing platform")
 
 	log_time("initializing framework")
+	asset_upload()
 	framework_init()
 	log_time("initializing framework")
 
@@ -53,7 +56,7 @@ main :: proc() {
 step :: proc (dt: f64) -> bool {
 	frame_number += 1
 	if frame_number == 2 {
-		log_time("first_paint")
+		log_runtime("first_paint")
 	}
 	defer free_all(context.temp_allocator)
 	switch sugar.poll_events() { // begins input frame.
