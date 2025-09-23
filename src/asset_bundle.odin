@@ -3,6 +3,7 @@ package main
 import "base:runtime"
 import "core:thread"
 import "core:log"
+import "core:bytes"
 import "core:c"
 import "core:slice"
 import "core:strings"
@@ -13,6 +14,7 @@ import "core:time"
 import "core:fmt"
 import "core:encoding/cbor"
 import "core:image/tga"
+import "core:image/qoi"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
@@ -72,7 +74,9 @@ Serialized_Atlas_Font :: struct {
 	packed_char: []stbtt.packedchar,
 }
 
+when true {
 asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
+}
 
 FONT_ATLAS_METADATA :: "font_atlas_metadata.cbor"
 FONT_ATLAS_PATH :: "font_atlas.tga"
@@ -360,7 +364,7 @@ assert(err == nil)
 //////////////////////////////////////////////////////////////////////
 MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
 TEXTURE_ATLAS_METADATA :: "texture_atlas_metadata.cbor"
-TEXTURE_ATLAS_PATH :: "texture_atlas.tga"
+TEXTURE_ATLAS_PATH :: "texture_atlas.qoi"
 
 bundle_textures :: proc () {
 	// This is more leaning into the 
@@ -383,9 +387,9 @@ bundle_textures :: proc () {
 	pack_list := make([dynamic]Atlas_Entry)
 	for file in asset_files {
 		switch {
-		case strings.ends_with(file.name, ".tga"):
-			log.infof("tga IMAGE: %s", file.name)
-			img, img_err := tga.load_from_bytes(file.data, { .alpha_premultiply })
+		case strings.ends_with(file.name, ".qoi"):
+			log.infof("qoi IMAGE: %s", file.name)
+			img, img_err := qoi.load_from_bytes(file.data, { .alpha_premultiply })
 			log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
 			if img_err != nil {
 				log.errorf("Failed to load %s as a PNG. %v",
@@ -582,15 +586,24 @@ bundle_textures :: proc () {
 			}
 		}
 	}
-	ok := cast(b32) stbi.write_tga(
-		TEXTURE_ATLAS_PATH,
-		w=cast(i32)MAX_ATLAS_PIXELS,
-		h=cast(i32)atlas_size.y,
-		comp=4,
-		data=raw_data(atlas_rgba))
-	if !ok {
-		log.errorf("STBI failed to write the RGBA atlas.")
+// Write Image ///////////////////////////////////////////////////////////////////////////
+	img_file, err2 := os2.open(TEXTURE_ATLAS_PATH, {.Read, .Trunc, .Create})
+	assert(err2 == nil)
+	buf: bytes.Buffer = {  }
+	img: image.Image
+	img.width    = MAX_ATLAS_PIXELS
+	img.height   = cast(int) atlas_size.y
+	img.channels = 4
+	img.depth    = 8
+	img.pixels   = bytes.Buffer { buf = slice.to_dynamic(atlas_rgba) }
+	qoi_err := qoi.save_to_buffer(&buf, &img)
+	if qoi_err != nil {
+		log.errorf("STBI failed to write the RGBA atlas. %v", qoi_err)
 	}
+	_, err3 := os2.write(img_file, buf.buf[:len(buf.buf)])
+	assert(err3 != nil)
+	defer os2.close(img_file)
+
 // 4. Write Metadata /////////////////////////////////////////////////////////////////////
 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
@@ -619,7 +632,7 @@ texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
 load_bundled_textures :: proc (result: ^image.Image) {
 	log_time("LOAD_TEXTURES")
 	defer log_time("LOAD_TEXTURES")
-	img, img_err := tga.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
+	img, img_err := qoi.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
