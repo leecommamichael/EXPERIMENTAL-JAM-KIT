@@ -1,6 +1,7 @@
 package main
 
 import "base:runtime"
+import "core:thread"
 import "core:log"
 import "core:c"
 import "core:slice"
@@ -11,12 +12,12 @@ import "core:mem"
 import "core:time"
 import "core:fmt"
 import "core:encoding/cbor"
+import "core:image/tga"
+import "core:image/png"
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
 import stbi "vendor:stb/image"
 import stbv "vendor:stb/vorbis"
-import "core:image/tga"
-import "core:image/png"
 import aseprite "third-party/odin-aseprite"
 import aseprite_utils "third-party/odin-aseprite/utils"
 import gl "nord_gl"
@@ -32,6 +33,8 @@ Asset_Bundle :: struct {
 	images:        map[string]Image_Asset,
 	sprites:       map[string]Sprite_Asset,
 	audio:         map[string]Audio_Asset,
+	bw_atlas_image:   image.Image,
+	rgba_atlas_image: image.Image,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -51,15 +54,14 @@ asset_init :: proc () {
 		log_time("make_bundle")
 	}
 	// I'll definitely want threading to cut this down.
-	log_time("1. fonts")
-	load_bundled_fonts()
-	log_time("1. fonts")
-	log_time("2. textures")
-	load_bundled_textures()
-	log_time("2. textures")
-	log_time("3. audio")
-	load_audio()
-	log_time("3. audio")
+	font_thread := thread.create_and_start_with_poly_data(&globals.assets.bw_atlas_image, load_bundled_fonts, context)
+	tex_thread := thread.create_and_start_with_poly_data(&globals.assets.rgba_atlas_image, load_bundled_textures, context)
+	audio_thread := thread.create_and_start(load_audio, context)
+	thread.join_multiple(font_thread, tex_thread, audio_thread)
+	thread.destroy(font_thread)
+	thread.destroy(tex_thread)
+	thread.destroy(audio_thread)
+	upload_textures()
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -76,8 +78,10 @@ asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 FONT_ATLAS_METADATA :: "font_atlas_metadata.cbor"
 FONT_ATLAS_PATH :: "font_atlas.tga"
 
-
-load_bundled_fonts :: proc () {
+// threaded
+load_bundled_fonts :: proc (result: ^image.Image) {
+	log_time("LOAD_FONTS")
+	defer log_time("LOAD_FONTS")
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
 	unmarshal_error := cbor.unmarshal_from_bytes(#load(FONT_ATLAS_METADATA), &serialized_fonts)
 	for font in serialized_fonts {
@@ -91,18 +95,55 @@ assert(unmarshal_error == nil)
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
 	}
+	result^ = img^
+}
+
+upload_textures :: proc () {
+	log_time("UPLOAD_GPU_TEXTURES")
+	defer log_time("UPLOAD_GPU_TEXTURES")
+	//////////////////////////////////////////////////////////////////////	
+	// BW
+	//////////////////////////////////////////////////////////////////////	
 	globals.assets.font_atlas = {
 		target = .TEXTURE_2D,
 		minify_filter = .LINEAR,
 		magnify_filter = .LINEAR,
 		format = .RGB8,
 	}
-	init_and_upload_texture(0, &globals.assets.font_atlas, img.pixels.buf[:], {img.width, img.height})
-
+	bw := globals.assets.bw_atlas_image
+	init_and_upload_texture(0, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
 	globals.assets.images[FONT_ATLAS_PATH] = Image_Asset {
 		FONT_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
 		&globals.assets.font_atlas,
+	}
+	//////////////////////////////////////////////////////////////////////	
+	// RGBA
+	//////////////////////////////////////////////////////////////////////	
+	globals.assets.texture_atlas = {
+		target = .TEXTURE_2D,
+		minify_filter = .NEAREST,
+		magnify_filter = .NEAREST,
+		format = .RGBA8,
+	}
+	rgba := globals.assets.rgba_atlas_image
+	init_and_upload_texture(1, &globals.assets.texture_atlas, rgba.pixels.buf[:], {rgba.width, rgba.height})
+	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
+		TEXTURE_ATLAS_PATH,
+		{0,0, 1,1}, // does this even go here?
+		&globals.assets.texture_atlas,
+	}
+
+	entries: Serialized_Texture_Atlas_Entries
+	unmarshal_error := cbor.unmarshal_from_bytes(texture_atlas_metadata, &entries)
+	globals.assets.images = entries.images
+	globals.assets.sprites = entries.sprites
+	// TODO: this pointer-wiring feels stupid... is it?
+	for k, &i in globals.assets.images {
+		i.texture = &globals.assets.texture_atlas
+	}
+	for k, &s in globals.assets.sprites {
+		s.texture = &globals.assets.texture_atlas
 	}
 }
 
@@ -576,37 +617,15 @@ Serialized_Texture_Atlas_Entries :: struct {
 
 texture_atlas_bytes: []u8 = #load(TEXTURE_ATLAS_PATH)
 texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
-load_bundled_textures :: proc () {
+load_bundled_textures :: proc (result: ^image.Image) {
+	log_time("LOAD_TEXTURES")
+	defer log_time("LOAD_TEXTURES")
 	img, img_err := tga.load_from_bytes(texture_atlas_bytes) //{ .do_not_expand_grayscale, })
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
 	}
-
-	globals.assets.texture_atlas = {
-		target = .TEXTURE_2D,
-		minify_filter = .NEAREST,
-		magnify_filter = .NEAREST,
-		format = .RGBA8,
-	}
-	init_and_upload_texture(1, &globals.assets.texture_atlas, img.pixels.buf[:], {img.width, img.height})
-	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
-		TEXTURE_ATLAS_PATH,
-		{0,0, 1,1}, // does this even go here?
-		&globals.assets.texture_atlas,
-	}
-
-	entries: Serialized_Texture_Atlas_Entries
-	unmarshal_error := cbor.unmarshal_from_bytes(texture_atlas_metadata, &entries)
-	globals.assets.images = entries.images
-	globals.assets.sprites = entries.sprites
-	// TODO: this pointer-wiring feels stupid... is it?
-	for k, &i in globals.assets.images {
-		i.texture = &globals.assets.texture_atlas
-	}
-	for k, &s in globals.assets.sprites {
-		s.texture = &globals.assets.texture_atlas
-	}
+	result^ = img^
 }
 
 @(private="file")
@@ -632,6 +651,8 @@ Audio_Asset :: struct {
 }
 
 load_audio :: proc () {
+	log_time("LOAD_AUDIO")
+	defer log_time("LOAD_AUDIO")
 	sys, ok := audio.init()
 	assert(ok)
 	for file in asset_files {
