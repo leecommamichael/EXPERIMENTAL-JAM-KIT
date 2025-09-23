@@ -13,12 +13,10 @@ import "core:time"
 import "core:fmt"
 import "core:bytes"
 import "core:encoding/cbor"
-import "core:image/qoi" // texture atlas
-import "core:image/tga" // font atlas
-import "core:image/png" // make bundle
+import "core:image/qoi" // atlases
+import "core:image/png" // asset support
 import stbrp "vendor:stb/rect_pack"
 import stbtt "vendor:stb/truetype"
-import stbi "vendor:stb/image"
 import stbv "vendor:stb/vorbis"
 import aseprite "third-party/odin-aseprite"
 import aseprite_utils "third-party/odin-aseprite/utils"
@@ -45,7 +43,6 @@ Asset_Bundle :: struct {
 // The framework uses #load to embed assets for web-support.
 // While the program is running on desktop, use a desktop-specific
 // file I/O procedure to overwrite the cache.
-
 asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
@@ -77,7 +74,7 @@ Serialized_Atlas_Font :: struct {
 asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 
 FONT_ATLAS_METADATA :: "font_atlas_metadata.cbor"
-FONT_ATLAS_PATH :: "font_atlas.tga"
+FONT_ATLAS_PATH :: "font_atlas.qoi"
 
 // threaded
 load_bundled_fonts :: proc (result: ^image.Image) {
@@ -90,8 +87,8 @@ load_bundled_fonts :: proc (result: ^image.Image) {
 	}
 assert(unmarshal_error == nil)
 
-	font_atlas_bytes := #load(FONT_ATLAS_PATH)
-	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
+	font_atlas_bytes := #load(FONT_ATLAS_PATH) or_else {}
+	img, img_err := qoi.load_from_bytes(font_atlas_bytes)
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
@@ -110,7 +107,7 @@ asset_upload :: proc () {
 		target = .TEXTURE_2D,
 		minify_filter = .LINEAR,
 		magnify_filter = .LINEAR,
-		format = .RGB8,
+		format = .RGBA8,
 	}
 	bw := globals.assets.bw_atlas_image
 	init_and_upload_texture(0, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
@@ -150,7 +147,7 @@ asset_upload :: proc () {
 }
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
-MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
+MAX_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 4*268 MB
 FONT_COUNT :: len(Font_Variant) * len(Font_Usage)
 GLYPH_COUNT :: 95 // characters from beginning of ASCII table
 
@@ -317,18 +314,37 @@ bundle_fonts :: proc () {
 			atlas_size.y = y
 		}
 	} // for rect
-	cropped_atlas_bytes := make([]u8, MAX_ATLAS_PIXELS*atlas_size.y)
-	copy(cropped_atlas_bytes, atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
-	delete(atlas_bytes)
+	cropped_atlas_bytes := make([dynamic]u8, MAX_ATLAS_PIXELS*atlas_size.y) // *4 to expand to rgba
+	copy(cropped_atlas_bytes[:], atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
+	delete(atlas_bytes) // see if I can just resize instead of this copy.
 	log.infof("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
 
-	ok := cast(b32) stbi.write_tga(
-		FONT_ATLAS_PATH,
-		w=cast(i32)MAX_ATLAS_PIXELS,
-		h=cast(i32)atlas_size.y,
-		comp=1,
-		data=raw_data(cropped_atlas_bytes))
+	img: image.Image
+	img.width = MAX_ATLAS_PIXELS
+	img.height = cast(int) atlas_size.y
+	img.channels = 1
+	img.depth = 8
+	img.pixels.buf = cropped_atlas_bytes
+	ok := expand_bitmap_to_rgba(&img)
+	assert(ok)
+	// resize(&img., img.width*img.height*img.channels)
+	// img.pixels.buf = atlas_rgba
+	buf: bytes.Buffer
+	file2, err := os2.open(FONT_ATLAS_PATH, {.Read, .Trunc, .Create})
+	defer os2.close(file2)
+	err2 := qoi.save_to_buffer(&buf, &img)
+	if err2 != nil {
+		log.errorf("QOI failed to write %v", err2)
+		assert(err2 == nil)
+		return
+	}
+	num_bytes, err4 := os2.write(file2, buf.buf[:])
+	if err4 != nil {
+		log.errorf("QOI file open failed", err4)
+		assert(err4 == nil)
+		return
+	}
 	if !ok {
 		log.errorf("STBI failed to write the font atlas.")
 	}
@@ -349,13 +365,12 @@ bundle_fonts :: proc () {
 			i += 1
 		}
 	}
-	file, err := os2.open(FONT_ATLAS_METADATA, {.Read, .Trunc, .Create})
+	file, errn := os2.open(FONT_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
-assert(err == nil)
+assert(errn == nil)
 	writer := os2.to_writer(file)
 	cbor.marshal_into_writer(writer, serialized_fonts)
 	delete(serialized_fonts)
-	delete(cropped_atlas_bytes)
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -611,6 +626,7 @@ bundle_textures :: proc () {
 		assert(err4 == nil)
 		return
 	}
+	os2.close(file2)
 
 // 4. Write Metadata /////////////////////////////////////////////////////////////////////
 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
@@ -683,4 +699,37 @@ load_audio :: proc () {
 			continue
 		}
 	}
+}
+
+//////////////////////////////////////////////////////////////////////
+// Implementation (3/3) Audio
+//////////////////////////////////////////////////////////////////////
+
+expand_bitmap_to_rgba :: proc(img: ^image.Image, allocator := context.allocator) -> (ok: bool) {
+	context.allocator = allocator
+
+	// We should have 1 or 2 channels of 8- or 16 bits now. We need to turn that into 3 or 4.
+	// Can we allocate the return buffer?
+	buf := bytes.Buffer{}
+	bytes_wanted := image.compute_buffer_size(img.width, img.height, 4, img.depth)
+	if resize(&buf.buf, bytes_wanted) != nil {
+		delete(buf.buf)
+		return false
+	}
+	if img.depth != 8 && img.channels != 1 {
+		return false
+	}
+	out := mem.slice_data_cast([]image.RGBA_Pixel, buf.buf[:])
+
+	for p in img.pixels.buf {
+		out[0] = p // Broadcast gray value into RGB components.
+		out    = out[1:]
+	}
+
+	// If we got here, that means we've now got a buffer with the extra alpha channel.
+	// Destroy the old pixel buffer and replace it with the new one, and update the channel count.
+	bytes.buffer_destroy(&img.pixels)
+	img.pixels   = buf
+	img.channels = 4
+	return true
 }
