@@ -14,23 +14,24 @@ is_key_pressed :: #force_inline proc (key: Key) -> bool {
 	return input.keys[key].is_pressed
 }
 
+// Instantly fires when pressed, but cannot refire without both of:
+// - The debounce elapsing
+// - The Switch_State releasing and re-pressing. (lmk if you want on_press_and_repeat())
 on_press :: proc {
 	on_key_press,
 	on_button_press,
 }
 
+// Fires when releasing the key after a debounce interval.
 on_release :: proc {
 	on_key_release,
 	on_button_release,
 }
-// Instantly fires when pressed, but cannot refire without both of:
-// - The debounce elapsing
-// - The Switch_State releasing and re-pressing. (lmk if you want on_press_and_repeat())
+
 on_key_press :: proc (key: Key, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
 	return on_switch_press(&input.keys[key], debounce)
 }
 
-// Fires when releasing the key after a debounce interval.
 on_key_release :: proc (key: Key, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
 	return on_switch_release(&input.keys[key], debounce)
 }
