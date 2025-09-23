@@ -527,7 +527,7 @@ bundle_textures :: proc () {
 		}
 	}
 	num_rects := len(rects)
-	atlas_rgba := make([]u8, MAX_TEXTURE_ATLAS_BYTES)
+	atlas_rgba := make([dynamic]u8, MAX_TEXTURE_ATLAS_BYTES)
 	nodes := make([]stbrp.Node, num_rects)
 	ctx: stbrp.Context
 	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
@@ -590,7 +590,8 @@ bundle_textures :: proc () {
 	img.height = cast(int) atlas_size.y
 	img.channels = 4
 	img.depth = 8
-	img.pixels.buf = slice.clone_to_dynamic(atlas_rgba[:img.width*img.height*img.channels])
+	resize(&atlas_rgba, img.width*img.height*img.channels)
+	img.pixels.buf = atlas_rgba
 	buffer: bytes.Buffer
 	err2 := qoi.save_to_buffer(&buffer, &img)
 	if err2 != nil {
