@@ -16,6 +16,7 @@ create_sublime_text_logger :: proc () -> log.Logger {
 frame_number: uint = 0
 
 main :: proc() {
+	sugar.init_input()
 	log_time("first_paint")
 	log_time("initializing platform")
 	when !sugar.platform_calls_step {
@@ -55,13 +56,13 @@ step :: proc (dt: f64) -> bool {
 		log_time("first_paint")
 	}
 	defer free_all(context.temp_allocator)
-	switch sugar.poll_events() {
+	switch sugar.poll_events() { // begins input frame.
 	case .Should_Exit: return false
 	case .Resized:     resolution_changed(sugar.viewport_size)
 	case .None:
 	}
 
-	if sugar.on_release(.Escape) {
+	if sugar.on_key_release(.Escape) || sugar.on_button_release(.Select) {
 		return false
 	}
 

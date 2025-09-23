@@ -4,11 +4,42 @@ import "core:time"
 import "core:log"
 import "core:sys/windows"
 import win "../windows"
+import wgi "vendor:windows/GameInput"
 
+init_native_input :: proc () {
+	result, ok := win.ok(wgi.Create(&game_input))
+}
+
+//////////////////////////////////////////////////////////////////////
+// Gamepad
+//////////////////////////////////////////////////////////////////////
+game_input:     ^wgi.IGameInput
+gamepad_device: ^wgi.IGameInputDevice
+
+Gamepad_Button :: enum u32 {
+	Start          = cast(u32) wgi.GamepadButtonsFlag.Menu,
+	Select         = cast(u32) wgi.GamepadButtonsFlag.View,
+	A              = cast(u32) wgi.GamepadButtonsFlag.A,
+	B              = cast(u32) wgi.GamepadButtonsFlag.B,
+	X              = cast(u32) wgi.GamepadButtonsFlag.X,
+	Y              = cast(u32) wgi.GamepadButtonsFlag.Y,
+	Up             = cast(u32) wgi.GamepadButtonsFlag.DPadUp,
+	Down           = cast(u32) wgi.GamepadButtonsFlag.DPadDown,
+	Left           = cast(u32) wgi.GamepadButtonsFlag.DPadLeft,
+	Right          = cast(u32) wgi.GamepadButtonsFlag.DPadRight,
+	Left_Shoulder  = cast(u32) wgi.GamepadButtonsFlag.LeftShoulder,
+	Right_Shoulder = cast(u32) wgi.GamepadButtonsFlag.RightShoulder,
+	Left_Stick     = cast(u32) wgi.GamepadButtonsFlag.LeftThumbstick,
+	Right_Stick    = cast(u32) wgi.GamepadButtonsFlag.RightThumbstick,
+}
+
+//////////////////////////////////////////////////////////////////////
+// Keyboard & Mouse
+//////////////////////////////////////////////////////////////////////
 
 // A virtual key code. Suitable for games if users have the same
 // keyboard layout. e.g. QWERTY, AZERTY, etc
-Button :: enum {
+Key :: enum {
 	Escape      = windows.VK_ESCAPE,
 	Left_Mouse  = windows.VK_LBUTTON,
 	Right_Mouse = windows.VK_RBUTTON,
@@ -27,19 +58,19 @@ Button :: enum {
 @private
 on_key_down :: proc (message: windows.MSG) {
 	if message.wParam < windows.VK_LBUTTON || message.wParam > windows.VK_OEM_CLEAR { return }
-	virtual_keycode := cast(Button) message.wParam
+	virtual_keycode := cast(Key) message.wParam
 	down := win.Key_LPARAM(message.lParam)
 	// Don't process key repeats. Those are for text editing, not games.
 	if down.was_down { return }
 
-	press_button(virtual_keycode)
+	set_pressed(virtual_keycode)
 }
 
 @private
 on_key_up :: proc (message: windows.MSG) {
 	if message.wParam < windows.VK_LBUTTON || message.wParam > windows.VK_OEM_CLEAR { return }
-	virtual_keycode := cast(Button) message.wParam
-	release_button(virtual_keycode)
+	virtual_keycode := cast(Key) message.wParam
+	set_released(virtual_keycode)
 }
 
 @private
@@ -61,6 +92,39 @@ Feedback :: enum {
 @require_results
 poll_events :: proc () -> (feedback: Feedback) {
 	begin_input_frame()
+
+	poll_game_input :: proc () {
+		reading: ^wgi.IGameInputReading
+		if win.is_ok(game_input->GetCurrentReading({.Gamepad}, gamepad_device, &reading)) {
+			if gamepad_device == nil {
+				// SCENARIO: First input in this run.
+				reading->GetDevice(&gamepad_device)
+			}
+			state: wgi.GamepadState
+			reading->GetGamepadState(&state)
+			new_button_bits := transmute(bit_set[Gamepad_Button; u32]) transmute(u32) state.buttons
+			for button in new_button_bits - input.gamepad.button_bits {
+				set_pressed(cast(Gamepad_Button) button)
+			}
+			for button in input.gamepad.button_bits - new_button_bits {
+				set_released(cast(Gamepad_Button) button)
+			}
+			input.gamepad.button_bits = new_button_bits
+			input.gamepad.left_trigger = state.leftTrigger
+			input.gamepad.right_trigger = state.rightTrigger
+			input.gamepad.left_stick = {state.leftThumbstickX, state.leftThumbstickY}
+			input.gamepad.right_stick = {state.rightThumbstickX, state.rightThumbstickY}
+			reading->Release()
+		} else if gamepad_device != nil {
+			// Assume the error means the device was disconnected.
+			// I could use callbacks to confirm.
+			gamepad_device->Release()
+			gamepad_device = nil
+			return
+		}
+	}
+	poll_game_input()
+
 	get_raw_input :: proc () {
 		byte_count: windows.UINT
 		_, size_query_ok := win.zero(windows.GetRawInputBuffer(nil, &byte_count, size_of(windows.RAWINPUTHEADER)))
@@ -101,9 +165,9 @@ poll_events :: proc () -> (feedback: Feedback) {
   	case windows.WM_KEYUP:   on_key_up(message)
   	case windows.WM_MOUSEMOVE: on_mousemove(message)
   	case windows.WM_LBUTTONDOWN:
-			press_button(.Left_Mouse)
+			set_pressed(Key.Left_Mouse)
   	case windows.WM_LBUTTONUP:
-  		release_button(.Left_Mouse)
+  		set_released(Key.Left_Mouse)
     }
     if g_window_resized {
     	g_window_resized = false

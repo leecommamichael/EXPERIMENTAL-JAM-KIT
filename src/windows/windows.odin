@@ -15,6 +15,12 @@ where intrinsics.type_is_integer(T) || intrinsics.type_is_pointer(T) || intrinsi
   return result, true
 }
 
+@require_results
+is_ok :: proc (result: $T, caller_expr := #caller_expression) -> bool
+where intrinsics.type_is_integer(T) || intrinsics.type_is_pointer(T) || intrinsics.type_is_boolean(T) {
+  return result == {}
+}
+
 ok :: zero
 @require_results
 zero :: proc (result: $T, caller_expr := #caller_expression) -> (T, bool)

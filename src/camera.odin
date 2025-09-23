@@ -25,10 +25,10 @@ tick_mouse_camera :: proc(camera: ^Camera3D, dt: f32) -> Mat4 {
   move_vel :: 6
   look_vel :: 0.33
 
-  move_right    :=  1 if sugar.is_pressed(.D) else 0
-  move_left     := -1 if sugar.is_pressed(.A) else 0
-  move_forward  := -1 if sugar.is_pressed(.W) else 0
-  move_backward :=  1 if sugar.is_pressed(.S) else 0
+  move_right    :=  1 if sugar.is_key_pressed(.D) else 0
+  move_left     := -1 if sugar.is_key_pressed(.A) else 0
+  move_forward  := -1 if sugar.is_key_pressed(.W) else 0
+  move_backward :=  1 if sugar.is_key_pressed(.S) else 0
 
   strafe_vel := dt * move_vel * f32(move_right + move_left) // x
   depth_vel  := dt * move_vel * f32(move_forward + move_backward) // z

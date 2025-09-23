@@ -22,7 +22,7 @@ assert(result == windows.S_OK || result == windows.S_FALSE)
 	result, ok = win.ok(xa2.Create(&sys.xaudio))
 	// This result is logged, it's just unclear whether Create will cause an error.
 assert(ok)
-	result, ok = win.ok(sys.xaudio->CreateMasteringVoice(&sys.mastering_voice))
+	// result, ok = win.ok(sys.xaudio->CreateMasteringVoice(&sys.mastering_voice))
 assert(ok)
 	return
 }
