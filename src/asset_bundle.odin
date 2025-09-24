@@ -42,16 +42,25 @@ Asset_Bundle :: struct {
 //////////////////////////////////////////////////////////////////////
 // Framework Integration Implementation
 //////////////////////////////////////////////////////////////////////
-// The framework uses #load to embed assets for web-support.
-// While the program is running on desktop, use a desktop-specific
-// file I/O procedure to overwrite the cache.
-
+// The asset cache minimizes time-to-first-frame in debug builds.
+// A cache entry (uncompressed data) exists for each asset.
+// In debug, uncompressed assets are used.
+//   The cache is manually updated in game. (full re-create for now)
+// In release, compressed assets are used.
+//   The release cache is created by the exporter.
+//
+// TODO3D: Textures above a certain resolution will use ASTC compression.
 asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	when ODIN_OS != .JS && !ODIN_DEBUG {
-		bundle_fonts()
-		bundle_textures()
+	when ODIN_DEBUG {
+		when ODIN_OS != .JS {
+			// JS Doesn't have filesystem access, so it can't bundle.
+			bundle_fonts()
+			bundle_textures()
+		}
+	} else {
+
 	}
 	// I'll definitely want threading to cut this down.
 	font_thread := thread.create_and_start_with_poly_data(&bundle.bw_atlas_image, load_bundled_fonts, context)
@@ -74,13 +83,14 @@ Serialized_Atlas_Font :: struct {
 
 asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 
-FONT_ATLAS_METADATA :: "font_atlas_metadata.cbor"
-FONT_ATLAS_PATH :: "font_atlas.tga"
+CACHE_DIR :: "../cache/"
+FONT_ATLAS_METADATA :: CACHE_DIR + "font_atlas_metadata.cbor"
+FONT_ATLAS_PATH :: CACHE_DIR + "font_atlas.tga"
 
 // threaded
 load_bundled_fonts :: proc (result: ^image.Image) {
 	log_time("LOAD_FONTS"); defer log_time("LOAD_FONTS")
-	font_atlas_bytes := #load(FONT_ATLAS_PATH)
+	font_atlas_bytes := #load(FONT_ATLAS_PATH) or_else {}
 	img, img_err := tga.load_from_bytes(font_atlas_bytes)
 	if img_err != nil {
 		log.errorf("%v", img_err)
@@ -129,7 +139,7 @@ asset_upload :: proc () {
 	// CBOR Textures
 	//////////////////////////////////////////////////////////////////////	
 	entries: Serialized_Texture_Atlas_Entries
-	texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
+	texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA) or_else {}
 	unmarshal_error := cbor.unmarshal_from_bytes(texture_atlas_metadata, &entries)
 	globals.assets.images = entries.images
 	globals.assets.sprites = entries.sprites
@@ -144,7 +154,7 @@ asset_upload :: proc () {
 	// CBOR Fonts
 	//////////////////////////////////////////////////////////////////////	
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
-	unmarshal_error2 := cbor.unmarshal_from_bytes(#load(FONT_ATLAS_METADATA), &serialized_fonts)
+	unmarshal_error2 := cbor.unmarshal_from_bytes(#load(FONT_ATLAS_METADATA) or_else {}, &serialized_fonts)
 	for font in serialized_fonts {
 		globals.fonts[font.usage][font.variant].data = font.packed_char
 	}
@@ -369,8 +379,8 @@ log_time("write_font")
 // Implementation (2/2) Texture Atlas                (4 channel image)
 //////////////////////////////////////////////////////////////////////
 MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
-TEXTURE_ATLAS_METADATA :: "texture_atlas_metadata.cbor"
-TEXTURE_ATLAS_PATH :: "texture_atlas.qoi"
+TEXTURE_ATLAS_METADATA :: CACHE_DIR + "texture_atlas_metadata.cbor"
+TEXTURE_ATLAS_PATH :: CACHE_DIR + "texture_atlas.qoi"
 
 bundle_textures :: proc () {
 log_time("render_textures")
@@ -535,7 +545,7 @@ log_time("render_textures")
 		}
 	}
 	num_rects := len(rects)
-	atlas_rgba := make([dynamic]u8, MAX_TEXTURE_ATLAS_BYTES)
+	atlas_rgba := make([]u8, MAX_TEXTURE_ATLAS_BYTES)
 	nodes := make([]stbrp.Node, num_rects)
 	ctx: stbrp.Context
 	stbrp.init_target(&ctx, MAX_ATLAS_PIXELS, MAX_ATLAS_PIXELS, raw_data(nodes), i32(len(nodes)))
@@ -595,32 +605,10 @@ log_time("render_textures")
 	}
 log_time("render_textures")
 log_time("write_textures")
-	img: image.Image
-	img.width = MAX_ATLAS_PIXELS
-	img.height = cast(int) atlas_size.y
-	img.channels = 4
-	img.depth = 8
-	resize(&atlas_rgba, img.width*img.height*img.channels)
-	img.pixels.buf = atlas_rgba
-	buffer: bytes.Buffer
-	err2 := qoi.save_to_buffer(&buffer, &img)
-	if err2 != nil {
-		log.errorf("QOI failed to write %v", err2)
-		assert(err2 == nil)
-		return
-	}
-	file2, err3 := os2.open(TEXTURE_ATLAS_PATH, {.Read, .Trunc, .Create})
-	if err3 != nil {
-		log.errorf("QOI file open failed %v", err3)
-		assert(err3 == nil)
-		return
-	}
-	num_bytes, err4 := os2.write(file2, buffer.buf[:])
-	if err4 != nil {
-		log.errorf("QOI file open failed", err4)
-		assert(err4 == nil)
-		return
-	}
+	width := MAX_ATLAS_PIXELS
+	height := cast(int) atlas_size.y
+	atlas_rgba = atlas_rgba[:width*height*4] // 4 channels
+	write_rgba_qoi(atlas_rgba[:], width, height, TEXTURE_ATLAS_PATH)
 
 // 4. Write Metadata /////////////////////////////////////////////////////////////////////
 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
@@ -692,4 +680,22 @@ load_audio :: proc () {
 			continue
 		}
 	}
+}
+
+Image_File_Error :: union #shared_nil { image.Error, os2.Error }
+
+write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Error {
+	img: image.Image
+	img.width = w
+	img.height = h
+	img.channels = 4
+	img.depth = 8
+	img.pixels.buf = slice.into_dynamic(pixels)
+	buffer: bytes.Buffer
+	qoi.save_to_buffer(&buffer, &img) or_return
+	file: ^os2.File
+	file = os2.open(TEXTURE_ATLAS_PATH, {.Read, .Trunc, .Create}) or_return
+	num_bytes := os2.write(file, buffer.buf[:]) or_return
+	os2.close(file)
+	return nil
 }
