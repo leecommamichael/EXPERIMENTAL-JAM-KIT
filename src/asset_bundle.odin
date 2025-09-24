@@ -56,8 +56,8 @@ asset_init :: proc () {
 	when ODIN_DEBUG {
 		when ODIN_OS != .JS {
 			// JS Doesn't have filesystem access, so it can't bundle.
-			bundle_fonts()
-			bundle_textures()
+			// bundle_fonts()
+			// bundle_textures()
 		}
 	} else {
 
