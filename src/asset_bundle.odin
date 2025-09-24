@@ -50,14 +50,12 @@ asset_init :: proc () {
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
 	when ODIN_OS != .JS && !ODIN_DEBUG {
-		log_time("make_bundle")
 		bundle_fonts()
 		bundle_textures()
-		log_time("make_bundle")
 	}
 	// I'll definitely want threading to cut this down.
-	font_thread := thread.create_and_start_with_poly_data(&globals.assets.bw_atlas_image, load_bundled_fonts, context)
-	tex_thread := thread.create_and_start_with_poly_data(&globals.assets.rgba_atlas_image, load_bundled_textures, context)
+	font_thread := thread.create_and_start_with_poly_data(&bundle.bw_atlas_image, load_bundled_fonts, context)
+	tex_thread := thread.create_and_start_with_poly_data(&bundle.rgba_atlas_image, load_bundled_textures, context)
 	audio_thread := thread.create_and_start(load_audio, context)
 	thread.join_multiple(font_thread, tex_thread)
 	thread.destroy(font_thread)
@@ -81,17 +79,9 @@ FONT_ATLAS_PATH :: "font_atlas.tga"
 
 // threaded
 load_bundled_fonts :: proc (result: ^image.Image) {
-	log_time("LOAD_FONTS")
-	defer log_time("LOAD_FONTS")
-	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
-	unmarshal_error := cbor.unmarshal_from_bytes(#load(FONT_ATLAS_METADATA), &serialized_fonts)
-	for font in serialized_fonts {
-		globals.fonts[font.usage][font.variant].data = font.packed_char
-	}
-assert(unmarshal_error == nil)
-
+	log_time("LOAD_FONTS"); defer log_time("LOAD_FONTS")
 	font_atlas_bytes := #load(FONT_ATLAS_PATH)
-	img, img_err := tga.load_from_bytes(font_atlas_bytes) //{ .do_not_expand_grayscale, })
+	img, img_err := tga.load_from_bytes(font_atlas_bytes)
 	if img_err != nil {
 		log.errorf("%v", img_err)
 		assert(img_err == nil)
@@ -100,9 +90,7 @@ assert(unmarshal_error == nil)
 }
 
 asset_upload :: proc () {
-	texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
 	log_time("UPLOAD_GPU_TEXTURES")
-	defer log_time("UPLOAD_GPU_TEXTURES")
 	//////////////////////////////////////////////////////////////////////	
 	// BW
 	//////////////////////////////////////////////////////////////////////	
@@ -135,8 +123,13 @@ asset_upload :: proc () {
 		{0,0, 1,1}, // does this even go here?
 		&globals.assets.texture_atlas,
 	}
-
+	log_time("UPLOAD_GPU_TEXTURES")
+	log_time("READ CBOR")
+	//////////////////////////////////////////////////////////////////////	
+	// CBOR Textures
+	//////////////////////////////////////////////////////////////////////	
 	entries: Serialized_Texture_Atlas_Entries
+	texture_atlas_metadata: []u8 = #load(TEXTURE_ATLAS_METADATA)
 	unmarshal_error := cbor.unmarshal_from_bytes(texture_atlas_metadata, &entries)
 	globals.assets.images = entries.images
 	globals.assets.sprites = entries.sprites
@@ -147,6 +140,16 @@ asset_upload :: proc () {
 	for k, &s in globals.assets.sprites {
 		s.texture = &globals.assets.texture_atlas
 	}
+	//////////////////////////////////////////////////////////////////////	
+	// CBOR Fonts
+	//////////////////////////////////////////////////////////////////////	
+	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
+	unmarshal_error2 := cbor.unmarshal_from_bytes(#load(FONT_ATLAS_METADATA), &serialized_fonts)
+	for font in serialized_fonts {
+		globals.fonts[font.usage][font.variant].data = font.packed_char
+	}
+assert(unmarshal_error2 == nil)
+	log_time("READ CBOR")
 }
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
@@ -155,6 +158,7 @@ FONT_COUNT :: len(Font_Variant) * len(Font_Usage)
 GLYPH_COUNT :: 95 // characters from beginning of ASCII table
 
 bundle_fonts :: proc () {
+log_time("render_font")
 	// Exists to store rects with with their font data
 	// To defer rendering until all rects from all fonts are packed.
 	Pack_Range :: struct {
@@ -322,6 +326,8 @@ bundle_fonts :: proc () {
 	delete(atlas_bytes)
 	log.infof("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
+log_time("render_font")
+log_time("write_font")
 
 	ok := cast(b32) stbi.write_tga(
 		FONT_ATLAS_PATH,
@@ -356,6 +362,7 @@ assert(err == nil)
 	cbor.marshal_into_writer(writer, serialized_fonts)
 	delete(serialized_fonts)
 	delete(cropped_atlas_bytes)
+log_time("write_font")
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -366,6 +373,7 @@ TEXTURE_ATLAS_METADATA :: "texture_atlas_metadata.cbor"
 TEXTURE_ATLAS_PATH :: "texture_atlas.qoi"
 
 bundle_textures :: proc () {
+log_time("render_textures")
 	// This is more leaning into the 
 	Packable_Image :: struct {
 		using image: Image_Asset,
@@ -585,6 +593,8 @@ bundle_textures :: proc () {
 			}
 		}
 	}
+log_time("render_textures")
+log_time("write_textures")
 	img: image.Image
 	img.width = MAX_ATLAS_PIXELS
 	img.height = cast(int) atlas_size.y
@@ -628,6 +638,7 @@ assert(err == nil)
 	}
 	cbor.marshal_into_writer(writer, entries)
 	delete(pack_list)
+log_time("write_textures")
 }
 
 Serialized_Texture_Atlas_Entries :: struct {
@@ -638,8 +649,7 @@ Serialized_Texture_Atlas_Entries :: struct {
 // Load textures /////////////////////////////////////////////////////////////////////////
 texture_atlas_bytes: []u8 = #load(TEXTURE_ATLAS_PATH) or_else {}
 load_bundled_textures :: proc (result: ^image.Image) {
-	log_time("LOAD_TEXTURES")
-	defer log_time("LOAD_TEXTURES")
+	log_time("LOAD_TEXTURES"); defer log_time("LOAD_TEXTURES")
 	img, img_err := qoi.load_from_bytes(texture_atlas_bytes)
 	if img_err != nil {
 		log.errorf("%v", img_err)
@@ -671,8 +681,7 @@ Audio_Asset :: struct {
 }
 
 load_audio :: proc () {
-	log_time("LOAD_AUDIO")
-	defer log_time("LOAD_AUDIO")
+	log_time("LOAD_AUDIO"); defer log_time("LOAD_AUDIO")
 	for file in asset_files {
 		(strings.ends_with(file.name, ".ogg")) or_continue
 		asset: Audio_Asset

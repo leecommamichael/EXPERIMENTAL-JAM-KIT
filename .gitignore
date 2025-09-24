@@ -21,3 +21,4 @@ src/texture_atlas.tga
 src/texture_atlas_metadata.cbor
 *.cbor
 *.tga
+src/font_atlas.qoi
