@@ -1,5 +1,6 @@
 package main
 
+import "base:runtime"
 import "core:strings"
 import "core:math"
 import "core:math/linalg"
@@ -127,3 +128,16 @@ unsafe_string_to_cstring :: strings.unsafe_string_to_cstring
 // }
 // assert_non_empty_slice :: #force_inline proc (slice: $Indistinct/[]$T) { assert(len(slice) > 0) }
 // assert_non_empty_map :: #force_inline proc (m: $Indistinct/map[$K]$V) { assert(len(m) > 0) }
+
+// Converts slice into a dynamic array without cloning or allocating memory
+@(require_results)
+slice_alias_into_dynamic :: proc(a: $T/[]$E) -> [dynamic]E {
+  s := transmute(runtime.Raw_Slice)a
+  d := runtime.Raw_Dynamic_Array{
+    data = s.data,
+    len  = s.len,
+    cap  = s.len,
+    allocator = runtime.nil_allocator(),
+  }
+  return transmute([dynamic]E)d
+}
