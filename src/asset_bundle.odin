@@ -44,7 +44,7 @@ CACHE_DIR :: "../cache/"
 FONT_ATLAS_METADATA    :: CACHE_DIR + "font_atlas_metadata.cbor"
 FONT_ATLAS_PATH        :: CACHE_DIR + "font_atlas.tga"
 TEXTURE_ATLAS_METADATA :: CACHE_DIR + "texture_atlas_metadata.cbor"
-TEXTURE_ATLAS_PATH     :: CACHE_DIR + "texture_atlas.qoi"
+TEXTURE_ATLAS_PATH     :: CACHE_DIR + "texture_atlas.rgba"
 font_atlas_bytes:          []u8
 font_atlas_metadata_bytes: []u8
 texture_atlas_metadata:    []u8
@@ -628,17 +628,18 @@ log_time("render_textures")
 		}
 	}
 log_time("render_textures")
+// 4. Write Files ////////////////////////////////////////////////////////////////////////
 log_time("write_textures")
 	width := MAX_ATLAS_PIXELS
 	height := cast(int) atlas_size.y
 	atlas_rgba = atlas_rgba[:width*height*4] // 4 channels
-	err2 := write_rgba_qoi(atlas_rgba[:], width, height, TEXTURE_ATLAS_PATH)
+	err2 := os2.write_entire_file(TEXTURE_ATLAS_PATH, atlas_rgba[:])
+	// err2 := write_rgba_qoi(atlas_rgba[:], width, height, TEXTURE_ATLAS_PATH)
 if err2 != nil {
 	fmt.printfln("LINE: %v", err2)
 	assert(err2 == nil)
 }
 
-// 4. Write Metadata /////////////////////////////////////////////////////////////////////
 	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
 assert(err == nil)
@@ -665,12 +666,15 @@ Serialized_Texture_Atlas_Entries :: struct {
 // Load textures /////////////////////////////////////////////////////////////////////////
 load_bundled_textures :: proc (result: ^image.Image) {
 	log_time("LOAD_TEXTURES"); defer log_time("LOAD_TEXTURES")
-	img, img_err := qoi.load_from_bytes(texture_atlas_bytes)
-	if img_err != nil {
-		log.errorf("%v", img_err)
-		assert(img_err == nil)
-	}
-	result^ = img^
+	px_bytes, err := os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
+assert(err == nil)
+	img: image.Image
+	img.width = MAX_ATLAS_PIXELS
+	img.height = (len(px_bytes) / (MAX_ATLAS_PIXELS * 4))
+	img.channels = 4
+	img.depth = 8
+	img.pixels.buf = slice_alias_into_dynamic(px_bytes)
+	result^ = img
 }
 
 @(private="file")
