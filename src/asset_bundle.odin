@@ -39,16 +39,25 @@ Asset_Bundle :: struct {
 	rgba_atlas_image: image.Image,
 }
 
-asset_files: []runtime.Load_Directory_File = #load_directory("../assets")
 CACHE_DIR :: "../cache/"
-FONT_ATLAS_METADATA    :: CACHE_DIR + "font_atlas_metadata.cbor"
-FONT_ATLAS_PATH        :: CACHE_DIR + "font_atlas.tga"
-TEXTURE_ATLAS_METADATA :: CACHE_DIR + "texture_atlas_metadata.cbor"
-TEXTURE_ATLAS_PATH     :: CACHE_DIR + "texture_atlas.rgba"
+USE_BINARY_ASSET_CACHE :: ODIN_DEBUG && ODIN_OS != .JS
+cache_files: []runtime.Load_Directory_File = #load_directory(CACHE_DIR) when USE_BINARY_ASSET_CACHE else {}
+asset_files: []runtime.Load_Directory_File = #load_directory("../assets") when !USE_BINARY_ASSET_CACHE else {}
+BW_META_NAME    :: "font_atlas_metadata"
+BW_ATLAS_NAME   :: "font_atlas"
+RGBA_META_NAME  :: "texture_atlas_metadata"
+RGBA_ATLAS_NAME :: "texture_atlas"
+AUDIO_META_NAME :: "audio_metadata"
+FONT_ATLAS_METADATA    :: CACHE_DIR + BW_META_NAME
+FONT_ATLAS_PATH        :: CACHE_DIR + BW_ATLAS_NAME
+TEXTURE_ATLAS_METADATA :: CACHE_DIR + RGBA_META_NAME
+TEXTURE_ATLAS_PATH     :: CACHE_DIR + RGBA_ATLAS_NAME
+AUDIO_METADATA         :: CACHE_DIR + AUDIO_META_NAME
 font_atlas_bytes:          []u8
 font_atlas_metadata_bytes: []u8
 texture_atlas_metadata:    []u8
 texture_atlas_bytes:       []u8
+audio_metadata_bytes:      []u8
 
 //////////////////////////////////////////////////////////////////////
 // Framework Integration Implementation
@@ -61,47 +70,84 @@ texture_atlas_bytes:       []u8
 //   The release cache is created by the exporter.
 //
 // TODO3D: Textures above a certain resolution will use ASTC compression.
-overwrite_asset_cache :: proc () {
-	bundle_fonts()
-	bundle_textures()
+
+font_cache_exists :: proc () -> bool {
+	return len(font_atlas_bytes) > 0\
+	    && len(font_atlas_metadata_bytes) > 0
 }
 
-cache_exists :: proc () -> bool {
-	return len(font_atlas_bytes) > 0\
-	    && len(font_atlas_metadata_bytes) > 0\
-	    && len(texture_atlas_metadata) > 0\
+texture_cache_exists :: proc () -> bool {
+	return len(texture_atlas_metadata) > 0\
 	    && len(texture_atlas_bytes) > 0
 }
 
+audio_cache_exists :: proc () -> bool {
+	return len(audio_metadata_bytes) > 0
+}
+
+// Rebuilds cache if necessary
 asset_init :: proc () {
-	USE_CACHE :: ODIN_DEBUG && ODIN_OS != .JS
-	when USE_CACHE {
-		font_atlas_bytes          = #load(FONT_ATLAS_PATH) or_else {}
-		font_atlas_metadata_bytes = #load(FONT_ATLAS_METADATA) or_else {}
-		texture_atlas_metadata    = #load(TEXTURE_ATLAS_METADATA) or_else {}
-		texture_atlas_bytes       = #load(TEXTURE_ATLAS_PATH) or_else {}
-		if !cache_exists() {
-			// SCENARIO: First startup, create a cache.
-			overwrite_asset_cache()
+	when USE_BINARY_ASSET_CACHE {
+		// It's a debug build on a desktop and we're going to try to re-use the cache.
+		for file in cache_files {
+			target: ^[]u8
+			switch file.name {
+			case BW_META_NAME:
+				target = &font_atlas_metadata_bytes
+			case BW_ATLAS_NAME:
+				target = &font_atlas_bytes
+			case RGBA_META_NAME:
+				target = &texture_atlas_metadata
+			case RGBA_ATLAS_NAME:
+				target = &texture_atlas_bytes
+			case AUDIO_META_NAME:
+				target = &audio_metadata_bytes
+			}
+			if target != nil {
+				target^ = file.data
+			}
+		}
+
+		if !font_cache_exists() {
+			// SCENARIO: First startup, create a cache and read it.
+			bundle_fonts(USE_BINARY_ASSET_CACHE)
 			err: os2.Error
 			font_atlas_bytes,          err = os2.read_entire_file(FONT_ATLAS_PATH, context.allocator)
 		assert(err == nil)
 			font_atlas_metadata_bytes, err = os2.read_entire_file(FONT_ATLAS_METADATA, context.allocator)
 		assert(err == nil)
-			texture_atlas_bytes,       err = os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
+		}
+		if !texture_cache_exists() {
+			// SCENARIO: First startup, create a cache and read it.
+			bundle_textures(USE_BINARY_ASSET_CACHE)
+			err: os2.Error
+			texture_atlas_bytes,    err = os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
 		assert(err == nil)
-			texture_atlas_metadata,    err = os2.read_entire_file(TEXTURE_ATLAS_METADATA, context.allocator)
+			texture_atlas_metadata, err = os2.read_entire_file(TEXTURE_ATLAS_METADATA, context.allocator)
 		assert(err == nil)
 		}
+		if !audio_cache_exists() {
+			// SCENARIO: First startup, create a cache and read it.
+			bundle_audio()
+			err: os2.Error
+			audio_metadata_bytes, err = os2.read_entire_file(AUDIO_METADATA, context.allocator)
+		assert(err == nil)
+		}
+	} else {
+		// If this is false, it's a release and we're using compressed assets.
+		// TODO: something similar to above, but add a decompression step after reading ../assets
 	}
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
-	font_thread := thread.create_and_start_with_poly_data(&bundle.bw_atlas_image, load_bundled_fonts, context)
-	tex_thread := thread.create_and_start_with_poly_data(&bundle.rgba_atlas_image, load_bundled_textures, context)
-	audio_thread := thread.create_and_start(load_audio, context)
-	thread.join_multiple(font_thread, tex_thread)
-	thread.destroy(font_thread)
-	thread.destroy(tex_thread)
+	load_bundled_fonts(&bundle.bw_atlas_image, USE_BINARY_ASSET_CACHE)
+	load_bundled_textures(&bundle.rgba_atlas_image, USE_BINARY_ASSET_CACHE)
+	load_audio(USE_BINARY_ASSET_CACHE)
+	// font_thread := thread.create_and_start_with_poly_data(&bundle.bw_atlas_image, load_bundled_fonts, context)
+	// tex_thread := thread.create_and_start_with_poly_data(&bundle.rgba_atlas_image, load_bundled_textures, context)
+	// audio_thread := thread.create_and_start(load_audio, context)
+	// thread.join_multiple(font_thread, tex_thread)
+	// thread.destroy(font_thread)
+	// thread.destroy(tex_thread)
 	// TODO when to join and destroy audio thread? store thread somewhere else in engine?
 }
 
@@ -115,18 +161,29 @@ Serialized_Atlas_Font :: struct {
 }
 
 
-// threaded
-load_bundled_fonts :: proc (result: ^image.Image) {
+load_bundled_fonts :: proc (result: ^image.Image, use_binary: bool) {
 	log_time("LOAD_FONTS"); defer log_time("LOAD_FONTS")
-	img, img_err := tga.load_from_bytes(font_atlas_bytes)
-	if img_err != nil {
-		log.errorf("%v", img_err)
-		assert(img_err == nil)
+	if use_binary {
+		px_bytes := font_atlas_bytes
+		img: image.Image
+		img.channels = 1
+		img.width = MAX_ATLAS_PIXELS
+		img.height = len(px_bytes) / (MAX_ATLAS_PIXELS * img.channels)
+		img.depth = 8
+		img.pixels.buf = slice_alias_into_dynamic(px_bytes)
+		result^ = img
+	} else {
+		img, img_err := tga.load_from_bytes(font_atlas_bytes)
+		if img_err != nil {
+			log.errorf("%v", img_err)
+			assert(img_err == nil)
+		}
+		result^ = img^
 	}
-	result^ = img^
 }
 
-asset_upload :: proc () {
+// Called after init which readies global byte-slices.
+asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 	log_time("UPLOAD_GPU_TEXTURES")
 	//////////////////////////////////////////////////////////////////////	
 	// BW
@@ -135,7 +192,7 @@ asset_upload :: proc () {
 		target = .TEXTURE_2D,
 		minify_filter = .LINEAR,
 		magnify_filter = .LINEAR,
-		format = .RGB8,
+		format = .R8, // <----------- CANT RELEASE .TGA UNTIL THEY TAKE MY PR (RGB8 otherwise)
 	}
 	bw := globals.assets.bw_atlas_image
 	init_and_upload_texture(0, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
@@ -181,10 +238,13 @@ asset_upload :: proc () {
 	//////////////////////////////////////////////////////////////////////	
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
 	unmarshal_error2 := cbor.unmarshal_from_bytes(font_atlas_metadata_bytes, &serialized_fonts)
+	if unmarshal_error2 != nil {
+		log.errorf("Failed to unmarshal font atlas metadata %v", unmarshal_error2)
+	}
+	assert(unmarshal_error2 == nil)
 	for font in serialized_fonts {
 		globals.fonts[font.usage][font.variant].data = font.packed_char
 	}
-assert(unmarshal_error2 == nil)
 	log_time("READ CBOR")
 }
 
@@ -193,7 +253,7 @@ MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
 FONT_COUNT :: len(Font_Variant) * len(Font_Usage)
 GLYPH_COUNT :: 95 // characters from beginning of ASCII table
 
-bundle_fonts :: proc () {
+bundle_fonts :: proc (use_binary: bool) {
 log_time("render_font")
 	// Exists to store rects with with their font data
 	// To defer rendering until all rects from all fonts are packed.
@@ -360,22 +420,28 @@ log_time("render_font")
 	cropped_atlas_bytes := make([]u8, MAX_ATLAS_PIXELS*atlas_size.y)
 	copy(cropped_atlas_bytes, atlas_bytes[0:MAX_ATLAS_PIXELS*atlas_size.y])
 	delete(atlas_bytes)
+	delete(pack_ranges)
+	delete(rects)
 	log.infof("FYI: Atlas Size = %v", atlas_size)
 	stbtt.PackEnd(&pack_ctx)
 log_time("render_font")
 log_time("write_font")
-
-	ok := cast(b32) stbi.write_tga(
-		FONT_ATLAS_PATH,
-		w=cast(i32)MAX_ATLAS_PIXELS,
-		h=cast(i32)atlas_size.y,
-		comp=1,
-		data=raw_data(cropped_atlas_bytes))
-	if !ok {
-		log.errorf("STBI failed to write the font atlas.")
+	if use_binary {
+		err3 := os2.write_entire_file(FONT_ATLAS_PATH, cropped_atlas_bytes)
+		assert(err3 == nil)
+	} else {
+		ok := cast(b32) stbi.write_tga(
+			FONT_ATLAS_PATH,
+			w=cast(i32)MAX_ATLAS_PIXELS,
+			h=cast(i32)atlas_size.y,
+			comp=1,
+			data=raw_data(cropped_atlas_bytes))
+		if !ok {
+			log.errorf("STBI failed to write the font atlas.")
+		}
 	}
-	delete(pack_ranges)
-	delete(rects)
+	delete(cropped_atlas_bytes)
+
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
 	i: int
 	for usage in Font_Usage {
@@ -393,12 +459,11 @@ log_time("write_font")
 	}
 	file, err := os2.open(FONT_ATLAS_METADATA, {.Read, .Trunc, .Create})
 	defer os2.close(file)
-assert(err == nil)
+	assert(err == nil)
 	writer := os2.to_writer(file)
 	cbor.marshal_into_writer(writer, serialized_fonts)
 	delete(serialized_fonts)
-	delete(cropped_atlas_bytes)
-log_time("write_font")
+	log_time("write_font")
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -406,7 +471,7 @@ log_time("write_font")
 //////////////////////////////////////////////////////////////////////
 MAX_TEXTURE_ATLAS_BYTES :: 4 * MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 1074 MB
 
-bundle_textures :: proc () {
+bundle_textures :: proc (use_binary: bool) {
 log_time("render_textures")
 	// This is more leaning into the 
 	Packable_Image :: struct {
@@ -629,21 +694,21 @@ log_time("render_textures")
 	}
 log_time("render_textures")
 // 4. Write Files ////////////////////////////////////////////////////////////////////////
-log_time("write_textures")
+	log_time("write_textures")
 	width := MAX_ATLAS_PIXELS
 	height := cast(int) atlas_size.y
 	atlas_rgba = atlas_rgba[:width*height*4] // 4 channels
-	err2 := os2.write_entire_file(TEXTURE_ATLAS_PATH, atlas_rgba[:])
-	// err2 := write_rgba_qoi(atlas_rgba[:], width, height, TEXTURE_ATLAS_PATH)
-if err2 != nil {
-	fmt.printfln("LINE: %v", err2)
-	assert(err2 == nil)
-}
+	err2: Image_File_Error
+	if use_binary {
+		err2 = os2.write_entire_file(TEXTURE_ATLAS_PATH, atlas_rgba[:])
+	} else {
+		err2 = write_rgba_qoi(atlas_rgba[:], width, height, TEXTURE_ATLAS_PATH)
+	}
+	if err2 != nil {
+		fmt.printfln("LINE: %v", err2)
+		assert(err2 == nil)
+	}
 
-	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
-	defer os2.close(file)
-assert(err == nil)
-	writer := os2.to_writer(file)
 	entries := Serialized_Texture_Atlas_Entries {}
 	for packable in pack_list {
 		switch asset in packable {
@@ -653,6 +718,10 @@ assert(err == nil)
 			entries.sprites[asset.filename] = asset.sprite
 		}
 	}
+	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
+	defer os2.close(file)
+assert(err == nil)
+	writer := os2.to_writer(file)
 	cbor.marshal_into_writer(writer, entries)
 	delete(pack_list)
 log_time("write_textures")
@@ -664,7 +733,8 @@ Serialized_Texture_Atlas_Entries :: struct {
 }
 
 // Load textures /////////////////////////////////////////////////////////////////////////
-load_bundled_textures :: proc (result: ^image.Image) {
+load_bundled_textures :: proc (result: ^image.Image, use_binary: bool) {
+	// TODO use_binary or not
 	log_time("LOAD_TEXTURES"); defer log_time("LOAD_TEXTURES")
 	px_bytes, err := os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
 assert(err == nil)
@@ -699,18 +769,31 @@ Audio_Asset :: struct {
 	using clip: audio.Clip,
 }
 
-load_audio :: proc () {
+// Writes []Audio_Asset as AUDIO_METADATA
+bundle_audio :: proc () {
+// TODO: Compressed version. (cbor for metadata, copy ogg to cache for release.)
+	asset_array := make([dynamic]Audio_Asset)
 	log_time("LOAD_AUDIO"); defer log_time("LOAD_AUDIO")
 	for file in asset_files {
 		(strings.ends_with(file.name, ".ogg")) or_continue
-		asset: Audio_Asset
 		clip, ok := audio.load_from_bytes(file.data)
-		asset.clip = clip
 		if !ok {
-			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.samples, file.name)
+			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", clip.samples, file.name)
 			continue
 		}
+		asset: Audio_Asset = {
+			file.name,
+			clip
+		}
+		append(&asset_array, asset)
+		path := strings.concatenate({CACHE_DIR, file.name}) // LEAK
+		file_write_err := os2.write_entire_file(path, clip.bytes)
 	}
+	// Now write the cache ///////////////////////////////////////////////////////
+	file_write_err := os2.write_entire_file(AUDIO_METADATA, slice.reinterpret([]u8, asset_array[:]))
+}
+
+load_audio :: proc (use_binary: bool) {
 }
 
 Image_File_Error :: union #shared_nil { image.Error, os2.Error }

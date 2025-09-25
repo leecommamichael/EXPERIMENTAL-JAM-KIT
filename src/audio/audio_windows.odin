@@ -29,7 +29,7 @@ assert(ok)
 
 // A clip. A collection of samples.
 Clip :: struct {
-	bytes: []u8,
+	bytes: []u8 `cbor:"-" fmt:"-"`,
 	samples: int,
 	seconds: f64,
 	channels: int,

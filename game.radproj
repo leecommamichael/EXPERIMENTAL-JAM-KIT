@@ -1,13 +1,14 @@
 // raddbg 0.9.20 project file
 
 recent_file: path: "src/asset_bundle.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
+recent_file: path: "src/main_entrypoint.odin"
+recent_file: path: "../../applications (compilers)/odin/core/thread/thread.odin"
 recent_file: path: "../../applications (compilers)/odin/core/image/qoi/qoi.odin"
 recent_file: path: "src/sugar/input_windows.odin"
 recent_file: path: "src/sugar/sugar.odin"
-recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "src/audio/main_windows.odin"
 recent_file: path: "src/windows/windows.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
 recent_file: path: "src/ren_text.odin"
 recent_file: path: "src/main_game.odin"
 recent_file: path: "src/ren_sprite.odin"
@@ -49,8 +50,18 @@ watch_pin:
   expression: "serialized_fonts[0]"
   source_location: "src/asset_bundle.odin:171:1"
 }
+type_view:
+{
+  type: "image::Image"
+  expr: "bitmap($.pixels.buf.data, $.width, $.height)"
+}
 breakpoint:
 {
-  source_location: "src/asset_bundle.odin:635:1"
+  source_location: "src/asset_bundle.odin:174:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/asset_bundle.odin:429:1"
   hit_count: 1
 }

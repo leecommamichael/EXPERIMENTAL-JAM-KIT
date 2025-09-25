@@ -4,20 +4,13 @@ recent_project: path: "game.radproj"
 recent_project: path: game
 window:
 {
-  size: 2936 1775
+  size: 3120 1775
   panels:
   {
-    0.202103:
+    0.363939:
     {
-      0.357141:
+      0.263728:
       {
-        watch:
-        {
-          expression: ""
-          watch: globals
-          root_type: 0.486283 0.363717 0.150000
-          watch: "clip.seconds"
-        }
         watch: expression: "query:types"
         watch:
         {
@@ -26,15 +19,32 @@ window:
           normal: 0.350000 0.410432 0.239568
         }
         watch: expression: "query:type_views"
+        watch:
+        {
+          expression: "query:globals"
+          query:
+          {
+            cmd: search
+            input: ""
+          }
+        }
       }
-      0.181279:
+      0.338764:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
         watch: selected expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
+        watch:
+        {
+          expression: ""
+          watch: globals
+          root_type: 0.486283 0.363717 0.150000
+          watch: "clip.seconds"
+          watch: "globals.assets"
+        }
       }
-      0.187332: text:
+      0.123260: text:
       {
         selected
         expression: "query:output"
@@ -60,17 +70,16 @@ window:
         }
       }
     }
-    0.417386:
+    0.371253:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 59
+        cursor_line: 35
         cursor_column: 1
-        mark_line: 59
+        mark_line: 35
         mark_column: 1
       }
       text:
@@ -92,11 +101,15 @@ window:
         selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
-        query: input: ""
-        cursor_line: 716
-        cursor_column: 1
-        mark_line: 716
-        mark_column: 1
+        query:
+        {
+          input: ""
+          cmd: search
+        }
+        cursor_line: 417
+        cursor_column: 20
+        mark_line: 417
+        mark_column: 20
       }
       text:
       {
@@ -120,13 +133,17 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/core/image/qoi/qoi.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/base/runtime/core.odin\".data"
         auto: 1
-        query: input: "mg.channels * pixel"
-        cursor_line: 47
-        cursor_column: 25
-        mark_line: 47
-        mark_column: 6
+        query:
+        {
+          input: ""
+          cmd: search
+        }
+        cursor_line: 787
+        cursor_column: 1
+        mark_line: 787
+        mark_column: 1
       }
       text:
       {
@@ -153,20 +170,34 @@ window:
         mark_column: 2
       }
     }
-    0.380509: text:
+    0.264805:
     {
       selected
-      expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/input_windows.odin\".data"
-      project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
-      query: input: ""
-      cursor_line: 72
-      cursor_column: 1
-      mark_line: 72
-      mark_column: 1
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/input_windows.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query: input: ""
+        cursor_line: 72
+        cursor_column: 1
+        mark_line: 72
+        mark_column: 1
+      }
+      bitmap:
+      {
+        selected
+        expression: cropped_atlas_bytes
+        w: MAX_ATLAS_PIXELS
+        h: "atlas_size[1]"
+        zoom: 0.428350f
+        x: -2901.399170f
+        y: 91.946075f
+        fmt: R8
+      }
     }
   }
   split_x
-  pos: 1532 156
+  pos: 1440 156
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0
