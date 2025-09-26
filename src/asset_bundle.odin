@@ -162,7 +162,6 @@ Serialized_Atlas_Font :: struct {
 
 
 load_bundled_fonts :: proc (result: ^image.Image, use_binary: bool) {
-	log_time("LOAD_FONTS"); defer log_time("LOAD_FONTS")
 	if use_binary {
 		px_bytes := font_atlas_bytes
 		img: image.Image
@@ -184,7 +183,7 @@ load_bundled_fonts :: proc (result: ^image.Image, use_binary: bool) {
 
 // Called after init which readies global byte-slices.
 asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
-	log_time("UPLOAD_GPU_TEXTURES")
+	log_time("ASSET_UPLOAD")
 	//////////////////////////////////////////////////////////////////////	
 	// BW
 	//////////////////////////////////////////////////////////////////////	
@@ -217,8 +216,8 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		{0,0, 1,1}, // does this even go here?
 		&globals.assets.texture_atlas,
 	}
-	log_time("UPLOAD_GPU_TEXTURES")
-	log_time("READ CBOR")
+	log_time("ASSET_UPLOAD")
+	log_time("READ ATLAS METADATA")
 	//////////////////////////////////////////////////////////////////////	
 	// CBOR Textures
 	//////////////////////////////////////////////////////////////////////	
@@ -245,7 +244,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 	for font in serialized_fonts {
 		globals.fonts[font.usage][font.variant].data = font.packed_char
 	}
-	log_time("READ CBOR")
+	log_time("READ ATLAS METADATA")
 }
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
@@ -736,8 +735,7 @@ Serialized_Texture_Atlas_Entries :: struct {
 load_bundled_textures :: proc (result: ^image.Image, use_binary: bool) {
 	// TODO use_binary or not
 	log_time("LOAD_TEXTURES"); defer log_time("LOAD_TEXTURES")
-	px_bytes, err := os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
-assert(err == nil)
+	px_bytes := texture_atlas_bytes
 	img: image.Image
 	img.width = MAX_ATLAS_PIXELS
 	img.height = (len(px_bytes) / (MAX_ATLAS_PIXELS * 4))
