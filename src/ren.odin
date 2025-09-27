@@ -40,9 +40,9 @@ ren_make :: proc () -> ^Ren {
 }
 
 ren_init :: proc (ren: ^Ren) {
-	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	gl.Enable(.BLEND)
-	gl.BlendFunc(.SRC_ALPHA, .ONE_MINUS_SRC_ALPHA)
+	gl.BlendFunc(.ONE, .ONE_MINUS_SRC_ALPHA)
 	gl.Enable(.DEPTH_TEST)
 	gl.FrontFace(.CCW)
 }
@@ -731,10 +731,10 @@ text_vertex_shader_source :: vertex_preamble +
 	out vec2 uv;
 
 	void main() {
-		uv = v_texcoord;
-		io_color = i_color;
-		mat4 mvp = frame.projection * frame.view * i_model_mat;
+		io_color   = clamp(i_color, 0.0, 1.0);
+		mat4 mvp   = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
+		uv = v_texcoord;
 	}
 `
 
@@ -746,11 +746,16 @@ text_fragment_shader_source :: fragment_preamble + `
 
 	out vec4 outColor;
 
+	vec4 pma_blend(vec4 new, vec4 old) {
+		vec4 result;
+		result.rgb = new.rgb + old.rgb * (1.0-new.a);
+		result.a   = new.a   + old.a   * (1.0-new.a);
+		return result;
+	}
+
 	void main() {
-		vec4 tex_color = texture(font_atlas, uv);
-		tex_color = mix(tex_color, io_color, tex_color.r);
-		tex_color = mix(tex_color, vec4(0,0,0,0), 1.-tex_color.r);
-		outColor = tex_color;
+		float glyph_alpha = texture(font_atlas, uv);
+		outColor = mix(vec4(0.0), io_color, io_color.a * glyph_alpha);
 	}
 `
 //////////////////////////////////////////////////////////////////////

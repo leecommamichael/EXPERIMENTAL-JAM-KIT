@@ -35,16 +35,16 @@ game_init :: proc () {
 	spr.position = Vec3{ 0=384/2, 1=216/2 }
 
 	hello := text(`hello`)
-	hello.color = Vec4{1,1,0, 1}
-	hello.position.x = 0
+	hello.color = Vec4{1,1,1, 1}
+	// hello.color = Vec4{0,0,0, 1.0}
+	hello.position.x = 400
 	hello.position.z = 4
 }
 
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
-	// do_text(`immediately!`, {200,300,4})
+	do_text(`immediately!`, {200,300,4})
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
-	// step_water(dt)
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1
 		spr.position.y -= 1
