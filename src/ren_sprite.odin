@@ -20,6 +20,7 @@ Sprite_Asset :: struct {
 	filename:   string,
 	frames:     []Sprite_Animation_Frame,
 	animations: map[string]Sprite_Animation,
+	size_px:    [2]int,
 	texture:    ^GPU_Texture `cbor:"-"`
 }
 
@@ -54,7 +55,7 @@ sprite :: proc (filename: string) -> ^Entity {
 	sprite_state := Sprite_State {
 		asset = asset
 	}
-
+	entity.basis.scale.xy = array_cast(sprite_state.asset.size_px, f32)
 	assert(len(sprite_state.asset.frames) > 0)
 	assert(len(sprite_state.asset.animations) > 0)
 	if "default" in sprite_state.asset.animations {

@@ -39,10 +39,9 @@ Asset_Bundle :: struct {
 	rgba_atlas_image: image.Image,
 }
 
+ASSET_DIR :: "../assets/"
 CACHE_DIR :: "../cache/"
 USE_BINARY_ASSET_CACHE :: ODIN_DEBUG && ODIN_OS != .JS
-cache_files: []runtime.Load_Directory_File = #load_directory(CACHE_DIR) when USE_BINARY_ASSET_CACHE else {}
-asset_files: []runtime.Load_Directory_File = #load_directory("../assets") when !USE_BINARY_ASSET_CACHE else {}
 BW_META_NAME    :: "font_atlas_metadata"
 BW_ATLAS_NAME   :: "font_atlas"
 RGBA_META_NAME  :: "texture_atlas_metadata"
@@ -58,6 +57,8 @@ font_atlas_metadata_bytes: []u8
 texture_atlas_metadata:    []u8
 texture_atlas_bytes:       []u8
 audio_metadata_bytes:      []u8
+
+cache_files: []runtime.Load_Directory_File
 
 //////////////////////////////////////////////////////////////////////
 // Framework Integration Implementation
@@ -88,6 +89,7 @@ audio_cache_exists :: proc () -> bool {
 // Rebuilds cache if necessary
 asset_init :: proc () {
 	when USE_BINARY_ASSET_CACHE {
+		cache_files = #load_directory(CACHE_DIR)
 		// It's a debug build on a desktop and we're going to try to re-use the cache.
 		for file in cache_files {
 			target: ^[]u8
@@ -198,6 +200,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 	globals.assets.images[FONT_ATLAS_PATH] = Image_Asset {
 		FONT_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
+		{bw.width, bw.height},
 		&globals.assets.font_atlas,
 	}
 	//////////////////////////////////////////////////////////////////////	
@@ -214,6 +217,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
 		TEXTURE_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
+		{rgba.width, rgba.height},
 		&globals.assets.texture_atlas,
 	}
 	log_time("ASSET_UPLOAD")
@@ -278,7 +282,9 @@ log_time("render_font")
 	stbtt.PackSetOversampling(&pack_ctx, 3, 3)
 	total_rects: c.int = 0
 	font_index: int = 0
-	for font_file in asset_files {
+	font_files, dir_err := read_files_in_directory_with_suffix("../assets", "ttf")
+assert(dir_err == nil)
+	for font_file in font_files {
 		splits := strings.split(font_file.name, "-") // LEAK
 		if len(splits) < 2 {
 			continue; // File not likely a font.
@@ -475,12 +481,10 @@ log_time("render_textures")
 	// This is more leaning into the 
 	Packable_Image :: struct {
 		using image: Image_Asset,
-		size_px:     [2]int `cbor:"-" fmt:"-"`,
 		pixels:      []u8  `cbor:"-" fmt:"-"`,
 	}
 	Packable_Sprite :: struct {
 		using sprite: Sprite_Asset,
-		size_px:      [2]int  `cbor:"-" fmt:"-"`,
 		pixels:       [][]u8 `cbor:"-" fmt:"-"`,
 	}
 	Atlas_Entry :: union {
@@ -490,9 +494,10 @@ log_time("render_textures")
 
 // 1. Gather Packables ///////////////////////////////////////////////////////////////////
 	pack_list := make([dynamic]Atlas_Entry)
-	for file in asset_files {
-		switch {
-		case strings.ends_with(file.name, ".png"):
+
+	pngs, dir_err1 := read_files_in_directory_with_suffix("../assets", "png") 
+assert(dir_err1 == nil)
+	for file in pngs {
 			log.infof("png IMAGE: %s", file.name)
 			img, img_err := png.load_from_bytes(file.data, { .alpha_premultiply })
 			log.infof("Loaded image %s: %v", FONT_ATLAS_PATH, img)
@@ -505,103 +510,107 @@ log_time("render_textures")
 			// The binding is a result of loading an image.
 			// So it pack an image you've got to load it. Doesn't make the most sense.
 			append(&pack_list, Packable_Image{
-				Image_Asset{file.name, {}, nil},
-				{img.width, img.height},
+				Image_Asset{
+					file.name,
+					{},
+					{img.width, img.height},
+					nil},
 				img.pixels.buf[:]
 			})
-		// If there are tags, only frames in tags will be saved.
-		case strings.ends_with(file.name, ".aseprite"): fallthrough
-		case strings.ends_with(file.name, ".ase"):
-			ase_doc: aseprite.Document
-			error_unmarshalling := aseprite.unmarshal_from_slice(&ase_doc, file.data)
-			if error_unmarshalling != nil {
-				log.errorf("Failed to unmarshal %s as an aseprite file. %v",
-					file.name, error_unmarshalling)
-				continue
-			}
+	}
 
-			ase_info, error_getting_info := aseprite_utils.get_info(&ase_doc)
-			if error_getting_info != nil {
-				log.errorf("Failed to get_info from %s after unmarshalling. %v",
-					file.name, error_getting_info)
-				continue
-			}
-			// Build either an image, one animation, or many animations.
-			// Progressively stream animation data into the atlas metadata.
-			if len(ase_info.frames) > 1 {
-				if len(ase_info.tags) >= 1 {
-					// Take only the frames which reside in tags.
-					sprite := Packable_Sprite {
-						Sprite_Asset{
-							file.name,
-							make([]Sprite_Animation_Frame, len(ase_info.frames)),
-							{},
-							nil
-						},
-						{ ase_info.md.width, ase_info.md.height },
-						make([][]u8, len(ase_info.frames)),
+	aseprites, dir_err2 := read_files_in_directory_with_suffixes("../assets", {"ase", "aseprite"}) 
+assert(dir_err2 == nil)
+	for file in aseprites {
+		// If there are tags, only frames in tags will be saved.
+		ase_doc: aseprite.Document
+		error_unmarshalling := aseprite.unmarshal_from_slice(&ase_doc, file.data)
+		if error_unmarshalling != nil {
+			log.errorf("Failed to unmarshal %s as an aseprite file. %v",
+				file.name, error_unmarshalling)
+			continue
+		}
+
+		ase_info, error_getting_info := aseprite_utils.get_info(&ase_doc)
+		if error_getting_info != nil {
+			log.errorf("Failed to get_info from %s after unmarshalling. %v",
+				file.name, error_getting_info)
+			continue
+		}
+		// Build either an image, one animation, or many animations.
+		// Progressively stream animation data into the atlas metadata.
+		if len(ase_info.frames) > 1 {
+			if len(ase_info.tags) >= 1 {
+				// Take only the frames which reside in tags.
+				sprite := Packable_Sprite {
+					Sprite_Asset{
+						file.name,
+						make([]Sprite_Animation_Frame, len(ase_info.frames)),
+						{},
+					{ ase_info.md.width, ase_info.md.height },
+						nil
+					},
+					make([][]u8, len(ase_info.frames)),
+				}
+				for frame, i in ase_info.frames {
+					img, err := aseprite_utils.get_image_bytes_from_frame(frame, ase_info)
+					aseprite_ok(file.name, err) or_continue
+					sprite.pixels[i] = img
+					sprite.frames[i] = {
+						{},
+						f64(frame.duration) / 1000,
 					}
-					for frame, i in ase_info.frames {
-						img, err := aseprite_utils.get_image_bytes_from_frame(frame, ase_info)
-						aseprite_ok(file.name, err) or_continue
-						sprite.pixels[i] = img
-						sprite.frames[i] = {
-							{},
-							f64(frame.duration) / 1000,
-						}
-					}
-					for tag in ase_info.tags {
-						animation: Sprite_Animation = {
-							name = tag.name,
-							first_frame_index = tag.from,
-							final_frame_index = tag.to,
-							frame_count = tag.to - tag.from,
-							playback_mode = cast(Animation_Playback_Mode) tag.direction, // TODO: robustness: enum mapping function
-						}
-						sprite.animations[animation.name] = animation
-					}
-					append(&pack_list, sprite)
-				} else {
-					// No tags, but multiple frames. Take all frames.
-					sprite := Packable_Sprite {
-						Sprite_Asset{
-							file.name,
-							make([]Sprite_Animation_Frame, len(ase_info.frames)),
-							{}, 
-							nil
-						},
-						{ ase_info.md.width, ase_info.md.height },
-						make([][]u8, len(ase_info.frames)),
-					}
-					for frame, i in ase_info.frames {
-						img, err := aseprite_utils.get_image_bytes_from_frame(frame, ase_info)
-						aseprite_ok(file.name, err) or_continue
-						sprite.pixels[i] = img
-						sprite.frames[i] = {
-							{},
-							f64(frame.duration) / 1000
-						}
-					}
-					animation := Sprite_Animation { // principle difference between this and the above
-						name = "default",
-						first_frame_index = 0,
-						final_frame_index = len(ase_info.frames)-1,
-						frame_count = len(ase_info.frames),
-						playback_mode = .Forward,
+				}
+				for tag in ase_info.tags {
+					animation: Sprite_Animation = {
+						name = tag.name,
+						first_frame_index = tag.from,
+						final_frame_index = tag.to,
+						frame_count = tag.to - tag.from,
+						playback_mode = cast(Animation_Playback_Mode) tag.direction, // TODO: robustness: enum mapping function
 					}
 					sprite.animations[animation.name] = animation
-					append(&pack_list, sprite)
 				}
+				append(&pack_list, sprite)
 			} else {
-				// Consider it an image. Take first frame.
-				img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
-				aseprite_ok(file.name, error_making_first_frame) or_continue
-				append(&pack_list, 
-					Packable_Image{Image_Asset{file.name, {}, nil},
-					{img.width, img.height},
-					img.data
-				})
+				// No tags, but multiple frames. Take all frames.
+				sprite := Packable_Sprite {
+					Sprite_Asset{
+						file.name,
+						make([]Sprite_Animation_Frame, len(ase_info.frames)),
+						{}, 
+						{ ase_info.md.width, ase_info.md.height },
+						nil
+					},
+					make([][]u8, len(ase_info.frames)),
+				}
+				for frame, i in ase_info.frames {
+					img, err := aseprite_utils.get_image_bytes_from_frame(frame, ase_info)
+					aseprite_ok(file.name, err) or_continue
+					sprite.pixels[i] = img
+					sprite.frames[i] = {
+						{},
+						f64(frame.duration) / 1000
+					}
+				}
+				animation := Sprite_Animation { // principle difference between this and the above
+					name = "default",
+					first_frame_index = 0,
+					final_frame_index = len(ase_info.frames)-1,
+					frame_count = len(ase_info.frames),
+					playback_mode = .Forward,
+				}
+				sprite.animations[animation.name] = animation
+				append(&pack_list, sprite)
 			}
+		} else {
+			// Consider it an image. Take first frame.
+			img, error_making_first_frame := aseprite_utils.get_image_from_doc(&ase_doc)
+			aseprite_ok(file.name, error_making_first_frame) or_continue
+			append(&pack_list, 
+				Packable_Image{Image_Asset{file.name, {}, {img.width, img.height}, nil},
+				img.data
+			})
 		}
 	}
 
@@ -772,8 +781,9 @@ bundle_audio :: proc () {
 // TODO: Compressed version. (cbor for metadata, copy ogg to cache for release.)
 	asset_array := make([dynamic]Audio_Asset)
 	log_time("LOAD_AUDIO"); defer log_time("LOAD_AUDIO")
-	for file in asset_files {
-		(strings.ends_with(file.name, ".ogg")) or_continue
+	oggvs, dir_err := read_files_in_directory_with_suffix("../assets", "ogg") 
+assert(dir_err == nil)
+	for file in oggvs {
 		clip, ok := audio.load_from_bytes(file.data)
 		if !ok {
 			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", clip.samples, file.name)
@@ -789,6 +799,7 @@ bundle_audio :: proc () {
 	}
 	// Now write the cache ///////////////////////////////////////////////////////
 	file_write_err := os2.write_entire_file(AUDIO_METADATA, slice.reinterpret([]u8, asset_array[:]))
+	assert(file_write_err == nil)
 }
 
 load_audio :: proc (use_binary: bool) {
@@ -813,4 +824,71 @@ write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Erro
 	num_bytes := os2.write(file, buffer.buf[:]) or_return
 	os2.close(file)
 	return nil
+}
+
+// TODO: Use your own type lol... not runtime.
+read_files_in_directory_with_suffix :: proc (
+	dirpath: string,
+	suffix: string
+) -> (result: [dynamic]runtime.Load_Directory_File, error: os2.Error) {
+	files := os2.read_all_directory_by_path(dirpath, context.allocator) or_return
+	result = make([dynamic]runtime.Load_Directory_File)
+	for file_info in files {
+		(strings.ends_with(file_info.name, suffix)) or_continue
+		file_bytes, err := os2.read_entire_file_from_path(file_info.fullpath, context.allocator)
+		if err != nil {
+			log.errorf("Failed to read a file. %s %v", file_info.fullpath, err)
+			error = err
+			continue
+		}
+		append_elem(&result, runtime.Load_Directory_File {
+			file_info.name,
+			file_bytes
+		})
+	}
+	return
+}
+
+read_files_in_directory_with_suffixes :: proc (
+	dirpath: string,
+	suffixes: []string
+) -> (result: [dynamic]runtime.Load_Directory_File, error: os2.Error) {
+	files := os2.read_all_directory_by_path(dirpath, context.allocator) or_return
+	result = make([dynamic]runtime.Load_Directory_File)
+	for file_info in files {
+		for suffix in suffixes {
+			(strings.ends_with(file_info.name, suffix)) or_continue
+			file_bytes, err := os2.read_entire_file_from_path(file_info.fullpath, context.allocator)
+			if err != nil {
+				log.errorf("Failed to read a file. %s %v", file_info.fullpath, err)
+				error = err
+				continue
+			}
+			append_elem(&result, runtime.Load_Directory_File {
+				file_info.name,
+				file_bytes
+			})
+		}
+	}
+	return
+}
+
+read_files_in_directory :: proc (
+	dirpath: string,
+) -> (result: [dynamic]runtime.Load_Directory_File, error: os2.Error) {
+	files := os2.read_all_directory_by_path(dirpath, context.allocator) or_return
+	result = make([dynamic]runtime.Load_Directory_File)
+	for file_info in files {
+		file_bytes, err := os2.read_entire_file_from_path(file_info.fullpath, context.allocator)
+		if err != nil {
+			log.errorf("Failed to read a file. %s %v", file_info.fullpath, err)
+			error = err
+			continue
+		}
+		append_elem(&result, runtime.Load_Directory_File {
+			file_info.name,
+			file_bytes
+		})
+	}
+	return
 }

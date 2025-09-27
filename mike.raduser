@@ -72,6 +72,7 @@ window:
     }
     0.371253:
     {
+      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
@@ -107,18 +108,18 @@ window:
           cmd: search
         }
         cursor_line: 417
-        cursor_column: 20
+        cursor_column: 21
         mark_line: 417
-        mark_column: 20
+        mark_column: 21
       }
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 54
+        cursor_line: 26
         cursor_column: 1
-        mark_line: 54
+        mark_line: 26
         mark_column: 1
       }
       text:
@@ -133,16 +134,16 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/base/runtime/core.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/ren_image.odin\".data"
         auto: 1
         query:
         {
           input: ""
           cmd: search
         }
-        cursor_line: 787
+        cursor_line: 30
         cursor_column: 1
-        mark_line: 787
+        mark_line: 30
         mark_column: 1
       }
       text:
@@ -172,7 +173,6 @@ window:
     }
     0.264805:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/input_windows.odin\".data"

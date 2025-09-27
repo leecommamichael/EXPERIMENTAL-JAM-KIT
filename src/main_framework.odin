@@ -89,6 +89,7 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.id = id
 	entity.used = true
 	entity.scale = 1
+	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
 	entity.time_scale = 1
 }
@@ -133,9 +134,9 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 
 	instance: ^Any_Instance = entity.instance
 	instance.model_transform =
-		linalg.matrix4_translate(entity.position)\
-		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation))\
-		* linalg.matrix4_scale(entity.scale)
+		linalg.matrix4_translate(entity.position + entity.basis.position)\
+		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation + entity.basis.rotation))\
+		* linalg.matrix4_scale(entity.scale * entity.basis.scale)
 	if entity.is_3D {
 // TODO: Bucket Opaque from Transparent
 // ASSUME: Centroid is 0,0,0 in model coordinates

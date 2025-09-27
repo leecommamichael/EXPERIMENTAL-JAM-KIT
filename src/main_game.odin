@@ -5,10 +5,14 @@ package main
 //          This file should strive not to import OpenGL
 
 import "core:log"
+import "sugar"
 import "base:runtime"
 import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
+
+img: ^Entity
+spr: ^Entity
 
 game_init :: proc () {
 	globals.camera.position.y = 5
@@ -23,27 +27,18 @@ game_init :: proc () {
 	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
-	img := image(`gameplayboard.aseprite`)
-	img_asset := img.variant.(Image_State).asset
-	img.scale.xy = ((array_cast(img_asset.texture.size_px, f32)) * img_asset.uv_rect.zw)
-	img.scale.y *=  -1
-	img.scale *= 2
-	log.infof("subimagesize is %v", img.scale.xy)
-	img.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{300,300,2}
+	img = image(`gameplayboard.aseprite`)
 
-	spr := sprite(`berserker.aseprite`)
+	spr = sprite(`berserker.aseprite`)
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
-	spr_asset := spr.variant.(Sprite_State).asset
-	spr.scale.xy = ((array_cast(spr_asset.texture.size_px, f32)) * spr_asset.frames[0].uv_rect.zw)
-	spr.scale.y *=  -1
-	spr.scale *= 5
-	spr.position = Vec3{ 0=384/2, 1=216/2 } + Vec3{200,300,3}
+
+	spr.position = Vec3{ 0=384/2, 1=216/2 }
 
 	hello := text(`hello`)
 	hello.color = Vec4{1,1,0, 1}
-	hello.position.x = 200
-	hello.position.y = 300
+	hello.position.x = 0
+	hello.position.y = 0
 	hello.position.z = 4
 }
 
@@ -52,6 +47,25 @@ game_step :: proc () {
 	// do_text(`immediately!`, {200,300,4})
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	// step_water(dt)
+	if sugar.is_button_pressed(.A) {
+		img.position.y -= 1
+		spr.position.y -= 1
+	}
+	if sugar.is_button_pressed(.B) {
+		img.position.x += 1
+		spr.position.x += 1
+	}
+	if sugar.is_button_pressed(.X) {
+		img.position.x -= 1
+		spr.position.x -= 1
+	}
+	if sugar.is_button_pressed(.Y) {
+		img.position.y += 1
+		spr.position.y += 1
+	}
+	if sugar.on_button_press(.Start) {
+		spr.scale.y *=  -1
+	}
 }
 
 AXIS_SQUARES  :: 100 // Squares per axis

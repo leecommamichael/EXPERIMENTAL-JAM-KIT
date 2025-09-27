@@ -41,14 +41,9 @@ ren_make :: proc () -> ^Ren {
 
 ren_init :: proc (ren: ^Ren) {
 	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
-
 	gl.Enable(.BLEND)
 	gl.BlendFunc(.SRC_ALPHA, .ONE_MINUS_SRC_ALPHA)
-
 	gl.Enable(.DEPTH_TEST)
-
-	// gl.Enable(.CULL_FACE)
-	// gl.CullFace(.BACK)
 	gl.FrontFace(.CCW)
 }
 
@@ -89,15 +84,31 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 	pipeline_changed: bool = false
 
 	if prev.program != next.program {
+		pipeline_changed = true
 		prev.program = next.program
 		gl.UseProgram(next.program)
-		pipeline_changed = true
 	}
 
 	if prev.VAO != next.VAO {
+		pipeline_changed = true
 		prev.VAO = next.VAO
 		gl.BindVertexArray(next.VAO)
+	}
+
+	if prev.cull_mode != next.cull_mode {
 		pipeline_changed = true
+		// Conflating enable/disable with mode causes more API calls.
+		// but these ones are cheap.
+		switch next.cull_mode {
+		case .None: 
+			gl.glDisable(gl.CULL_FACE)
+		case .Front_Faces:
+			gl.Enable(.CULL_FACE)
+			gl.CullFace(.FRONT)
+		case .Back_Faces:
+			gl.Enable(.CULL_FACE)
+			gl.CullFace(.BACK)
+		}
 	}
 	// If there was a change, each program locates instances differently.
 	if pipeline_changed {

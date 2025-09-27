@@ -69,13 +69,14 @@ INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 Entity :: struct {
 	id:    Entity_ID,  // index in storage.
 	used:  bool,       // like "allocated | free"
-	is_3D: bool,       // 2D object anchored at origin in top-left (0,0)
+	is_3D: bool,       // which camera to use
+	// layout idea TOP LEFT, CENTER
 	time_scale:   f64,
 	draw_command: Draw_Command,
 	distance_from_camera: f32,
-	parent:          ^Entity,
+	basis: Transform, // The default basis ensures 0,0,0 in model space is equal to the entity position
 	using transform: Transform,
-	using instance: ^Any_Instance, // ptr greatly reduces traffic between CPU:GPU
+	using instance: ^Any_Instance,
 	hidden:   bool,
 	variant: union {
 		Text_State,
@@ -138,7 +139,8 @@ Draw_Command :: struct {
 	index_buffer: gl.Buffer,
 	index_count:  int,
 		// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
-	mode:         Ren_Mode,
+	mode:         Ren_Mode,  // default triangles
+	cull_mode:    Cull_Mode, // default none
 }
 #assert(size_of(Draw_Command) < 90, "Be mindful of this increasing.")
 

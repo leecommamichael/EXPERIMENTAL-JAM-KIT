@@ -10,9 +10,11 @@ Image_State :: struct {
 	asset: ^Image_Asset,
 }
 
+// Rect geometry could be the size or scale it from 1.
 Image_Asset :: struct {
 	filename: string, // TODO?: call it ID? name/id. name.
 	uv_rect:  [4]f32, // .xy = top_left, .w = width, .z = height
+	size_px:  [2]int,
 	texture:  ^GPU_Texture `cbor:"-"`
 }
 
@@ -26,6 +28,7 @@ image :: proc (filename: string) -> ^Entity {
 		asset = &globals.assets.images[filename]
 	}
 	entity.variant = image
+	entity.basis.scale.xy = array_cast(image.asset.size_px, f32)
 	mesh: Geom_Mesh2 = geom_make_quad(1)
 	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	return entity

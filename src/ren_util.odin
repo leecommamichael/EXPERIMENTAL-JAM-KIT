@@ -66,3 +66,9 @@ ren_mode_to_primitive :: proc (mode: Ren_Mode) -> ngl.Primitive_Mode {
 	case: panic("Unhandled primitive mode.")
 	}
 }
+
+Cull_Mode :: enum uint {
+	None,
+	Front_Faces,
+	Back_Faces
+}

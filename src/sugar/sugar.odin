@@ -14,6 +14,10 @@ is_key_pressed :: #force_inline proc (key: Key) -> bool {
 	return input.keys[key].is_pressed
 }
 
+is_button_pressed :: #force_inline proc (btn: Gamepad_Button) -> bool {
+	return input.gamepad.buttons[btn].is_pressed
+}
+
 // Instantly fires when pressed, but cannot refire without both of:
 // - The debounce elapsing
 // - The Switch_State releasing and re-pressing. (lmk if you want on_press_and_repeat())

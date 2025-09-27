@@ -28,6 +28,7 @@ text :: proc (
 	variant: Font_Variant = .regular,
 ) -> ^Entity {
 	entity: ^Entity = make_entity()
+	entity.scale.y *= -1
 	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
@@ -41,13 +42,7 @@ do_text :: proc (
 	usage:    Font_Usage   = .body,
 	variant:  Font_Variant = .regular,
 ) {
-	
-	entity: ^Entity = make_entity()
-	entity.variant = Text_State {
-		message,
-		&globals.fonts[usage][variant],
-	}
-	// entity: ^Entity = text(message, usage, variant)
+	entity: ^Entity = text(message, usage, variant)
 	entity.position = position
 	entity.color = 1
 	step_text(entity, immediate=true)
