@@ -28,7 +28,6 @@ game_init :: proc () {
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
 	img = image(`gameplayboard.aseprite`)
-
 	spr = sprite(`berserker.aseprite`)
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
@@ -38,7 +37,6 @@ game_init :: proc () {
 	hello := text(`hello`)
 	hello.color = Vec4{1,1,0, 1}
 	hello.position.x = 0
-	hello.position.y = 0
 	hello.position.z = 4
 }
 

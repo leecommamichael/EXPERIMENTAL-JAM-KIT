@@ -28,7 +28,6 @@ text :: proc (
 	variant: Font_Variant = .regular,
 ) -> ^Entity {
 	entity: ^Entity = make_entity()
-	entity.scale.y *= -1
 	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
@@ -110,10 +109,10 @@ step_text :: proc (entity: ^Entity, immediate: bool) {
 			false)
 
 		gnum := glyph_index+1
-		verts[(4*gnum)-4] = { position = {quad.x0,quad.y0, 0,}, texcoord = {quad.s0,quad.t0} }
-		verts[(4*gnum)-3] = { position = {quad.x1,quad.y0, 0,}, texcoord = {quad.s1,quad.t0} }
-		verts[(4*gnum)-2] = { position = {quad.x0,quad.y1, 0,}, texcoord = {quad.s0,quad.t1} }
-		verts[(4*gnum)-1] = { position = {quad.x1,quad.y1, 0,}, texcoord = {quad.s1,quad.t1} }
+		verts[(4*gnum)-4] = { position = {quad.x0,-quad.y0, 0,}, texcoord = {quad.s0,quad.t0} } // TL
+		verts[(4*gnum)-3] = { position = {quad.x1,-quad.y0, 0,}, texcoord = {quad.s1,quad.t0} } // TR
+		verts[(4*gnum)-2] = { position = {quad.x0,-quad.y1, 0,}, texcoord = {quad.s0,quad.t1} } // BL
+		verts[(4*gnum)-1] = { position = {quad.x1,-quad.y1, 0,}, texcoord = {quad.s1,quad.t1} } // BR
 
 		indices[(6*gnum)-6] = u32(4*glyph_index)+0 // TL
 		indices[(6*gnum)-5] = u32(4*glyph_index)+2 // BL
