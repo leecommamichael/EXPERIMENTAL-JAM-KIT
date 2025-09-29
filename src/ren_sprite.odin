@@ -56,6 +56,7 @@ sprite :: proc (filename: string) -> ^Entity {
 		asset = asset
 	}
 	entity.basis.scale.xy = array_cast(sprite_state.asset.size_px, f32)
+	entity.basis.position.xy = array_cast(sprite_state.asset.size_px/2, f32)
 	assert(len(sprite_state.asset.frames) > 0)
 	assert(len(sprite_state.asset.animations) > 0)
 	if "default" in sprite_state.asset.animations {

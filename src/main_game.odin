@@ -28,11 +28,12 @@ game_init :: proc () {
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
 	img = image(`gameplayboard.aseprite`)
+	img.position.z = 1
 	spr = sprite(`berserker.aseprite`)
+	spr.position.z = 2
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
 
-	spr.position = Vec3{ 0=384/2, 1=216/2 }
 
 	hello := text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
@@ -43,7 +44,7 @@ game_init :: proc () {
 
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
-	do_text(`immediately!`, {200,300,4})
+	do_text(`immediately!!`, {200,300,4})
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1

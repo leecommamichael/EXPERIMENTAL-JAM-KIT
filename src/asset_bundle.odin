@@ -309,11 +309,11 @@ assert(dir_err == nil)
 			continue
 		}
 		height_px_for_usage: [Font_Usage]f32 = {
-			.caption     = 64,
-			.body        = 64,
-			.body_large  = 64,
-			.header      = 64,
-			.mono        = 64,
+			.caption     = 10 * 1.5,
+			.body        = 14 * 1.5,
+			.body_large  = 18 * 1.5,
+			.header      = 24 * 1.5,
+			.mono        = 14 * 1.5,
 		}
 
 		//////////////////////////////////////////////////////////////////////	

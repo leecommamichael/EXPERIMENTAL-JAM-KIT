@@ -29,6 +29,7 @@ image :: proc (filename: string) -> ^Entity {
 	}
 	entity.variant = image
 	entity.basis.scale.xy = array_cast(image.asset.size_px, f32)
+	entity.basis.position.xy = array_cast(image.asset.size_px/2, f32)
 	mesh: Geom_Mesh2 = geom_make_quad(1)
 	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	return entity

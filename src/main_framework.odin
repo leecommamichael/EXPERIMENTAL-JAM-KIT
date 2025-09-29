@@ -77,6 +77,9 @@ framework_step :: proc (dt: f64) {
   slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
     return i.distance_from_camera > j.distance_from_camera
   })
+  slice.sort_by(globals.entities_2D[:], proc (i,j: ^Entity) -> bool {
+    return i.distance_from_camera > j.distance_from_camera
+  })
 	ren_draw(globals.ren)
 }
 
@@ -140,6 +143,11 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	if entity.is_3D {
 // TODO: Bucket Opaque from Transparent
 // ASSUME: Centroid is 0,0,0 in model coordinates
+		centroid: Vec4 : { 0, 0, 0, 1 }
+    entity_centroid_in_world := instance.model_transform * centroid
+		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+	} else {
+		// 2D sort will deviate especially with things like Y-sort
 		centroid: Vec4 : { 0, 0, 0, 1 }
     entity_centroid_in_world := instance.model_transform * centroid
 		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
