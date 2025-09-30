@@ -73,9 +73,6 @@ INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 Entity :: struct {
 	id:         Entity_ID,  // index in storage.
 	flags:      bit_set[Entity_Flag; u64],
-	used:       bool,       // like "allocated | free"
-	is_3D:      bool,       // which camera to use
-	hidden:     bool,
 	time_scale: f64,
 	distance_from_camera: f32,
 	using transform: Transform,
@@ -88,16 +85,16 @@ Entity :: struct {
 	},
 	basis:    Transform,
 	collider: Collider,
-	velocity: 						Vec3,
+	velocity:             Vec3,
 	acceleration:         Vec3,
 	angular_velocity:     Vec3,
 	angular_acceleration: Vec3,
 }
 
 Entity_Flag :: enum {
-	// Allocated,
-	// Is_3D,
-	// Hidden,
+	Allocated,
+	Is_3D,
+	Hidden,
 	Collider_Enabled,
 }
 

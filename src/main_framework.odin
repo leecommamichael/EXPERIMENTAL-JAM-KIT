@@ -61,7 +61,7 @@ framework_step :: proc (dt: f64) {
 	clear(&globals.entities_2D)
 	clear(&globals.entities_3D)
 	for &e in globals._entity_storage {
-		if e.used {
+		if .Allocated in e.flags {
 			append(&globals.entities, &e)
 		}
 	}
@@ -72,7 +72,7 @@ framework_step :: proc (dt: f64) {
 	for &entity in globals.entities {
 		entity_step(entity) or_continue
 
-		if entity.is_3D {
+		if .Is_3D in entity.flags {
 			append(&globals.entities_3D, entity)
 		} else {
 			append(&globals.entities_2D, entity)
@@ -197,7 +197,7 @@ detect_collision_rect_point    :: proc (r,p: ^Entity) { panic("TODO") }
 init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity^ = {} // zero all fields
 	entity.id = id
-	entity.used = true
+	entity.flags = {.Allocated}
 	entity.scale = 1
 	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
@@ -209,7 +209,7 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 
 make_entity :: proc () -> ^Entity {
 	for &mem, i in globals._entity_storage {
-		if !mem.used {
+		if .Allocated not_in mem.flags {
 			init_entity_memory(&mem, cast(Entity_ID) i)
 			entity := &mem
 			append(&globals.entities, &mem)
@@ -220,7 +220,7 @@ make_entity :: proc () -> ^Entity {
 }
 
 free_entity :: proc (entity: ^Entity) {
-	entity.used = false
+	entity.flags -= { .Allocated }
 	index, found := slice.linear_search(globals.entities[:], entity)
 	assert(found)
 	unordered_remove(&globals.entities, index)
@@ -230,7 +230,7 @@ free_entity :: proc (entity: ^Entity) {
 // The entity gets some time to do whatever.
 // Data which is derivable from Entity variant data is computed here.
 entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
-	if !entity.used {
+	if .Allocated not_in entity.flags {
 		assert(false) // freed objects shouldn't make it here.
 	}
 	animate_physics :: proc (entity: ^Entity) {
@@ -241,7 +241,7 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	}
 	animate_physics(entity)
 
-	if !entity.hidden {
+	if .Hidden not_in entity.flags {
 		switch &variant in entity.variant {
 		case nil: // general-purpose entity
 		case Text_State:   step_text(entity, immediate=false)
@@ -255,7 +255,7 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 		linalg.matrix4_translate(entity.position + entity.basis.position)\
 		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation + entity.basis.rotation))\
 		* linalg.matrix4_scale(entity.scale * entity.basis.scale)
-	if entity.is_3D {
+	if .Is_3D in entity.flags {
 // TODO: Bucket Opaque from Transparent
 // ASSUME: Centroid is 0,0,0 in model coordinates
 		centroid: Vec4 : { 0, 0, 0, 1 }

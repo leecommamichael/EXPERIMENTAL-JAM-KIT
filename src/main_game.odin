@@ -20,7 +20,7 @@ game_init :: proc () {
 	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
 
 	globals.water_plane = make_entity()
-	globals.water_plane.is_3D = true
+	globals.water_plane.flags += {.Is_3D }
 	globals.water_plane.draw_command = ren_make_water_draw_cmd(
 		globals.water_plane.id,
 		globals.plane_mesh.vertices[:],
@@ -68,7 +68,6 @@ game_step :: proc () {
 	}
 	if target == nil {
 		if old_target != nil {
-			log.infof("DROP1")
 			// no collision found, drop focus
 			old_target.scale = 1
 			old_target = nil
@@ -78,12 +77,10 @@ game_step :: proc () {
 			// new target, drop focus on old.
 			if old_target != nil {
 				// new collision found, drop focus
-			log.infof("DROP2")
 				old_target.scale = 1
 			}
 			old_target = target
 			old_target.scale = 10
-			log.infof("UPSCALE")
 		}
 	}
 

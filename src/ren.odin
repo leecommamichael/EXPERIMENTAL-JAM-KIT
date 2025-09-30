@@ -119,8 +119,8 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 }
 
 ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
-	if entity.hidden { return }
-	
+	if .Hidden in entity.flags { return }
+
 	ren_bind_or_reuse_draw_command(entity)
 	// TODO: copy all instance-level data
 	instance_index := cast(int) entity.id
