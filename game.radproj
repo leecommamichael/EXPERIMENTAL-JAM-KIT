@@ -63,11 +63,6 @@ breakpoint:
 }
 breakpoint:
 {
-  source_location: "src/asset_bundle.odin:429:1"
-  hit_count: 0
-}
-breakpoint:
-{
   source_location: "src/main_game.odin:26:1"
   hit_count: 1
 }

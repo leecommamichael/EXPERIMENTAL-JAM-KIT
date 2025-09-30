@@ -13,6 +13,7 @@ import stbtt "vendor:stb/truetype"
 
 globals: Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
+MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
 	dt: f64,
 	// Assets
@@ -46,6 +47,9 @@ Globals :: struct {
 	// TODO: make this var an interface to modify the above
 	camera:          Camera3D,
 
+	gravity:    Vec3,
+	collisions: [dynamic]Collision,
+
 	// App Data
 	water_plane:     ^Entity,
 	water_heightmap: []f32,
@@ -67,28 +71,61 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	id:    Entity_ID,  // index in storage.
-	used:  bool,       // like "allocated | free"
-	is_3D: bool,       // which camera to use
-	// layout idea TOP LEFT, CENTER
-	time_scale:   f64,
-	draw_command: Draw_Command,
+	id:         Entity_ID,  // index in storage.
+	flags:      bit_set[Entity_Flag; u64],
+	used:       bool,       // like "allocated | free"
+	is_3D:      bool,       // which camera to use
+	hidden:     bool,
+	time_scale: f64,
 	distance_from_camera: f32,
-	basis: Transform, // The default basis ensures 0,0,0 in model space is equal to the entity position
 	using transform: Transform,
-	using instance: ^Any_Instance,
-	hidden:   bool,
+	using instance:  ^Any_Instance,
+	draw_command:    Draw_Command,
 	variant: union {
 		Text_State,
 		Image_State,
 		Sprite_State,
 	},
+	basis:    Transform,
+	collider: Collider,
+	velocity: 						Vec3,
+	acceleration:         Vec3,
+	angular_velocity:     Vec3,
+	angular_acceleration: Vec3,
+}
+
+Entity_Flag :: enum {
+	// Allocated,
+	// Is_3D,
+	// Hidden,
+	Collider_Enabled,
 }
 
 Transform :: struct {
 	position: Vec3,
 	rotation: Vec3,
 	scale:    Vec3,
+}
+
+Collider :: struct {
+	shape:     Collision_Shape,
+	half_size: Vec3,
+	layer:     bit_set[Collision_Layer; u32], // in
+	mask:      bit_set[Collision_Layer; u32], // touches
+}
+
+Collision_Layer :: enum { Default }
+
+Collision_Shape :: enum {
+	None,
+	Point,
+	AABB,
+	Circle, // Positive, uniform scales only. No Ellipses. No asserts will catch you yet.
+	// Rect,
+}
+
+Collision :: struct {
+	ids:      [2]Entity_ID,
 }
 
 //////////////////////////////////////////////////////////////////////

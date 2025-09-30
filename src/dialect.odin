@@ -2,95 +2,51 @@ package main
 
 import "base:runtime"
 import "core:strings"
-import "core:math"
-import "core:math/linalg"
 import "core:log"
+import "core:slice"
 import "core:fmt"
 import "core:time"
 import "base:intrinsics"
+import "core:math/linalg"
 
+is_subtype :: intrinsics.type_is_subtype_of
+is_array   :: intrinsics.type_is_array
+is_float   :: intrinsics.type_is_float
+
+array_cast :: linalg.array_cast
+clone_to_cstring :: strings.clone_to_cstring
+unsafe_string_to_cstring :: strings.unsafe_string_to_cstring
+
+// Converts slice into a dynamic array without cloning or allocating memory
+@(require_results)
+alias_slice_as_dynamic :: proc(a: $T/[]$E) -> [dynamic]E {
+	s := transmute(runtime.Raw_Slice)a
+	d := runtime.Raw_Dynamic_Array{
+		data = s.data,
+		len  = s.len,
+		cap  = s.len,
+		allocator = runtime.panic_allocator(),
+	}
+	return transmute([dynamic]E)d
+}
+
+@(require_results)
+alias_slice_as_empty_dynamic :: proc(a: $T/[]$E) -> [dynamic]E {
+	s := transmute(runtime.Raw_Slice)a
+	d := runtime.Raw_Dynamic_Array{
+		data = s.data,
+		len  = 0,
+		cap  = s.len,
+		allocator = runtime.panic_allocator(),
+	}
+	return transmute([dynamic]E)d
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Convert a null-terminated fixed-size byte array to a string.
 bats :: proc "contextless" (byte_array: []u8) -> string {
-  return strings.truncate_to_byte(string(byte_array), 0)
-}
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// This proc doesn't consider NaN/Inf to be "real"
-is_real :: proc {
-  is_real_float,
-  is_real_array
-}
-
-// Returns true if the float wouldn't propagate errors through it's bit-pattern.
-@(require_results)
-is_real_float :: proc "contextless" (f: $T) -> bool 
-  where intrinsics.type_is_float(T) 
-{
-  switch math.classify(f) {
-  case .Normal, .Zero, .Neg_Zero: 
-    return true
-  case .Subnormal, .NaN, .Inf, .Neg_Inf:
-    return false
-  }
-  return false
-}
-
-@(require_results)
-is_real_array :: proc "contextless" (x: $Indistinct/[$N]$T) -> bool 
-  where intrinsics.type_is_float(T) 
-{
-  for i in 0..<N {
-    is_real := #force_inline is_real_float(x[i])
-    if !is_real {
-      return false
-    }
-  }
-  return true
-}
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
-Vec2 :: [2]f32
-Vec3 :: [3]f32
-Vec4 :: [4]f32
-Mat4 :: matrix[4,4]f32
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-vec3 :: proc {
-  vec3make,
-  vec3of2,
-  vec3of1,
-}
-
-vec3make :: #force_inline proc "contextless" (x, y, z: f32) -> [3]f32 {
-  return {x, y, z}
-}
-
-vec3of2 :: #force_inline proc "contextless" (xy: Vec2, z: f32 = 0) -> Vec3 {
-  return {xy.x, xy.y, z}
-}
-vec3of1 :: #force_inline proc "contextless" (xyz: f32 = 0) -> Vec3 {
-  return {xyz, xyz, xyz}
-}
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-vec4 :: proc {
-  vec4make,
-  vec4of3
-}
-
-vec4make :: #force_inline proc "contextless" (x, y, z, w: f32) -> Vec4 {
-  return {x, y, z, w}
-}
-
-vec4of3 :: #force_inline proc "contextless" (vec3: Vec3, w: f32) -> Vec4 {
-  return {vec3.x, vec3.y, vec3.z, w}
-}
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-vec2 :: #force_inline proc "contextless" (x, y: f32) -> [2]f32 {
-  return {x, y}
+	return strings.truncate_to_byte(string(byte_array), 0)
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,45 +55,20 @@ vec2 :: #force_inline proc "contextless" (x, y: f32) -> [2]f32 {
 log_timers: map[string]time.Tick
 
 log_time :: proc (id: string) {
-  if id in log_timers {
-    tick := log_timers[id]
-    duration := time.tick_diff(tick, time.tick_now())
-    fmt.printfln("[TIMER] % 6.1fms %s", f64(duration) / f64(time.Millisecond), id)
-    delete_key(&log_timers, id)
-  } else {
-    log_timers[id] = time.tick_now()
-  }
+	if id in log_timers {
+		tick := log_timers[id]
+		duration := time.tick_diff(tick, time.tick_now())
+		fmt.printfln("[TIMER] % 6.1fms %s", f64(duration) / f64(time.Millisecond), id)
+		delete_key(&log_timers, id)
+	} else {
+		log_timers[id] = time.tick_now()
+	}
 }
 
 startup_tick := time.tick_now()
 log_runtime :: proc (message: string) {
-  duration := time.tick_diff(startup_tick, time.tick_now())
-  fmt.printfln("[TIMER] % 6.1fms into run. %s", f64(duration) / f64(time.Millisecond), message)
+	duration := time.tick_diff(startup_tick, time.tick_now())
+	fmt.printfln("[TIMER] % 6.1fms into run. %s", f64(duration) / f64(time.Millisecond), message)
 }
-
-
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-type_uses :: intrinsics.type_is_subtype_of
-array_cast :: linalg.array_cast
-clone_to_cstring :: strings.clone_to_cstring
-unsafe_string_to_cstring :: strings.unsafe_string_to_cstring
-// assert_non_empty :: proc {
-//   assert_non_empty_slice,
-//   assert_non_empty_map
-// }
-// assert_non_empty_slice :: #force_inline proc (slice: $Indistinct/[]$T) { assert(len(slice) > 0) }
-// assert_non_empty_map :: #force_inline proc (m: $Indistinct/map[$K]$V) { assert(len(m) > 0) }
-
-// Converts slice into a dynamic array without cloning or allocating memory
-@(require_results)
-slice_alias_into_dynamic :: proc(a: $T/[]$E) -> [dynamic]E {
-  s := transmute(runtime.Raw_Slice)a
-  d := runtime.Raw_Dynamic_Array{
-    data = s.data,
-    len  = s.len,
-    cap  = s.len,
-    allocator = runtime.nil_allocator(),
-  }
-  return transmute([dynamic]E)d
-}

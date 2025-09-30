@@ -13,6 +13,7 @@ import glsl "core:math/linalg/glsl"
 
 img: ^Entity
 spr: ^Entity
+cursor: ^Entity
 
 game_init :: proc () {
 	globals.camera.position.y = 5
@@ -31,9 +32,17 @@ game_init :: proc () {
 	img.position.z = 1
 	spr = sprite(`berserker.aseprite`)
 	spr.position.z = 2
+	spr.position.xy = 42
+	spr.collider.shape = .Circle
+	spr.collider.half_size = 32
+	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
-
+	cursor = sprite(`berserker.aseprite`)
+	cursor.scale = 0.5
+	cursor.flags += {.Collider_Enabled}
+	cursor.collider.shape = .Circle
+	spr.collider.half_size = 10
 
 	hello := text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
@@ -42,8 +51,42 @@ game_init :: proc () {
 	hello.position.z = 4
 }
 
+old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
+	cursor.position.x = sugar.mouse_position.x
+	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
+	cursor.position.z = spr.position.z
+
+	target: ^Entity
+	for coll in globals.collisions {
+		if coll.ids[0] == cursor.id {
+			target = &globals._entity_storage[coll.ids[1]]
+		} else if coll.ids[1] == cursor.id {
+			target = &globals._entity_storage[coll.ids[0]]
+		}
+	}
+	if target == nil {
+		if old_target != nil {
+			log.infof("DROP1")
+			// no collision found, drop focus
+			old_target.scale = 1
+			old_target = nil
+		}
+	} else {
+		if target != old_target {
+			// new target, drop focus on old.
+			if old_target != nil {
+				// new collision found, drop focus
+			log.infof("DROP2")
+				old_target.scale = 1
+			}
+			old_target = target
+			old_target.scale = 10
+			log.infof("UPSCALE")
+		}
+	}
+
 	do_text(`immediately!!`, {200,300,4})
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {

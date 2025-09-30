@@ -171,7 +171,7 @@ load_bundled_fonts :: proc (result: ^image.Image, use_binary: bool) {
 		img.width = MAX_ATLAS_PIXELS
 		img.height = len(px_bytes) / (MAX_ATLAS_PIXELS * img.channels)
 		img.depth = 8
-		img.pixels.buf = slice_alias_into_dynamic(px_bytes)
+		img.pixels.buf = alias_slice_as_dynamic(px_bytes)
 		result^ = img
 	} else {
 		img, img_err := tga.load_from_bytes(font_atlas_bytes)
@@ -750,7 +750,7 @@ load_bundled_textures :: proc (result: ^image.Image, use_binary: bool) {
 	img.height = (len(px_bytes) / (MAX_ATLAS_PIXELS * 4))
 	img.channels = 4
 	img.depth = 8
-	img.pixels.buf = slice_alias_into_dynamic(px_bytes)
+	img.pixels.buf = alias_slice_as_dynamic(px_bytes)
 	result^ = img
 }
 
@@ -815,7 +815,7 @@ write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Erro
 	img.height = h
 	img.channels = 4
 	img.depth = 8
-	img.pixels.buf = slice_alias_into_dynamic(pixels)
+	img.pixels.buf = alias_slice_as_dynamic(pixels)
 	assert(len(img.pixels.buf) == w*h*4)
 	buffer: bytes.Buffer
 	qoi.save_to_buffer(&buffer, &img) or_return

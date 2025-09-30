@@ -27,15 +27,19 @@ framework_init :: proc () {
 	globals.ui_view = 1
 
 	game_entities := make([]^Entity, max(Entity_ID))
-	globals.entities_3D = slice.into_dynamic(game_entities)
+	globals.entities_3D = alias_slice_as_empty_dynamic(game_entities)
 
 	ui_entities := make([]^Entity, max(Entity_ID))
-	globals.entities_2D = slice.into_dynamic(ui_entities)
+	globals.entities_2D = alias_slice_as_empty_dynamic(ui_entities)
 
 	entities := make([]^Entity, max(Entity_ID))
-	globals.entities = slice.into_dynamic(entities)
+	globals.entities = alias_slice_as_empty_dynamic(entities)
+
+	collisions := make([]Collision, MAX_COLLISIONS_PER_FRAME)
+	globals.collisions = alias_slice_as_empty_dynamic(collisions)
 
 	globals.ren = ren_make()
+
 
 	ren_init(globals.ren)
 	log.info("---------------------------------------- framework initialized.")
@@ -64,6 +68,7 @@ framework_step :: proc (dt: f64) {
 ////////////////////////////////////////////////////////////////////////////////
 	game_step()
 ////////////////////////////////////////////////////////////////////////////////
+	clear(&globals.collisions)
 	for &entity in globals.entities {
 		entity_step(entity) or_continue
 
@@ -72,8 +77,60 @@ framework_step :: proc (dt: f64) {
 		} else {
 			append(&globals.entities_2D, entity)
 		}
+
+		if .Collider_Enabled not_in entity.flags { continue }
+		assert(entity.collider.shape != nil)
+		collider_loop: for &other in globals.entities {
+			if .Collider_Enabled not_in other.flags || entity == other { continue }
+			for pair in globals.collisions {
+				if pair.ids[0] == entity.id && pair.ids[1] == other.id \
+				|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
+					continue collider_loop
+				}
+			}
+
+			assert(other.collider.shape != nil)
+			switch entity.collider.shape {
+			case .None: continue
+			case .Point://///////////////// entity is point
+				switch other.collider.shape {
+				case .Point: detect_collision_point_point(entity, other)
+				case .AABB:  detect_collision_aabb_point(other, entity)
+				// case .Rect:   // P:Rect
+				case .Circle: detect_collision_circle_point(other, entity)
+				case .None: continue
+				}
+			case .AABB://////////////////// entity is AABB
+				switch other.collider.shape {
+				case .Point: detect_collision_aabb_point(entity, other)
+				case .AABB:  detect_collision_aabb_aabb(entity, other)
+				// case .Rect:   // AABB:Rect
+				case .Circle: detect_collision_aabb_circle(entity, other)
+				case .None: continue
+				}
+			// case .Rect:////////////////////
+			// 	switch other.collider.shape {
+			// 	case .Point:  // Rect:P
+			// 	case .AABB:   // Rect:AABB
+			// 	// case .Rect:   // Rect:Rect
+			// 	case .Circle: // Rect:Circle
+			// 	case .None: continue
+			// 	}
+			case .Circle:////////////////// entity is Circle
+				switch other.collider.shape {
+				case .Point:  detect_collision_circle_point(entity, other)
+				case .AABB:   detect_collision_aabb_circle(other, entity)
+				// case .Rect:   // Circle: Rect
+				case .Circle: detect_collision_circle_circle(entity, other)
+				case .None: continue
+				}
+			}
+		}
 	}
-// IDEA: Could use the same sort for UI and interpret it as Z index.
+
+////////////////////////////////////////////////////////////////////////////////
+// DO NOT MUTATE POSITION AFTER THIS POINT
+////////////////////////////////////////////////////////////////////////////////
   slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
     return i.distance_from_camera > j.distance_from_camera
   })
@@ -82,6 +139,56 @@ framework_step :: proc (dt: f64) {
   })
 	ren_draw(globals.ren)
 }
+
+detect_collision_aabb_aabb     :: proc (box1, box2: ^Entity) {
+	TR1 := box1.position + box1.collider.half_size
+	BL1 := box1.position - box1.collider.half_size
+	TR2 := box2.position + box2.collider.half_size
+	BL2 := box2.position - box2.collider.half_size
+	if (TR2.x <= TR1.x && BL1.x <= TR2.x  \
+	&&  TR2.y <= TR1.y && BL1.y <= TR2.y  \
+	&&  TR2.z <= TR1.z && BL1.z <= TR2.z) \
+	|| (BL2.x <= TR1.x && BL1.x <= BL2.x  \
+	&&  BL2.y <= TR1.y && BL1.y <= BL2.y  \
+	&&  BL2.z <= TR1.z && BL1.z <= BL2.z) {
+		append(&globals.collisions, Collision {{box1.id, box2.id}})
+	}
+}
+detect_collision_point_point   :: proc (p1, p2: ^Entity) {
+	if is_nearly(p1.position, p2.position) {
+		append(&globals.collisions, Collision {{p1.id, p2.id}})
+	}
+}
+detect_collision_aabb_circle   :: proc (box, circle: ^Entity) {
+	// There's an equivalence for the case of AABBs.
+	detect_collision_aabb_aabb(box, circle)
+}
+detect_collision_aabb_point    :: proc (box,p: ^Entity) {
+	TR := box.position + box.collider.half_size
+	BL := box.position - box.collider.half_size
+	point := p.position
+	if point.x <= TR.x && BL.x <= point.x\
+	&& point.y <= TR.y && BL.y <= point.y\
+	&& point.z <= TR.z && BL.z <= point.z {
+		append(&globals.collisions, Collision {{box.id, p.id}})
+	}
+}
+detect_collision_circle_circle :: proc (circle1, circle2: ^Entity) {
+	dist := distance(circle1.position, circle2.position)
+	if dist <= (circle1.collider.half_size.x + circle2.collider.half_size.x) {
+		append(&globals.collisions, Collision {{circle1.id, circle2.id}})
+	}
+}
+detect_collision_circle_point  :: proc (circle, point: ^Entity) {
+	dist := distance(circle.position, point.position)
+	if dist <= circle.collider.half_size.x {
+		append(&globals.collisions, Collision {{circle.id, point.id}})
+	}
+}
+detect_collision_rect_rect     :: proc (r1,r2: ^Entity) { panic("TODO") }
+detect_collision_rect_aabb     :: proc (r,bb: ^Entity) { panic("TODO") }
+detect_collision_rect_circle   :: proc (r,c: ^Entity) { panic("TODO") }
+detect_collision_rect_point    :: proc (r,p: ^Entity) { panic("TODO") }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Entity 
@@ -95,6 +202,9 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
 	entity.time_scale = 1
+	entity.collider = {}
+	entity.collider.layer = { .Default }
+	entity.collider.mask  = { .Default }
 }
 
 make_entity :: proc () -> ^Entity {
@@ -109,7 +219,7 @@ make_entity :: proc () -> ^Entity {
 	panic("Out of entities.")
 }
 
-free_entity :: proc (entity: ^$T) where type_uses(T, Entity) {
+free_entity :: proc (entity: ^Entity) {
 	entity.used = false
 	index, found := slice.linear_search(globals.entities[:], entity)
 	assert(found)
@@ -123,16 +233,21 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	if !entity.used {
 		assert(false) // freed objects shouldn't make it here.
 	}
-
-	if entity.hidden {
-		return false
+	animate_physics :: proc (entity: ^Entity) {
+		entity.position += entity.velocity
+		entity.rotation += entity.angular_velocity
+		entity.velocity += entity.acceleration
+		entity.angular_velocity += entity.acceleration
 	}
+	animate_physics(entity)
 
-	switch &variant in entity.variant {
-	case nil: // general-purpose entity
-	case Text_State:   step_text(entity, immediate=false)
-	case Image_State:  step_image(entity, immediate=false)
-	case Sprite_State: step_sprite(entity, immediate=false)
+	if !entity.hidden {
+		switch &variant in entity.variant {
+		case nil: // general-purpose entity
+		case Text_State:   step_text(entity, immediate=false)
+		case Image_State:  step_image(entity, immediate=false)
+		case Sprite_State: step_sprite(entity, immediate=false)
+		}
 	}
 
 	instance: ^Any_Instance = entity.instance
@@ -155,4 +270,3 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 
 	return true
 }
-
