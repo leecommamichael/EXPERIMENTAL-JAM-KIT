@@ -77,6 +77,11 @@ framework_step :: proc (dt: f64) {
 
 	clear(&globals.collisions)
 	#reverse for &entity in globals.entities {
+		if variant, is_ui := entity.variant.(UI_Element); is_ui {
+			if variant.type == .Root {
+				layout_subtree(entity)
+			}
+		}
 		if .Immediate_Mode in entity.flags \
 		&& .Immediate_In_Use not_in entity.flags {
 			delete_key(&globals.immediate_entities, entity.immediate_hash)
@@ -231,6 +236,7 @@ do_entity :: proc (loc := #caller_location) -> (entity: ^Entity, is_new: bool) {
 		globals.immediate_entities[hash] = value
 		return value, true
 	}
+	value.flags += { .Immediate_In_Use }
 	return value, false
 }
 
@@ -285,6 +291,7 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 		case Text_State:   step_text(entity, immediate=false)
 		case Image_State:  step_image(entity, immediate=false)
 		case Sprite_State: step_sprite(entity, immediate=false)
+		case UI_Element:   // find root and position children.
 		}
 	}
 

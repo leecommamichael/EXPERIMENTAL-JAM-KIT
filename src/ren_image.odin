@@ -19,44 +19,52 @@ Image_Asset :: struct {
 }
 
 //////////////////////////////////////////////////////////////////////
-// Interface
+// Immediate Interface
 //////////////////////////////////////////////////////////////////////
-make_image :: proc (filename: string) -> ^Entity {
-	return configure_image(filename, nil)
-}
 
-do_image :: proc (filename: string, loc := #caller_location) -> ^Entity {
+image :: proc (filename: string, loc := #caller_location) -> ^Entity {
 // This way I don't have to explode the API into retained/immediate
 // The storage can be in the system, only necessary copies.
 	entity, is_new := do_entity(loc)
 	if is_new {
-		configure_image(filename, entity)
+		init_image(entity)
+		set_image(entity, filename)
+	} else if filename != entity.variant.(Image_State).asset.filename {
+		// TODO: Come up with comprehensive state diffing.
+		set_image(entity, filename)
 	}
-	entity.flags += { .Immediate_In_Use }
 	return entity
 }
 
-
 //////////////////////////////////////////////////////////////////////
-// Implementation
+// Retained Interface
 //////////////////////////////////////////////////////////////////////
 
-configure_image :: proc (filename: string, entity: ^Entity = nil) -> ^Entity {
-	entity := entity
-	if entity == nil {
-		entity = make_entity()
-	}
+make_image :: proc (filename: string) -> ^Entity {
+	entity := make_entity()
+	init_image(entity)
+	set_image(entity, filename)
+	return entity
+}
+
+init_image :: proc (entity: ^Entity) -> ^Entity {
+	mesh: Geom_Mesh2 = geom_make_quad(1)
+	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
+	return entity
+}
+
+set_image :: proc (entity: ^Entity, filename: string) {
 	image := Image_State {
 		asset = &globals.assets.images[filename]
 	}
 	entity.variant = image
 	entity.basis.scale.xy = array_cast(image.asset.size_px, f32)
 	entity.basis.position.xy = array_cast(image.asset.size_px/2, f32)
-	mesh: Geom_Mesh2 = geom_make_quad(1)
-	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
-	return entity
 }
 
+//////////////////////////////////////////////////////////////////////
+// Implementation
+//////////////////////////////////////////////////////////////////////
 image_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 `
 	out vec4 io_color;

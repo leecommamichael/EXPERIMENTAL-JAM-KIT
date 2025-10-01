@@ -50,6 +50,8 @@ Globals :: struct {
 
 	gravity:    Vec3,
 	collisions: [dynamic]Collision,
+	pointer_focus:     ^Entity,
+	other_input_focus: ^Entity, // gamepads, keyboards
 
 	// App Data
 	water_plane:     ^Entity,
@@ -72,15 +74,16 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	id:           Entity_ID,  // index in storage.
 	immediate_hash: u64,
-	flags:        bit_set[Entity_Flag; u64],
-	time_scale:   f64,
+	id:             Entity_ID,  // index in storage.
+	flags:          bit_set[Entity_Flag; u64],
+	time_scale:     f64,
 	distance_from_camera: f32,
 	using transform: Transform,
 	using instance:  ^Any_Instance,
 	draw_command:    Draw_Command,
 	variant: union {
+		UI_Element,
 		Text_State,
 		Image_State,
 		Sprite_State,
@@ -91,6 +94,7 @@ Entity :: struct {
 	acceleration:         Vec3,
 	angular_velocity:     Vec3,
 	angular_acceleration: Vec3,
+	children: []^Entity,
 }
 
 Entity_Flag :: enum {

@@ -29,6 +29,7 @@ game_init :: proc () {
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
 	img = make_image(`gameplayboard.aseprite`)
+	img.position.y = 100
 	img.position.z = 1
 	spr = sprite(`berserker.aseprite`)
 	spr.position.z = 2
@@ -58,6 +59,8 @@ game_step :: proc () {
 	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
 	cursor.position.z = spr.position.z
 
+	ui_element(row(text("Hellope"), text("World")))
+
 	target: ^Entity
 	for coll in globals.collisions {
 		if coll.ids[0] == cursor.id {
@@ -66,6 +69,7 @@ game_step :: proc () {
 			target = &globals._entity_storage[coll.ids[0]]
 		}
 	}
+
 	if target == nil {
 		if old_target != nil {
 			// no collision found, drop focus
@@ -73,7 +77,7 @@ game_step :: proc () {
 			old_target = nil
 		}
 	} else {
-		img := do_image(`gameplayboard.aseprite`)
+		img := image(`gameplayboard.aseprite`)
 		img.position.xy = {100.0, 100.0}
 		if target != old_target {
 			// new target, drop focus on old.
@@ -82,11 +86,12 @@ game_step :: proc () {
 				old_target.scale = 1
 			}
 			old_target = target
-			old_target.scale = 10
+			old_target.scale = 5
 		}
 	}
 
-	do_text(`immediately!!`, {200,300,4})
+	t := text(`immediately!!`)
+	t.position = {200,300,4}
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1

@@ -1,7 +1,5 @@
 package main
 
-// Purpose: This file is the integration of various platforms and Odin.
-
 import "base:runtime"
 import "core:time"
 import "core:log"
@@ -58,7 +56,6 @@ step :: proc (dt: f64) -> bool {
 	if frame_number == 2 {
 		log_runtime("first_paint")
 	}
-	defer free_all(context.temp_allocator)
 	switch sugar.poll_events() { // begins input frame.
 	case .Should_Exit: return false
 	case .Resized:     resolution_changed(sugar.viewport_size)
@@ -72,6 +69,7 @@ step :: proc (dt: f64) -> bool {
 	framework_step(dt)
 
 	sugar.end_input_frame()
+	free_all(context.temp_allocator)
 	return true
 }
 

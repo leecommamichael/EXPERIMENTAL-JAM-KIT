@@ -22,7 +22,7 @@ Text_State :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-text :: proc (
+make_text :: proc (
 	message: string,
 	usage:   Font_Usage   = .body,
 	variant: Font_Variant = .regular,
@@ -32,21 +32,27 @@ text :: proc (
 		message,
 		&globals.fonts[usage][variant],
 	}
+	entity.color = 1
 	return entity
 }
 
-do_text :: proc (
+text :: proc (
 	message:  string,
-	position: Vec3,
 	usage:    Font_Usage   = .body,
 	variant:  Font_Variant = .regular,
-) {
-	entity: ^Entity = text(message, usage, variant)
-	entity.position = position
+	loc := #caller_location,
+) -> ^Entity {
+	entity, is_new := do_entity(loc)
+	entity.variant = Text_State {
+		message,
+		&globals.fonts[usage][variant],
+	}
 	entity.color = 1
-	step_text(entity, immediate=true)
-	ren_draw_entity(globals.ren, transmute(^Entity) entity)
-	free_entity(entity)
+	return entity
+}
+
+set_text :: proc (entity: ^Entity, text: string) {
+
 }
 
 Font_Usage :: enum {
@@ -86,7 +92,7 @@ Font :: struct {
 // Framework Integration Implementation
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
-step_text :: proc (entity: ^Entity, immediate: bool) {
+step_text :: proc (entity: ^Entity, immediate: bool, just_measure := false) {
 	variant := entity.variant.(Text_State)
 	verts_needed   := len(variant.text) * 4
 	indices_needed := len(variant.text) * 6
@@ -94,7 +100,6 @@ step_text :: proc (entity: ^Entity, immediate: bool) {
 	indices := make([]u32, indices_needed, context.temp_allocator)
 
   atlas_size: [2]int = globals.assets.font_atlas.size_px
-
 	text_cursor: [2]f32
 	for byte, glyph_index in variant.text {
 		chardata_index := i32(byte - 32)
@@ -136,4 +141,30 @@ step_text :: proc (entity: ^Entity, immediate: bool) {
 		gl.BindBuffer(.ARRAY_BUFFER, 0)
 	}
 	entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
+}
+
+// text cursor is at the baseline, so it's not useful.
+// gotta measure distance between y1 and y0
+measure_text :: proc (entity: Entity) -> Vec2 {
+	variant := entity.variant.(Text_State)
+  atlas_size: [2]int = globals.assets.font_atlas.size_px
+
+  size: Vec2
+	text_cursor: Vec2
+	quad: stbtt.aligned_quad
+	for byte, glyph_index in variant.text {
+		chardata_index := i32(byte - 32)
+		stbtt.GetPackedQuad(raw_data(variant.font.data),
+			cast(i32) atlas_size.x,
+			cast(i32) atlas_size.y,
+			chardata_index,
+			&text_cursor.x,
+			&text_cursor.y,
+			&quad,
+			false)
+		height := (quad.y0 - quad.y1) * -1
+		if height > size.y { size.y = height }
+	}
+	size.x = text_cursor.x + quad.x0 - quad.x1
+	return size
 }
