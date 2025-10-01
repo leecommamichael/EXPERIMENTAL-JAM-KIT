@@ -28,7 +28,7 @@ game_init :: proc () {
 	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
 
-	img = image(`gameplayboard.aseprite`)
+	img = make_image(`gameplayboard.aseprite`)
 	img.position.z = 1
 	spr = sprite(`berserker.aseprite`)
 	spr.position.z = 2
@@ -73,6 +73,8 @@ game_step :: proc () {
 			old_target = nil
 		}
 	} else {
+		img := do_image(`gameplayboard.aseprite`)
+		img.position.xy = {100.0, 100.0}
 		if target != old_target {
 			// new target, drop focus on old.
 			if old_target != nil {

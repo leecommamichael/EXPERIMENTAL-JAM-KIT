@@ -7,6 +7,7 @@ package main
 
 import "core:log"
 import "core:slice"
+import "core:hash/xxhash"
 import "base:runtime"
 import gl "nord_gl"
 import linalg "core:math/linalg"
@@ -63,13 +64,25 @@ framework_step :: proc (dt: f64) {
 	for &e in globals._entity_storage {
 		if .Allocated in e.flags {
 			append(&globals.entities, &e)
+			if .Immediate_In_Use in e.flags {
+				// assume it is not used.
+				// after the game_step, if it is still not used, free it.
+				e.flags -= { .Immediate_In_Use }
+			}
 		}
 	}
 ////////////////////////////////////////////////////////////////////////////////
 	game_step()
 ////////////////////////////////////////////////////////////////////////////////
+
 	clear(&globals.collisions)
-	for &entity in globals.entities {
+	#reverse for &entity in globals.entities {
+		if .Immediate_Mode in entity.flags \
+		&& .Immediate_In_Use not_in entity.flags {
+			delete_key(&globals.immediate_entities, entity.immediate_hash)
+			free_entity(entity) // mutates this array, hence the #reverse.
+			continue
+		}
 		entity_step(entity) or_continue
 
 		if .Is_3D in entity.flags {
@@ -197,7 +210,7 @@ detect_collision_rect_point    :: proc (r,p: ^Entity) { panic("TODO") }
 init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity^ = {} // zero all fields
 	entity.id = id
-	entity.flags = {.Allocated}
+	entity.flags = { .Allocated }
 	entity.scale = 1
 	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
@@ -205,6 +218,31 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider = {}
 	entity.collider.layer = { .Default }
 	entity.collider.mask  = { .Default }
+}
+
+// YOU ARE FIRED IF YOU COPY THIS POINTER. IT IS TO BE A LOCAL IN A step :: proc
+do_entity :: proc (loc := #caller_location) -> (entity: ^Entity, is_new: bool) {
+	hash := entity_hash(loc)
+	value, found := globals.immediate_entities[hash]
+	if !found {
+		value = make_entity()
+		value.flags += { .Immediate_Mode, .Immediate_In_Use }
+		value.immediate_hash = hash
+		globals.immediate_entities[hash] = value
+		return value, true
+	}
+	return value, false
+}
+
+entity_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
+	loc := declaration
+	hash_input := make([dynamic]u8, 0, len(loc.file_path) + 2*size_of(i32), context.temp_allocator)
+	append(&hash_input, loc.file_path)
+	append(&hash_input, ..(cast(^[4]u8)&loc.line)^[:])
+	append(&hash_input, ..(cast(^[4]u8)&loc.column)^[:])
+	hash := xxhash.XXH3_64(hash_input[:])
+	delete(hash_input)
+	return hash
 }
 
 make_entity :: proc () -> ^Entity {
@@ -220,7 +258,7 @@ make_entity :: proc () -> ^Entity {
 }
 
 free_entity :: proc (entity: ^Entity) {
-	entity.flags -= { .Allocated }
+	entity.flags = { } // mark as free (not .Allocated)
 	index, found := slice.linear_search(globals.entities[:], entity)
 	assert(found)
 	unordered_remove(&globals.entities, index)

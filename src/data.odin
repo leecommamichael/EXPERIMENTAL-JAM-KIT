@@ -28,6 +28,7 @@ Globals :: struct {
 	entities:        [dynamic]^Entity,
 	entities_2D:     [dynamic]^Entity,
 	entities_3D:     [dynamic]^Entity,
+	immediate_entities: map[u64]^Entity,
 	// This instance data is shared by across many (all?) shaders.
 	// That means no intelligent BufferSubData to minimize traffic.
 	instance_staging: [max(Entity_ID)]Any_Instance,
@@ -71,9 +72,10 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	id:         Entity_ID,  // index in storage.
-	flags:      bit_set[Entity_Flag; u64],
-	time_scale: f64,
+	id:           Entity_ID,  // index in storage.
+	immediate_hash: u64,
+	flags:        bit_set[Entity_Flag; u64],
+	time_scale:   f64,
 	distance_from_camera: f32,
 	using transform: Transform,
 	using instance:  ^Any_Instance,
@@ -93,6 +95,8 @@ Entity :: struct {
 
 Entity_Flag :: enum {
 	Allocated,
+	Immediate_Mode,
+	Immediate_In_Use,// immediate _step functions mark the entity as used. framework clears it.
 	Is_3D,
 	Hidden,
 	Collider_Enabled,

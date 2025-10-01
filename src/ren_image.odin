@@ -21,9 +21,31 @@ Image_Asset :: struct {
 //////////////////////////////////////////////////////////////////////
 // Interface
 //////////////////////////////////////////////////////////////////////
+make_image :: proc (filename: string) -> ^Entity {
+	return configure_image(filename, nil)
+}
 
-image :: proc (filename: string) -> ^Entity {
-	entity: ^Entity = make_entity()
+do_image :: proc (filename: string, loc := #caller_location) -> ^Entity {
+// This way I don't have to explode the API into retained/immediate
+// The storage can be in the system, only necessary copies.
+	entity, is_new := do_entity(loc)
+	if is_new {
+		configure_image(filename, entity)
+	}
+	entity.flags += { .Immediate_In_Use }
+	return entity
+}
+
+
+//////////////////////////////////////////////////////////////////////
+// Implementation
+//////////////////////////////////////////////////////////////////////
+
+configure_image :: proc (filename: string, entity: ^Entity = nil) -> ^Entity {
+	entity := entity
+	if entity == nil {
+		entity = make_entity()
+	}
 	image := Image_State {
 		asset = &globals.assets.images[filename]
 	}
@@ -34,21 +56,6 @@ image :: proc (filename: string) -> ^Entity {
 	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	return entity
 }
-
-do_image :: proc (id: string, filename: string, position: Vec3) {
-	entity: ^Entity = make_entity()
-	entity.position = position
-	entity.color = 1
-	mesh: Geom_Mesh2 = geom_make_quad(1)
-	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
-	step_image(entity, immediate=true)
-	ren_draw_entity(globals.ren, transmute(^Entity) entity)
-	free_entity(entity)
-}
-
-//////////////////////////////////////////////////////////////////////
-// Implementation
-//////////////////////////////////////////////////////////////////////
 
 image_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 `
