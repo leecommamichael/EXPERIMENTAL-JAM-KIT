@@ -85,7 +85,7 @@ measure_entity :: proc (entity: ^Entity) -> Vec2 {
 // To be done some time before render.
 layout_subtree :: proc (root: ^Entity) {
 	ui_element := root.variant.(UI_Element)
-	size := measure_entity(root)
+	// size := measure_entity(root)
 	switch ui_element.type {
 	case .Root:
 		root.children[0].position = root.position
@@ -94,19 +94,29 @@ layout_subtree :: proc (root: ^Entity) {
 	case .Row:
 		// sizes := make([dynamic]Vec2, context.temp_allocator)
 		// 	append(&sizes, measure_entity(child))
-		main_axis_offset: f32
+		main_axis_offset: f32 = root.position.x
 		max_cross_axis_size: f32
 		for child in root.children {
-			child.position.x = root.position.x + main_axis_offset
+			child.position.x = main_axis_offset
+			child.position.y = root.position.y
 			child_size := measure_entity(child)
 			main_axis_offset = child.position.x + child_size.x
 			if child_size.y > max_cross_axis_size { max_cross_axis_size = child_size.y }
 		}
 		root.scale.x = main_axis_offset
 		root.scale.y = max_cross_axis_size
-		// step through children and position them
-	case .Column: break
-		// step through children and position them
+	case .Column:
+		main_axis_offset: f32 = root.position.y
+		max_cross_axis_size: f32
+		#reverse for child in root.children {
+			child.position.y = main_axis_offset
+			child.position.x = root.position.x
+			child_size := measure_entity(child)
+			main_axis_offset = child.position.y + child_size.y
+			if child_size.x > max_cross_axis_size { max_cross_axis_size = child_size.x }
+		}
+		root.scale.x = main_axis_offset
+		root.scale.y = max_cross_axis_size
 	case .Box: break
-	} 
+	}
 }

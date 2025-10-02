@@ -59,7 +59,23 @@ game_step :: proc () {
 	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
 	cursor.position.z = spr.position.z
 
-	ui_element(row(text("Hellope"), text("World")))
+		ro := ui_element(
+			row(
+				text("rThis"),
+				text("isRow"),
+			)
+		)
+		ro.position.xy = {32,32}
+		elem := ui_element(
+			column(
+				text("This"),
+				text("is"),
+				text("a"),
+				text("_"),
+				text("column")
+			)
+		)
+		// elem.position.xy = {32,32}
 
 	target: ^Entity
 	for coll in globals.collisions {
@@ -77,6 +93,7 @@ game_step :: proc () {
 			old_target = nil
 		}
 	} else {
+
 		img := image(`gameplayboard.aseprite`)
 		img.position.xy = {100.0, 100.0}
 		if target != old_target {

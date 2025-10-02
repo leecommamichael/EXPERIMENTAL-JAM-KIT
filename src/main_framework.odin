@@ -77,18 +77,21 @@ framework_step :: proc (dt: f64) {
 
 	clear(&globals.collisions)
 	#reverse for &entity in globals.entities {
-		if variant, is_ui := entity.variant.(UI_Element); is_ui {
-			if variant.type == .Root {
-				layout_subtree(entity)
-			}
-		}
 		if .Immediate_Mode in entity.flags \
 		&& .Immediate_In_Use not_in entity.flags {
 			delete_key(&globals.immediate_entities, entity.immediate_hash)
 			free_entity(entity) // mutates this array, hence the #reverse.
 			continue
 		}
+		
+		if variant, is_ui := entity.variant.(UI_Element); is_ui {
+			if variant.type == .Root {
+				layout_subtree(entity)
+			}
+		}
+////////////////////////////////////////////////////////////////////////////////
 		entity_step(entity) or_continue
+////////////////////////////////////////////////////////////////////////////////
 
 		if .Is_3D in entity.flags {
 			append(&globals.entities_3D, entity)
