@@ -35,17 +35,18 @@ game_init :: proc () {
 	spr.position.z = 2
 	spr.position.xy = 42
 	spr.collider.shape = .Circle
-	spr.collider.half_size = 32
+	spr.collider.half_size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
 	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
 	cursor = sprite(`berserker.aseprite`)
-	cursor.scale = 0.5
+	cursor.basis.scale /= 2
+	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
 	cursor.collider.shape = .Circle
-	spr.collider.half_size = 10
+	cursor.collider.half_size = 2
 
-	hello := text(`hello`)
+	hello := make_text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
 	// hello.color = Vec4{0,0,0, 1.0}
 	hello.position.x = 400
@@ -57,7 +58,17 @@ old_target: ^Entity
 game_step :: proc () {
 	cursor.position.x = sugar.mouse_position.x
 	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
-	cursor.position.z = spr.position.z
+	cursor.position.z = -1.5
+
+	b := button()
+	b.position.z = 0
+	b.position.xy = {500,100}
+	b.scale.xy = {100,100}
+	if entity_contains_entity(cursor, b) {
+		b.color.rgb = {0.8, 0.2, 0.2}
+	} else {
+		b.color.rgb = 0.2
+	}
 
 		ro := ui_element(
 			row(
@@ -75,35 +86,34 @@ game_step :: proc () {
 				text("column")
 			)
 		)
-		// elem.position.xy = {32,32}
 
-	target: ^Entity
-	for coll in globals.collisions {
-		if coll.ids[0] == cursor.id {
-			target = &globals._entity_storage[coll.ids[1]]
-		} else if coll.ids[1] == cursor.id {
-			target = &globals._entity_storage[coll.ids[0]]
-		}
-	}
+	// target: ^Entity
+	// for coll in globals.collisions {
+	// 	if coll.ids[0] == cursor.id {
+	// 		target = &globals._entity_storage[coll.ids[1]]
+	// 	} else if coll.ids[1] == cursor.id {
+	// 		target = &globals._entity_storage[coll.ids[0]]
+	// 	}
+	// }
 
-	if target == nil {
-		if old_target != nil {
-			// no collision found, drop focus
-			old_target.scale = 1
-			old_target = nil
-		}
-	} else {
+	// if target == nil {
+	// 	if old_target != nil {
+	// 		// no collision found, drop focus
+	// 		old_target.scale = 1
+	// 		old_target = nil
+	// 	}
+	// } else {
 
-		if target != old_target {
-			// new target, drop focus on old.
-			if old_target != nil {
-				// new collision found, drop focus
-				old_target.scale = 1
-			}
-			old_target = target
-			old_target.scale = 5
-		}
-	}
+	// 	if target != old_target {
+	// 		// new target, drop focus on old.
+	// 		if old_target != nil {
+	// 			// new collision found, drop focus
+	// 			old_target.scale = 1
+	// 		}
+	// 		old_target = target
+	// 		old_target.scale = 5
+	// 	}
+	// }
 
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {

@@ -123,16 +123,20 @@ layout_subtree :: proc (root: ^Entity) {
 }
 
 // If this is the focus and a click happened.
-button :: proc (data: $Arg, _proc: proc (Arg)) {
+button :: proc (loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)
 	if is_new {
 		entity.variant = UI_Element {
 			type = .Box
 		}
+
+		entity.flags += {.Collider_Enabled}
+		entity.collider.shape = .Circle
+		entity.collider.half_size = 50
 		// This gist is that the GPU always gets the transform and the shader uses it.
-		mesh := geom_make_quad(1)
+		mesh := geom_make_quad(1, context.temp_allocator)
 		entity.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
-		delete(mesh.vertices)
-		delete(mesh.indices)
 	}
+
+	return entity
 }

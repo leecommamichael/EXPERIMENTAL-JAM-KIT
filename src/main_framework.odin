@@ -102,52 +102,17 @@ framework_step :: proc (dt: f64) {
 		if .Collider_Enabled not_in entity.flags { continue }
 		assert(entity.collider.shape != nil)
 		collider_loop: for &other in globals.entities {
-			if .Collider_Enabled not_in other.flags || entity == other { continue }
 			for pair in globals.collisions {
 				if pair.ids[0] == entity.id && pair.ids[1] == other.id \
 				|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
-					continue collider_loop
+					continue
 				}
 			}
-
-			assert(other.collider.shape != nil)
-			switch entity.collider.shape {
-			case .None: continue
-			case .Point://///////////////// entity is point
-				switch other.collider.shape {
-				case .Point: detect_collision_point_point(entity, other)
-				case .AABB:  detect_collision_aabb_point(other, entity)
-				// case .Rect:   // P:Rect
-				case .Circle: detect_collision_circle_point(other, entity)
-				case .None: continue
-				}
-			case .AABB://////////////////// entity is AABB
-				switch other.collider.shape {
-				case .Point: detect_collision_aabb_point(entity, other)
-				case .AABB:  detect_collision_aabb_aabb(entity, other)
-				// case .Rect:   // AABB:Rect
-				case .Circle: detect_collision_aabb_circle(entity, other)
-				case .None: continue
-				}
-			// case .Rect:////////////////////
-			// 	switch other.collider.shape {
-			// 	case .Point:  // Rect:P
-			// 	case .AABB:   // Rect:AABB
-			// 	// case .Rect:   // Rect:Rect
-			// 	case .Circle: // Rect:Circle
-			// 	case .None: continue
-			// 	}
-			case .Circle:////////////////// entity is Circle
-				switch other.collider.shape {
-				case .Point:  detect_collision_circle_point(entity, other)
-				case .AABB:   detect_collision_aabb_circle(other, entity)
-				// case .Rect:   // Circle: Rect
-				case .Circle: detect_collision_circle_circle(entity, other)
-				case .None: continue
-				}
+			if entity_contains_entity(entity, other) {
+				append(&globals.collisions, Collision {{entity.id, other.id}})
 			}
-		}
-	}
+		} // collider_loop
+	} // reverse entity loop
 
 ////////////////////////////////////////////////////////////////////////////////
 // THIS SORT DEFINES THE DEPTH BUFFER.
@@ -161,55 +126,103 @@ framework_step :: proc (dt: f64) {
 	ren_draw(globals.ren)
 }
 
-detect_collision_aabb_aabb     :: proc (box1, box2: ^Entity) {
+hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
 	TR1 := box1.position + box1.collider.half_size
 	BL1 := box1.position - box1.collider.half_size
 	TR2 := box2.position + box2.collider.half_size
 	BL2 := box2.position - box2.collider.half_size
-	if (TR2.x <= TR1.x && BL1.x <= TR2.x  \
+	return \
+	   (TR2.x <= TR1.x && BL1.x <= TR2.x  \
 	&&  TR2.y <= TR1.y && BL1.y <= TR2.y  \
 	&&  TR2.z <= TR1.z && BL1.z <= TR2.z) \
 	|| (BL2.x <= TR1.x && BL1.x <= BL2.x  \
 	&&  BL2.y <= TR1.y && BL1.y <= BL2.y  \
-	&&  BL2.z <= TR1.z && BL1.z <= BL2.z) {
-		append(&globals.collisions, Collision {{box1.id, box2.id}})
-	}
+	&&  BL2.z <= TR1.z && BL1.z <= BL2.z)
 }
-detect_collision_point_point   :: proc (p1, p2: ^Entity) {
-	if is_nearly(p1.position, p2.position) {
-		append(&globals.collisions, Collision {{p1.id, p2.id}})
-	}
+hit_test_point_point   :: proc (p1, p2: ^Entity) -> bool {
+	return is_nearly(p1.position, p2.position)
 }
-detect_collision_aabb_circle   :: proc (box, circle: ^Entity) {
+hit_test_aabb_circle   :: proc (box, circle: ^Entity) -> bool {
 	// There's an equivalence for the case of AABBs.
-	detect_collision_aabb_aabb(box, circle)
+	return hit_test_aabb_aabb(box, circle)
 }
-detect_collision_aabb_point    :: proc (box,p: ^Entity) {
+hit_test_aabb_point    :: proc (box,p: ^Entity) -> bool {
 	TR := box.position + box.collider.half_size
 	BL := box.position - box.collider.half_size
 	point := p.position
-	if point.x <= TR.x && BL.x <= point.x\
+	return \
+	   point.x <= TR.x && BL.x <= point.x\
 	&& point.y <= TR.y && BL.y <= point.y\
-	&& point.z <= TR.z && BL.z <= point.z {
-		append(&globals.collisions, Collision {{box.id, p.id}})
-	}
+	&& point.z <= TR.z && BL.z <= point.z
 }
-detect_collision_circle_circle :: proc (circle1, circle2: ^Entity) {
+hit_test_circle_circle :: proc (circle1, circle2: ^Entity) -> bool {
 	dist := distance(circle1.position, circle2.position)
-	if dist <= (circle1.collider.half_size.x + circle2.collider.half_size.x) {
-		append(&globals.collisions, Collision {{circle1.id, circle2.id}})
-	}
+	return dist <= (circle1.collider.half_size.x + circle2.collider.half_size.x)
 }
-detect_collision_circle_point  :: proc (circle, point: ^Entity) {
+hit_test_circle_point  :: proc (circle, point: ^Entity) -> bool {
 	dist := distance(circle.position, point.position)
-	if dist <= circle.collider.half_size.x {
-		append(&globals.collisions, Collision {{circle.id, point.id}})
-	}
+	return dist <= circle.collider.half_size.x
 }
-detect_collision_rect_rect     :: proc (r1,r2: ^Entity) { panic("TODO") }
-detect_collision_rect_aabb     :: proc (r,bb: ^Entity) { panic("TODO") }
-detect_collision_rect_circle   :: proc (r,c: ^Entity) { panic("TODO") }
-detect_collision_rect_point    :: proc (r,p: ^Entity) { panic("TODO") }
+hit_test_rect_rect     :: proc (r1,r2: ^Entity) -> bool { panic("TODO") }
+hit_test_rect_aabb     :: proc (r,bb: ^Entity) -> bool { panic("TODO") }
+hit_test_rect_circle   :: proc (r,c: ^Entity) -> bool { panic("TODO") }
+hit_test_rect_point    :: proc (r,p: ^Entity) -> bool { panic("TODO") }
+
+entity_contains_entity :: proc (entity, other: ^Entity) -> bool {
+	if .Collider_Enabled not_in other.flags \
+	|| .Collider_Enabled not_in entity.flags \
+	|| entity == other {
+		return false
+	}
+
+	assert(other.collider.shape != nil)
+	collision_detected: bool
+	switch entity.collider.shape {
+	case .None:
+	case .Point://///////////////// entity is point
+		switch other.collider.shape {
+		case .Point:
+			collision_detected = hit_test_point_point(entity, other)
+		case .AABB:
+			collision_detected = hit_test_aabb_point(other, entity)
+		// case .Rect:   // P:Rect
+		case .Circle:
+			collision_detected = hit_test_circle_point(other, entity)
+		case .None:
+		}
+	case .AABB://////////////////// entity is AABB
+		switch other.collider.shape {
+		case .Point:
+			collision_detected = hit_test_aabb_point(entity, other)
+		case .AABB: 
+			collision_detected = hit_test_aabb_aabb(entity, other) 
+		// case .Rect:   // AABB:Rect
+		case .Circle:
+			collision_detected = hit_test_aabb_circle(entity, other)
+		case .None:
+		}
+	// case .Rect:////////////////////
+	// 	switch other.collider.shape {
+	// 	case .Point:  // Rect:P
+	// 	case .AABB:   // Rect:AABB
+	// 	// case .Rect:   // Rect:Rect
+	// 	case .Circle: // Rect:Circle
+	// 	case .None: continue
+	// 	}
+	case .Circle:////////////////// entity is Circle
+		switch other.collider.shape {
+		case .Point:
+			collision_detected = hit_test_circle_point(entity, other)
+		case .AABB:
+			collision_detected = hit_test_aabb_circle(other, entity)
+		// case .Rect:   // Circle: Rect
+		case .Circle:
+			collision_detected = hit_test_circle_circle(entity, other)
+		case .None:
+		}
+	}
+	return collision_detected
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Entity 
@@ -222,6 +235,7 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.scale = 1
 	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
+	entity.color.rgb = 0.9
 	entity.time_scale = 1
 	entity.collider = {}
 	entity.collider.layer = { .Default }

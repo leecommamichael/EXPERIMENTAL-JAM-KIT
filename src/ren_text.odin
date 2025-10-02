@@ -32,6 +32,7 @@ make_text :: proc (
 		message,
 		&globals.fonts[usage][variant],
 	}
+	set_text(entity)
 	entity.color = 1
 	return entity
 }
