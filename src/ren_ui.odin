@@ -8,11 +8,12 @@ UI_Element_Type :: enum { Row, Column, Box, Root }
 
 UI_Element :: struct {
 	type:                 UI_Element_Type,
-	main_axis_alignment:  Alignment,
-	cross_axis_alignment: Alignment,
-	padding:              [Direction]f32,
+	// main_axis_alignment:  Alignment,
+	// cross_axis_alignment: Alignment,
+	// padding:              [Direction]f32,
 }
 
+// Marks this part of the tree as a layout subtree.
 ui_element :: proc (child: ^Entity, loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)
 	entity.children = make([]^Entity, 1, context.temp_allocator)
@@ -118,5 +119,20 @@ layout_subtree :: proc (root: ^Entity) {
 		root.scale.x = main_axis_offset
 		root.scale.y = max_cross_axis_size
 	case .Box: break
+	}
+}
+
+// If this is the focus and a click happened.
+button :: proc (data: $Arg, _proc: proc (Arg)) {
+	entity, is_new := do_entity(loc)
+	if is_new {
+		entity.variant = UI_Element {
+			type = .Box
+		}
+		// This gist is that the GPU always gets the transform and the shader uses it.
+		mesh := geom_make_quad(1)
+		entity.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
+		delete(mesh.vertices)
+		delete(mesh.indices)
 	}
 }

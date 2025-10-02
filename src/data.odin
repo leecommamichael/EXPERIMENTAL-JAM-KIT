@@ -50,8 +50,10 @@ Globals :: struct {
 
 	gravity:    Vec3,
 	collisions: [dynamic]Collision,
-	pointer_focus:     ^Entity,
-	other_input_focus: ^Entity, // gamepads, keyboards
+	pointer_focus: ^Entity,
+	button_focus:  ^Entity,
+	// frame_pointer_press:   Vec2, // point of this frame's press
+	// frame_pointer_release: Vec2, // point of this frame's release
 
 	// App Data
 	water_plane:     ^Entity,

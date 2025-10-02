@@ -70,7 +70,7 @@ sprite :: proc (filename: string) -> ^Entity {
 		}
 	}
 	entity.variant = sprite_state
-	mesh: Geom_Mesh2 = geom_make_quad(1)
+	mesh: Geom_Mesh2 = geom_make_quad(1, context.temp_allocator)
 	entity.draw_command = sprite_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	return entity
 }

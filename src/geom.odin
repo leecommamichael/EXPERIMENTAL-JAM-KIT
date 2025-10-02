@@ -107,6 +107,7 @@ geom_make_faces_between_rings :: proc (
 
 geom_make_cylinder :: proc (
   vector: Vec3,
+  allocator: runtime.Allocator
 ) -> Geom_Mesh {
 using glsl
   CYLINDER_SIDES :: 12
@@ -134,14 +135,14 @@ using glsl
   // The tip's ring is translated away from the origin after rotating.
   rotate_tip_ring := _translate_back * rotate_tail_ring
 
-  mesh: [dynamic]vec3 = make([dynamic]vec3)
+  mesh: [dynamic]vec3 = make([dynamic]vec3, allocator)
   geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
   geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
   verts_per_mesh: u32 : CYLINDER_SIDES + 1 // plus center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32)
+  indices: [dynamic]u32 = make([dynamic]u32, allocator)
   geom_make_cap_indices(&indices, 0, CYLINDER_SIDES)
   geom_make_cap_indices(&indices, verts_per_mesh, CYLINDER_SIDES)
   geom_make_faces_between_rings(&indices, 0, verts_per_mesh, CYLINDER_SIDES)
@@ -152,6 +153,7 @@ using glsl
 // On the XY plane
 geom_make_quad :: proc (
   size: Vec2,
+  allocator: runtime.Allocator
 ) -> (m: Geom_Mesh2) {
 using glsl
   p :: 0.5
@@ -159,8 +161,8 @@ using glsl
   TR :: Vec3{  p, p, 0, }
   BL :: Vec3{ -p,-p, 0, }
   BR :: Vec3{  p,-p, 0, }
-  m.vertices = make([]Ren_Vertex_Base, 4)
-  m.indices = make([]u32, 6)
+  m.vertices = make([]Ren_Vertex_Base, 4, allocator)
+  m.indices = make([]u32, 6, allocator)
   //                position                            | tex  | norm
   m.vertices[0] = {{ TL.x * size.x , TL.y * size.y , 0 }, {0,0}, {}}
   m.vertices[1] = {{ TR.x * size.x , TR.y * size.y , 0 }, {1,0}, {}}
@@ -188,14 +190,15 @@ using glsl
 // We know the names of points, as labeled above. (indexes)
 // The only task is to ensure inserting them in that order.
 geom_make_xz_plane :: proc (
-  squares_per_axis: u32
+  squares_per_axis: u32,
+  allocator: runtime.Allocator
 ) -> (result: Geom_Mesh2) {
   axis_vert_count: u32 = (squares_per_axis+1)
   axis_vert_count_squared := axis_vert_count * axis_vert_count
-  vertices := make([dynamic]Ren_Vertex_Base, 0, axis_vert_count_squared)
+  vertices := make([dynamic]Ren_Vertex_Base, 0, axis_vert_count_squared, allocator)
   indices_per_square :: 6
   indices_needed := squares_per_axis * squares_per_axis * indices_per_square
-  indices := make([dynamic]u32, 0, indices_needed)
+  indices := make([dynamic]u32, 0, indices_needed, allocator)
 
   z: u32 = 0
   // 0 1 2 3 4 5

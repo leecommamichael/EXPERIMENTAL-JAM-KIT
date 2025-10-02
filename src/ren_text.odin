@@ -48,11 +48,10 @@ text :: proc (
 		&globals.fonts[usage][variant],
 	}
 	entity.color = 1
+	if is_new || message != entity.variant.(Text_State).text {
+		set_text(entity)
+	}
 	return entity
-}
-
-set_text :: proc (entity: ^Entity, text: string) {
-
 }
 
 Font_Usage :: enum {
@@ -92,7 +91,7 @@ Font :: struct {
 // Framework Integration Implementation
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
-step_text :: proc (entity: ^Entity, immediate: bool, just_measure := false) {
+set_text :: proc (entity: ^Entity) {
 	variant := entity.variant.(Text_State)
 	verts_needed   := len(variant.text) * 4
 	indices_needed := len(variant.text) * 6
@@ -126,20 +125,7 @@ step_text :: proc (entity: ^Entity, immediate: bool, just_measure := false) {
 		indices[(6*gnum)-2] = u32(4*glyph_index)+1 // TR
 		indices[(6*gnum)-1] = u32(4*glyph_index)+2 // BL
 	}
-// Flush Instance //////////////////////////////////////////////////////////////
-	if immediate {
-		globals.instance_staging[entity.id] = {
-			model_transform = linalg.matrix4_translate(entity.position) *
-												linalg.matrix4_from_euler_angles_xyz_f32(entity.rotation.x, 
-												                                         entity.rotation.y, 
-												                                         entity.rotation.z) *
-												linalg.matrix4_scale(entity.scale),
-			color = entity.color
-		}
-		gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
-		gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[entity.id:entity.id+1])
-		gl.BindBuffer(.ARRAY_BUFFER, 0)
-	}
+
 	entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
 }
 

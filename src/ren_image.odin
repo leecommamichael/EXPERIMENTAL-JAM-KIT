@@ -48,7 +48,7 @@ make_image :: proc (filename: string) -> ^Entity {
 }
 
 init_image :: proc (entity: ^Entity) -> ^Entity {
-	mesh: Geom_Mesh2 = geom_make_quad(1)
+	mesh: Geom_Mesh2 = geom_make_quad(1, context.temp_allocator)
 	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	return entity
 }

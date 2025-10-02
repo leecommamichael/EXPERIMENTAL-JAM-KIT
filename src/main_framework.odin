@@ -83,7 +83,7 @@ framework_step :: proc (dt: f64) {
 			free_entity(entity) // mutates this array, hence the #reverse.
 			continue
 		}
-		
+
 		if variant, is_ui := entity.variant.(UI_Element); is_ui {
 			if variant.type == .Root {
 				layout_subtree(entity)
@@ -150,7 +150,7 @@ framework_step :: proc (dt: f64) {
 	}
 
 ////////////////////////////////////////////////////////////////////////////////
-// DO NOT MUTATE POSITION AFTER THIS POINT
+// THIS SORT DEFINES THE DEPTH BUFFER.
 ////////////////////////////////////////////////////////////////////////////////
   slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
     return i.distance_from_camera > j.distance_from_camera
@@ -291,7 +291,7 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	if .Hidden not_in entity.flags {
 		switch &variant in entity.variant {
 		case nil: // general-purpose entity
-		case Text_State:   step_text(entity, immediate=false)
+		case Text_State:   //step_text(entity, immediate=false)
 		case Image_State:  step_image(entity, immediate=false)
 		case Sprite_State: step_sprite(entity, immediate=false)
 		case UI_Element:   // find root and position children.

@@ -17,7 +17,7 @@ cursor: ^Entity
 
 game_init :: proc () {
 	globals.camera.position.y = 5
-	globals.plane_mesh = geom_make_xz_plane(squares_per_axis = AXIS_SQUARES)
+	globals.plane_mesh = geom_make_xz_plane(AXIS_SQUARES, context.temp_allocator)
 
 	globals.water_plane = make_entity()
 	globals.water_plane.flags += {.Is_3D }
@@ -94,8 +94,6 @@ game_step :: proc () {
 		}
 	} else {
 
-		img := image(`gameplayboard.aseprite`)
-		img.position.xy = {100.0, 100.0}
 		if target != old_target {
 			// new target, drop focus on old.
 			if old_target != nil {
@@ -107,8 +105,6 @@ game_step :: proc () {
 		}
 	}
 
-	t := text(`immediately!!`)
-	t.position = {200,300,4}
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1
