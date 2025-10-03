@@ -84,6 +84,7 @@ Entity :: struct {
 	using transform: Transform,
 	using instance:  ^Any_Instance,
 	draw_command:    Draw_Command,
+	ui: bit_set[UI_Element_State],
 	variant: union {
 		UI_Element,
 		Text_State,

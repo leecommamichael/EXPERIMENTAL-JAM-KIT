@@ -7,7 +7,7 @@ Direction :: enum { Left, Right, Top, Bottom }
 UI_Element_Type :: enum { Row, Column, Box, Root }
 
 UI_Element :: struct {
-	type:                 UI_Element_Type,
+	type:   UI_Element_Type,
 	// main_axis_alignment:  Alignment,
 	// cross_axis_alignment: Alignment,
 	// padding:              [Direction]f32,
@@ -22,6 +22,7 @@ ui_element :: proc (child: ^Entity, loc := #caller_location) -> ^Entity {
 		type = .Root
 	}
 	entity.flags += { .Hidden }
+	layout_subtree(entity)
 	return entity
 }
 
@@ -122,20 +123,48 @@ layout_subtree :: proc (root: ^Entity) {
 	}
 }
 
-// If this is the focus and a click happened.
+//
+//
+// button_area
+// text_button  //
+// image_button // ninepatch or not
+//
+// Anything that has to wait on layout can't be as immediate. Right?
+// Well, no, layout just needs to be immediate.
+// The thing is, layout needs to be recomputed if the state changes.
+// And state is evaluated after game_step in (in fmwk_step) an attempt to let the user set properties after construction.
+// So the whole point is, arguments passed to the entity can't be the deciding factor.
+// This isn't a limitation of this API, though. 
+//
+// I cache entities between frames.
+// I don't want the user to be manually adding children to a UI container.
+// I want there to be some conditional which causes more or fewer things to be present.
+// At the end of the day, you're the one passing the array of children.
+//
+// So when to do layout?
+// I wouldn't even be against a flag which says immediate-or_not. I guess it doesn't matter.
+
+UI_Element_State :: enum { Hovered, Pressed }
+import "sugar"
 button :: proc (loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)
 	if is_new {
 		entity.variant = UI_Element {
 			type = .Box
 		}
-
 		entity.flags += {.Collider_Enabled}
 		entity.collider.shape = .Circle
 		entity.collider.half_size = 50
 		// This gist is that the GPU always gets the transform and the shader uses it.
 		mesh := geom_make_quad(1, context.temp_allocator)
 		entity.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
+	}
+
+	if entity_contains_entity(cursor, entity) {
+		entity.ui += {.Hovered}
+		if sugar.is_key_pressed(.Left_Mouse) {
+			entity.ui += {.Pressed}
+		}
 	}
 
 	return entity

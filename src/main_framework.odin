@@ -84,11 +84,6 @@ framework_step :: proc (dt: f64) {
 			continue
 		}
 
-		if variant, is_ui := entity.variant.(UI_Element); is_ui {
-			if variant.type == .Root {
-				layout_subtree(entity)
-			}
-		}
 ////////////////////////////////////////////////////////////////////////////////
 		entity_step(entity) or_continue
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +286,8 @@ free_entity :: proc (entity: ^Entity) {
 // The entity gets some time to do whatever.
 // Data which is derivable from Entity variant data is computed here.
 entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
+	entity.ui = {}
+
 	if .Allocated not_in entity.flags {
 		assert(false) // freed objects shouldn't make it here.
 	}

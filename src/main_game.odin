@@ -48,7 +48,7 @@ game_init :: proc () {
 
 	hello := make_text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
-	// hello.color = Vec4{0,0,0, 1.0}
+	// hello.color = Vec4{0,0,0, 1.0
 	hello.position.x = 400
 	hello.position.z = 4
 }
@@ -60,32 +60,33 @@ game_step :: proc () {
 	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
 	cursor.position.z = -1.5
 
-	b := button()
-	b.position.z = 0
-	b.position.xy = {500,100}
-	b.scale.xy = {100,100}
-	if entity_contains_entity(cursor, b) {
-		b.color.rgb = {0.8, 0.2, 0.2}
-	} else {
-		b.color.rgb = 0.2
+	btn := button()
+	btn.position.z = 0
+	btn.position.xy = {500,100}
+	btn.scale.xy = {100,100}
+	btn.color.rgb = 0.2
+	if .Pressed in btn.ui {
+			btn.color.rgb = {0.8, 0.2, 0.2} - 0.1
+	} else if .Hovered in btn.ui {
+			btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
-		ro := ui_element(
-			row(
-				text("rThis"),
-				text("isRow"),
-			)
+	ro := ui_element(
+		row(
+			text("rThis"),
+			text("isRow"),
 		)
-		ro.position.xy = {32,32}
-		elem := ui_element(
-			column(
-				text("This"),
-				text("is"),
-				text("a"),
-				text("_"),
-				text("column")
-			)
+	)
+	ro.position.xy = {32,32}
+	elem := ui_element(
+		column(
+			text("This"),
+			text("is"),
+			text("a"),
+			text("_"),
+			text("column")
 		)
+	)
 
 	// target: ^Entity
 	// for coll in globals.collisions {
