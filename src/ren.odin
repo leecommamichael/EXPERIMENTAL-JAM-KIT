@@ -165,6 +165,60 @@ ren_draw :: proc (ren: ^Ren) {
 // Section: Draw Commands
 //////////////////////////////////////////////////////////////////////
 
+use_basic_vertex_attribute_layout :: proc (
+	VAO: ^gl.VertexArrayObject,
+	VBO: gl.Buffer,
+	instance_buffer: gl.Buffer,
+	instance_index: int,
+) {
+	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
+	attributes: []Attribute_Binding = {
+		{
+			buffer = VBO,
+			rate   = .Vertex,
+			type   = .vec3,
+			stride = size_of(Ren_Vertex_Base), 
+			offset = offset_of(Ren_Vertex_Base, position)
+		},
+		{
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec2,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, texcoord)
+		},
+		{ 
+			buffer = VBO,
+			rate = .Vertex,
+			type = .vec3,
+			stride = size_of(Ren_Vertex_Base),
+			offset = offset_of(Ren_Vertex_Base, normal)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .mat4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, model_transform)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, uv_transform)
+		},
+		{
+			buffer = instance_buffer,
+			rate = .Instance,
+			type = .vec4,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, color)
+		},
+	}
+	set_VAO_attributes(VAO, attributes)
+}
+
 // Creates and initializes:
 //   - a vertex buffer.
 //   - an index buffer.
@@ -193,53 +247,7 @@ ren_make_basic_draw_cmd :: proc (
 	gl.GenBuffers(1, &cmd.index_buffer)
 	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
-
-	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
-	attributes: []Attribute_Binding = {
-		{
-			buffer = VBO,
-			rate   = .Vertex,
-			type   = .vec3,
-			stride = size_of(Ren_Vertex_Base), 
-			offset = offset_of(Ren_Vertex_Base, position)
-		},
-		{
-			buffer = VBO,
-			rate = .Vertex,
-			type = .vec2,
-			stride = size_of(Ren_Vertex_Base),
-			offset = offset_of(Ren_Vertex_Base, texcoord)
-		},
-		{ 
-			buffer = VBO,
-			rate = .Vertex,
-			type = .vec3,
-			stride = size_of(Ren_Vertex_Base),
-			offset = offset_of(Ren_Vertex_Base, normal)
-		},
-		{
-			buffer = instance_buffer,
-			rate = .Instance,
-			type = .mat4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, model_transform)
-		},
-		{
-			buffer = instance_buffer,
-			rate = .Instance,
-			type = .vec4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, uv_transform)
-		},
-		{
-			buffer = instance_buffer,
-			rate = .Instance,
-			type = .vec4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, color)
-		},
-	}
-	set_VAO_attributes(&cmd.VAO, attributes)
+	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, instance_buffer, instance_index)
 	return
 }
 
@@ -265,53 +273,8 @@ ren_make_text_draw_cmd :: proc (
 	gl.GenBuffers(1, &cmd.index_buffer)
 	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, instance_buffer, instance_index)
 
-	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
-	attributes: []Attribute_Binding = {
-		{
-			buffer = VBO,
-			rate   = .Vertex,
-			type   = .vec3,
-			stride = size_of(Ren_Vertex_Base), 
-			offset = offset_of(Ren_Vertex_Base, position)
-		},
-		{
-			buffer = VBO,
-			rate = .Vertex,
-			type = .vec2,
-			stride = size_of(Ren_Vertex_Base),
-			offset = offset_of(Ren_Vertex_Base, texcoord)
-		},
-		{
-			buffer = VBO,
-			rate = .Vertex,
-			type = .vec3,
-			stride = size_of(Ren_Vertex_Base),
-			offset = offset_of(Ren_Vertex_Base, normal)
-		},
-		{
-			buffer = instance_buffer,
-			rate = .Instance,
-			type = .mat4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, model_transform)
-		},
-		{
-			buffer = instance_buffer,
-			rate = .Instance,
-			type = .vec4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, uv_transform)
-		},
-		{
-			buffer = instance_buffer,
-			rate = .Instance,
-			type = .vec4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, color)
-		},
-	}
-	set_VAO_attributes(&cmd.VAO, attributes)
 	return
 }
 
@@ -337,52 +300,8 @@ ren_make_water_draw_cmd :: proc (
 	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 	
-	entity_offset := uintptr(size_of(Any_Instance) * entity_id) 
-	attributes: []Attribute_Binding = {
-		{
-			buffer = VBO,
-			rate   = .Vertex,
-			type   = .vec3,
-			stride = size_of(Ren_Vertex_Base), 
-			offset = offset_of(Ren_Vertex_Base, position)
-		},
-		{
-			buffer = VBO,
-			rate = .Vertex,
-			type = .vec2,
-			stride = size_of(Ren_Vertex_Base),
-			offset = offset_of(Ren_Vertex_Base, texcoord)
-		},
-		{ 
-			buffer = VBO,
-			rate = .Vertex,
-			type = .vec3,
-			stride = size_of(Ren_Vertex_Base),
-			offset = offset_of(Ren_Vertex_Base, normal)
-		},
-		{
-			buffer = globals.instance_buffer,
-			rate = .Instance,
-			type = .mat4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, model_transform)
-		},
-		{
-			buffer = globals.instance_buffer,
-			rate = .Instance,
-			type = .vec4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, uv_transform)
-		},
-		{
-			buffer = globals.instance_buffer,
-			rate = .Instance,
-			type = .vec4,
-			stride = size_of(Any_Instance),
-			offset = entity_offset + offset_of(Any_Instance, color)
-		},
-	}
-	set_VAO_attributes(&cmd.VAO, attributes)
+
+	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, globals.instance_buffer, cast(int)entity_id)
 	return
 }
 
