@@ -1,13 +1,21 @@
 package main
 
+import "base:runtime"
+
+Axis :: enum { Horizontal, Vertical }
+
 Alignment :: enum { Start, Center, End }
 
-Direction :: enum { Left, Right, Top, Bottom }
+Direction :: enum { Left, Right, Up, Down }
 
-UI_Element_Type :: enum { Row, Column, Box, Root }
+UI_Element_Type :: enum { None, Row, Column, Box, Root }
+
+UI_Element_State :: enum { Hovered, Pressed }
 
 UI_Element :: struct {
 	type:   UI_Element_Type,
+	state: bit_set[UI_Element_State],
+	focus: [Direction]^Entity,
 	// main_axis_alignment:  Alignment,
 	// cross_axis_alignment: Alignment,
 	// padding:              [Direction]f32,
@@ -15,80 +23,96 @@ UI_Element :: struct {
 
 // Marks this part of the tree as a layout subtree.
 ui_element :: proc (child: ^Entity, loc := #caller_location) -> ^Entity {
-	entity, is_new := do_entity(loc)
-	entity.children = make([]^Entity, 1, context.temp_allocator)
-	entity.children[0] = child
-	entity.variant = UI_Element {
-		type = .Root
+	// entity, is_new := do_entity(loc)
+	// entity.children = make([]^Entity, 1, context.temp_allocator)
+	// entity.children[0] = child
+	// entity.ui = UI_Element {
+	// 	type = .Root
+	// }
+	// entity.flags += { .Hidden }
+	layout_subtree(child)
+	return child
+}
+
+init_list_children :: proc (entity: ^Entity, main_axis: Axis) {
+	num_children := len(entity.children)
+	children := entity.children
+	for i in 0..< num_children {
+		next_or_wrap := i+1 if i+1 < num_children else 0
+		next_main: Direction = .Right if main_axis == .Horizontal else .Down
+		children[i].ui.focus[next_main] = children[next_or_wrap]
+
+		previous_or_wrap := i-1 if i-1 >= 0 else i
+		prev_main: Direction = .Left if main_axis == .Horizontal else .Up
+		children[i].ui.focus[prev_main] = children[previous_or_wrap]
+
+		children[i].parent = entity
 	}
-	entity.flags += { .Hidden }
-	layout_subtree(entity)
-	return entity
 }
 
 row :: proc (children: ..^Entity, loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)
+	entity.ui.type = .Row
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	copy(entity.children, children)
-	entity.variant = UI_Element {
-		type = .Row
-	}
 	entity.flags += { .Hidden }
+	init_list_children(entity, .Horizontal)
 	return entity
 }
 
 column :: proc (children: ..^Entity, loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)
+	entity.ui.type = .Column
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	copy(entity.children, children)
-	entity.variant = UI_Element {
-		type = .Column
-	}
 	entity.flags += { .Hidden }
+	init_list_children(entity, .Vertical)
 	return entity
 }
 
 measure_entity :: proc (entity: ^Entity) -> Vec2 {
-	switch variant in entity.variant {
-	case Image_State:
-		return entity.basis.scale.xy + entity.scale.xy
-	case Sprite_State:
-		return entity.basis.scale.xy + entity.scale.xy
-	case Text_State:
-		return measure_text(entity^)
-	case UI_Element:
-		switch variant.type {
-		case .Root: 
-			return measure_entity(entity.children[0])
-		case .Row:
-			size: Vec2
-			for child in entity.children {
-				child_size := measure_entity(child)
-				size.x += child_size.x
-				if child_size.y > size.y { size.y = child_size.y }
-			}
-			return size
-		case .Column:
-			size: Vec2
-			for child in entity.children {
-				child_size := measure_entity(child)
-				size.y += child_size.y
-				if child_size.x > size.x { size.x = child_size.x }
-			}
-			return size
-		case .Box:
+	switch entity.ui.type {
+	case .None: // Not a UI element, but some we can measure.
+		switch variant in entity.variant {
+		case Image_State:
 			return entity.basis.scale.xy + entity.scale.xy
+		case Sprite_State:
+			return entity.basis.scale.xy + entity.scale.xy
+		case Text_State:
+			return measure_text(entity^)
 		}
+	case .Root: 
+		return measure_entity(entity.children[0])
+	case .Row:
+		size: Vec2
+		for child in entity.children {
+			child_size := measure_entity(child)
+			size.x += child_size.x
+			if child_size.y > size.y { size.y = child_size.y }
+		}
+		return size
+	case .Column:
+		size: Vec2
+		for child in entity.children {
+			child_size := measure_entity(child)
+			size.y += child_size.y
+			if child_size.x > size.x { size.x = child_size.x }
+		}
+		return size
+	case .Box:
+		return entity.basis.scale.xy + entity.scale.xy
 	}
+	
 	panic("Exhaustive Switch")
 }
 
 // Modifies the sizes and positions of elements.
-// To be done some time before render.
+// Finalizes focus tree.
 layout_subtree :: proc (root: ^Entity) {
-	ui_element := root.variant.(UI_Element)
+	ui_element := root.ui
 	// size := measure_entity(root)
 	switch ui_element.type {
+	case .None: // TODO: position and size the entity.variant
 	case .Root:
 		root.children[0].position = root.position
 		root.children[0].scale = root.scale
@@ -144,12 +168,11 @@ layout_subtree :: proc (root: ^Entity) {
 // So when to do layout?
 // I wouldn't even be against a flag which says immediate-or_not. I guess it doesn't matter.
 
-UI_Element_State :: enum { Hovered, Pressed }
 import "sugar"
 button :: proc (loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)
 	if is_new {
-		entity.variant = UI_Element {
+		entity.ui = UI_Element {
 			type = .Box
 		}
 		entity.flags += {.Collider_Enabled}
@@ -161,9 +184,9 @@ button :: proc (loc := #caller_location) -> ^Entity {
 	}
 
 	if entity_contains_entity(cursor, entity) {
-		entity.ui += {.Hovered}
+		entity.ui.state += {.Hovered}
 		if sugar.is_key_pressed(.Left_Mouse) {
-			entity.ui += {.Pressed}
+			entity.ui.state += {.Pressed}
 		}
 	}
 

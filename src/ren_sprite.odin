@@ -75,14 +75,6 @@ sprite :: proc (filename: string) -> ^Entity {
 	return entity
 }
 
-// do_sprite :: proc (filename: string, position: Vec3) -> (events: bit_set[Sprite_Event]) {
-// 	entity := sprite(filename)
-// 	events = step_sprite(entity, immediate=true)
-// 	ren_draw_entity(globals.ren, transmute(^Entity) entity)
-// 	free_entity(entity)
-// 	return
-// }
-
 /**/	Sprite_Event :: enum {
 /**/		None,
 /**/		Repetition_Completed,

@@ -305,7 +305,6 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 		case Text_State:   //step_text(entity, immediate=false)
 		case Image_State:  step_image(entity, immediate=false)
 		case Sprite_State: step_sprite(entity, immediate=false)
-		case UI_Element:   // find root and position children.
 		}
 	}
 

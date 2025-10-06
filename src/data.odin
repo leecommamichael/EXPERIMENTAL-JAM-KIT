@@ -84,9 +84,8 @@ Entity :: struct {
 	using transform: Transform,
 	using instance:  ^Any_Instance,
 	draw_command:    Draw_Command,
-	ui: bit_set[UI_Element_State],
+	ui: UI_Element,
 	variant: union {
-		UI_Element,
 		Text_State,
 		Image_State,
 		Sprite_State,
@@ -97,6 +96,7 @@ Entity :: struct {
 	acceleration:         Vec3,
 	angular_velocity:     Vec3,
 	angular_acceleration: Vec3,
+	parent: ^Entity,
 	children: []^Entity,
 }
 

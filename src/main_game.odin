@@ -22,7 +22,8 @@ game_init :: proc () {
 	globals.water_plane = make_entity()
 	globals.water_plane.flags += {.Is_3D }
 	globals.water_plane.draw_command = ren_make_water_draw_cmd(
-		globals.water_plane.id,
+		globals.instance_buffer,
+		cast(int) globals.water_plane.id,
 		globals.plane_mesh.vertices[:],
 		globals.plane_mesh.indices[:])
 	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
@@ -48,7 +49,7 @@ game_init :: proc () {
 
 	hello := make_text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
-	// hello.color = Vec4{0,0,0, 1.0
+	// hello.color = Vec4{0,0,0, 1.0}
 	hello.position.x = 400
 	hello.position.z = 4
 }
@@ -65,9 +66,9 @@ game_step :: proc () {
 	btn.position.xy = {500,100}
 	btn.scale.xy = {100,100}
 	btn.color.rgb = 0.2
-	if .Pressed in btn.ui {
+	if .Pressed in btn.ui.state {
 			btn.color.rgb = {0.8, 0.2, 0.2} - 0.1
-	} else if .Hovered in btn.ui {
+	} else if .Hovered in btn.ui.state {
 			btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
@@ -87,34 +88,6 @@ game_step :: proc () {
 			text("column")
 		)
 	)
-
-	// target: ^Entity
-	// for coll in globals.collisions {
-	// 	if coll.ids[0] == cursor.id {
-	// 		target = &globals._entity_storage[coll.ids[1]]
-	// 	} else if coll.ids[1] == cursor.id {
-	// 		target = &globals._entity_storage[coll.ids[0]]
-	// 	}
-	// }
-
-	// if target == nil {
-	// 	if old_target != nil {
-	// 		// no collision found, drop focus
-	// 		old_target.scale = 1
-	// 		old_target = nil
-	// 	}
-	// } else {
-
-	// 	if target != old_target {
-	// 		// new target, drop focus on old.
-	// 		if old_target != nil {
-	// 			// new collision found, drop focus
-	// 			old_target.scale = 1
-	// 		}
-	// 		old_target = target
-	// 		old_target.scale = 5
-	// 	}
-	// }
 
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {

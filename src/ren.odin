@@ -279,7 +279,8 @@ ren_make_text_draw_cmd :: proc (
 }
 
 ren_make_water_draw_cmd :: proc (
-	entity_id: Entity_ID,
+	instance_buffer: gl.Buffer,
+	instance_index: int,
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
 ) -> (cmd: Draw_Command) {
@@ -301,7 +302,7 @@ ren_make_water_draw_cmd :: proc (
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 	
 
-	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, globals.instance_buffer, cast(int)entity_id)
+	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, globals.instance_buffer, instance_index)
 	return
 }
 
