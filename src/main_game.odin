@@ -66,29 +66,62 @@ game_step :: proc () {
 	btn.position.xy = {500,100}
 	btn.scale.xy = {100,100}
 	btn.color.rgb = 0.2
+	if globals.button_focus == btn {
+			btn.color.rgb = {0.2, 0.8, 0.2} + 0.1
+	}
 	if .Pressed in btn.ui.state {
 			btn.color.rgb = {0.8, 0.2, 0.2} - 0.1
 	} else if .Hovered in btn.ui.state {
 			btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
-	ro := ui_element(
-		row(
-			text("rThis"),
-			text("isRow"),
-		)
-	)
-	ro.position.xy = {32,32}
-	elem := ui_element(
-		column(
-			text("This"),
-			text("is"),
-			text("a"),
-			text("_"),
-			text("column")
-		)
-	)
+	next_btn := button()
+	next_btn.position.z = 0
+	next_btn.position.xy = {650,100}
+	next_btn.scale.xy = {100,100}
+	next_btn.color.rgb = 0.2
+	if globals.button_focus == next_btn {
+			next_btn.color.rgb = {0.2, 0.8, 0.2} + 0.1
+	}
+	if .Pressed in next_btn.ui.state {
+			next_btn.color.rgb = {0.8, 0.2, 0.2} - 0.1
+	} else if .Hovered in next_btn.ui.state {
+			next_btn.color.rgb = {0.8, 0.2, 0.2}
+	}
 
+	// ro := ui_element(
+	// 	row(
+	// 		text("rThis"),
+	// 		text("isRow"),
+	// 	)
+	// )
+	// ro.position.xy = {32,32}
+	// elem := ui_element(
+	// 	column(
+	// 		text("This"),
+	// 		text("is"),
+	// 		text("a"),
+	// 		text("_"),
+	// 		text("column")
+	// 	)
+	// )
+
+	
+	if globals.button_focus == nil { globals.button_focus = btn }
+	if sugar.on_button_press(.Left) {
+		if hit_test_ray_aabb(next_btn.position, 100*Vec3{-1,0,0}, btn) {
+			log.infof("Go Left")
+			globals.button_focus = btn
+		}
+	}
+	if sugar.on_button_press(.Right) {
+		hit_test_ray_aabb(btn.position,100*Vec3{1,0,0}, next_btn)
+		if hit_test_ray_aabb(btn.position, 100*Vec3{1,0,0}, next_btn) {
+			log.infof("Go Right")
+			globals.button_focus = next_btn
+		}
+	}
+	
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1

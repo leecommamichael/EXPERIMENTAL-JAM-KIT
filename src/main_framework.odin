@@ -162,6 +162,61 @@ hit_test_rect_rect     :: proc (r1,r2: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_aabb     :: proc (r,bb: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_circle   :: proc (r,c: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_point    :: proc (r,p: ^Entity) -> bool { panic("TODO") }
+// vector needs position and direction.
+hit_test_ray_aabb :: proc (s,v: Vec3, aabb: ^Entity) -> bool {
+	s := s - aabb.position
+	size := aabb.scale / 2
+	if v.x > -size.x {
+		// test against min_x
+		t := (-size.x - s.x) / v.x
+		p := s + t*v
+		in_y := -size.y <= p.y && p.y <= size.y
+		in_z := -size.z <= p.z && p.z <= size.z
+		if in_y && in_z { return true }
+	} else if v.x < -size.x {
+		// test against max_x
+		t := (size.x - s.x) / v.x
+		p := s + t*v
+		in_y := -size.y <= p.y && p.y <= size.y
+		in_z := -size.z <= p.z && p.z <= size.z
+		if in_y && in_z { return true }
+	}
+
+
+	if v.y > -size.y {
+		// test against min_y
+		t := (-size.y - s.y) / v.y
+		p := s + t*v
+		in_x := -size.x <= p.x && p.x <= size.x
+		in_z := -size.z <= p.z && p.z <= size.z
+		if in_x && in_z { return true }
+	} else if v.y < -size.y {
+		// test against max_y
+		t := (size.y - s.y) / v.y
+		p := s + t*v
+		in_x := -size.x <= p.x && p.x <= size.x
+		in_z := -size.z <= p.z && p.z <= size.z
+		if in_x && in_z { return true }
+	}
+
+	if v.z > -size.z {
+		// test against min_z
+		t := (-size.z - s.z) / v.z
+		p := s + t*v
+		in_x := -size.x <= p.x && p.x <= size.x
+		in_y := -size.y <= p.y && p.y <= size.y
+		if in_x && in_y { return true }
+	} else if v.z < -size.z {
+		// test against max_z
+		t := (size.z - s.z) / v.z
+		p := s + t*v
+		in_x := -size.x <= p.x && p.x <= size.x
+		in_y := -size.y <= p.y && p.y <= size.y
+		if in_x && in_y { return true }
+	}
+	
+	return false
+}
 
 entity_contains_entity :: proc (entity, other: ^Entity) -> bool {
 	if .Collider_Enabled not_in other.flags \
