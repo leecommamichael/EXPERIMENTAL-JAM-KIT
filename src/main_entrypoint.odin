@@ -35,7 +35,7 @@ main :: proc() {
 	log_time("initializing framework")
 
 	// sugar.capture_cursor()
-	// sugar.set_cursor_visible(false)
+	sugar.set_cursor_visible(false)
 
 	when !sugar.platform_calls_step {
 		tick := time.tick_now()

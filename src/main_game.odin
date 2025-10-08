@@ -40,12 +40,15 @@ game_init :: proc () {
 	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
+	// cursor = make_entity()
 	cursor = sprite(`berserker.aseprite`)
+	// cursor.draw_command = globals.collider_draw_commands[.Circle]
+	// set_basic_draw_command_instance(&cursor.draw_command, cursor^)
 	cursor.basis.scale /= 2
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
 	cursor.collider.shape = .Circle
-	cursor.collider.half_size = 2
+	cursor.collider.half_size = 20
 
 	hello := make_text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
@@ -59,7 +62,7 @@ old_target: ^Entity
 game_step :: proc () {
 	cursor.position.x = sugar.mouse_position.x
 	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
-	cursor.position.z = -1.5
+	cursor.position.z = 0
 
 	btn := button()
 	btn.position.z = 0
@@ -106,7 +109,9 @@ game_step :: proc () {
 	// 	)
 	// )
 
-	
+	if sugar.on_button_press(.Select) {
+		globals.draw_colliders = !globals.draw_colliders
+	}
 	if globals.button_focus == nil { globals.button_focus = btn }
 	if sugar.on_button_press(.Left) {
 		if hit_test_ray_aabb(next_btn.position, 100*Vec3{-1,0,0}, btn) {

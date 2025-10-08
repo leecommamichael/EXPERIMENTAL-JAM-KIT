@@ -90,23 +90,45 @@ framework_step :: proc (dt: f64) {
 
 		if .Is_3D in entity.flags {
 			append(&globals.entities_3D, entity)
+			if .Collider_Enabled in entity.flags {
+				// TODO 3D Collider Viz
+			}
 		} else {
 			append(&globals.entities_2D, entity)
+			if .Collider_Enabled in entity.flags {
+				e := get_temp_entity()
+				unit_circle_mesh := make_circle_2D(0.5, 64, context.allocator)
+				circle_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, cast(int)e.id, unit_circle_mesh.vertices, unit_circle_mesh.indices)
+				e.draw_command = circle_draw_cmd
+				// e.draw_command = globals.collider_draw_commands[entity.collider.shape]
+				// set_basic_draw_command_instance(&e.draw_command, e^)
+				e.flags -= { .Collider_Enabled }
+				// e.flags += { .Hidden }
+				e.transform = entity.transform
+				e.scale = entity.collider.half_size*2
+				e.position.z = entity.position.z + 10 // nearer
+				e.position = entity.position
+				e.color = 1
+				entity_step(e)
+				append(&globals.entities_2D, e)
+					// free_entity(e)
+			}
 		}
 
-		if .Collider_Enabled not_in entity.flags { continue }
-		assert(entity.collider.shape != nil)
-		collider_loop: for &other in globals.entities {
-			for pair in globals.collisions {
-				if pair.ids[0] == entity.id && pair.ids[1] == other.id \
-				|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
-					continue
+		if .Collider_Enabled in entity.flags {
+			assert(entity.collider.shape != nil)
+			collider_loop: for &other in globals.entities {
+				for pair in globals.collisions {
+					if pair.ids[0] == entity.id && pair.ids[1] == other.id \
+					|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
+						continue
+					}
 				}
-			}
-			if entity_contains_entity(entity, other) {
-				append(&globals.collisions, Collision {{entity.id, other.id}})
-			}
-		} // collider_loop
+				if entity_contains_entity(entity, other) {
+					append(&globals.collisions, Collision {{entity.id, other.id}})
+				}
+			} // collider_loop
+		}
 	} // reverse entity loop
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,6 +338,17 @@ entity_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
 	hash := xxhash.XXH3_64(hash_input[:])
 	delete(hash_input)
 	return hash
+}
+
+get_temp_entity :: proc () -> ^Entity {
+	for &mem, i in globals._entity_storage {
+		if .Allocated not_in mem.flags {
+			init_entity_memory(&mem, cast(Entity_ID) i)
+			entity := &mem
+			return entity
+		}
+	}
+	panic("Out of entities.")
 }
 
 make_entity :: proc () -> ^Entity {

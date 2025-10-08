@@ -5,6 +5,7 @@ import "core:mem"
 import "core:slice"
 import "core:strings"
 import "core:math/linalg"
+import "base:runtime"
 import gl "nord_gl"
 
 //////////////////////////////////////////////////////////////////////
@@ -35,7 +36,6 @@ ren_make :: proc () -> ^Ren {
 	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
 	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
-
 	return ren
 }
 
@@ -45,6 +45,23 @@ ren_init :: proc (ren: ^Ren) {
 	gl.BlendFunc(.ONE, .ONE_MINUS_SRC_ALPHA)
 	gl.Enable(.DEPTH_TEST)
 	gl.FrontFace(.CCW)
+
+	unit_circle_mesh := make_circle_2D(0.5, 64, context.allocator)
+	unit_quad_mesh := geom_make_quad(1.0, context.allocator)
+	globals.collider_meshes = {
+		.None = {},
+		.Point = unit_circle_mesh,
+		.AABB = unit_quad_mesh,
+		.Circle = unit_circle_mesh,
+	}
+	circle_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_circle_mesh.vertices, unit_circle_mesh.indices)
+	quad_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_quad_mesh.vertices, unit_quad_mesh.indices)
+	globals.collider_draw_commands = {
+		.None = {},
+		.Point = circle_draw_cmd,
+		.AABB = quad_draw_cmd,
+		.Circle = circle_draw_cmd,
+	}
 }
 
 FRAME_UNIFORM_INDEX :: 0
@@ -122,8 +139,6 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 	if .Hidden in entity.flags { return }
 
 	ren_bind_or_reuse_draw_command(entity)
-	// TODO: copy all instance-level data
-	instance_index := cast(int) entity.id
 	gl.DrawElements(
 		ren_mode_to_primitive(entity.draw_command.mode),
 		count  = entity.draw_command.index_count,
@@ -136,8 +151,6 @@ ren_clear :: proc () {
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT})
 }
 
-// ASSUME: data is sorted.
-// TODO: Render opaque Near to Far and do fragment discard.
 ren_draw :: proc (ren: ^Ren) {
 	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
 	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
@@ -161,15 +174,35 @@ ren_draw :: proc (ren: ^Ren) {
 	}
 }
 
+
 //////////////////////////////////////////////////////////////////////
 // Section: Draw Commands
 //////////////////////////////////////////////////////////////////////
 
-use_basic_vertex_attribute_layout :: proc (
-	VAO: ^gl.VertexArrayObject,
+// 1. Store the attribute bindings so it's easier to overwrite them.
+// 2. That doesn't help me diff. Just wanna set attrs 4,5,6
+// What's the ideal API?
+set_basic_draw_command_instance :: proc (cmd: ^Draw_Command, entity: Entity) {
+	entity_offset := uintptr(size_of(Any_Instance) * cast(int) entity.id)
+	cmd.attributes[3].offset = entity_offset + offset_of(Any_Instance, model_transform)
+	cmd.attributes[4].offset = entity_offset + offset_of(Any_Instance, uv_transform)
+	cmd.attributes[5].offset = entity_offset + offset_of(Any_Instance, color)
+	ensure(!(cmd.attributes[1].location == 0 && cmd.attributes[1].location == 0))
+	gl.BindVertexArray(cmd.VAO)
+	set_VAO_attribute(cmd.VAO, cmd.attributes[3])
+	set_VAO_attribute(cmd.VAO, cmd.attributes[4])
+	set_VAO_attribute(cmd.VAO, cmd.attributes[5])
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+	gl.BindVertexArray(0)
+	// set_VAO_attributes(cmd.VAO, cmd.attributes)
+}
+
+init_cmd_with_basic_vertex_attributes :: proc (
+	cmd: ^Draw_Command,
 	VBO: gl.Buffer,
 	instance_buffer: gl.Buffer,
 	instance_index: int,
+	allocator := context.allocator,
 ) {
 	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
 	attributes: []Attribute_Binding = {
@@ -216,7 +249,24 @@ use_basic_vertex_attribute_layout :: proc (
 			offset = entity_offset + offset_of(Any_Instance, color)
 		},
 	}
-	set_VAO_attributes(VAO, attributes)
+	// TODO: Delete this when I can create commands up-front and "inherit" them.
+	// Purpose 1. Rebinding/copying/templating from existing draws.
+	//            Only rebind attributes whose buffers change.
+	//            Ensures draw calls keep their attributes and associated resources.
+	// Purpose 2. Don't create loads of VAOs. Not certainly a good idea to optimize for.
+	// This will allow re-using VAOs, but not draw commands,
+	// and is to be deleted the moment I can query for commands and "inherit" them.
+	if len(cmd.attributes) < len(attributes) {
+		if len(cmd.attributes) > 0 {
+			delete(cmd.attributes)
+		} else {
+			cmd.attributes = make([]Attribute_Binding, len(attributes))
+			copy(cmd.attributes, attributes)
+		}
+	}
+	set_VAO_attributes(cmd.VAO, cmd.attributes)
+	ensure(len(cmd.attributes) > 2)
+	ensure(!(cmd.attributes[0].location == 0 && cmd.attributes[1].location == 0))
 }
 
 // Creates and initializes:
@@ -247,7 +297,7 @@ ren_make_basic_draw_cmd :: proc (
 	gl.GenBuffers(1, &cmd.index_buffer)
 	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
-	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, instance_buffer, instance_index)
+	init_cmd_with_basic_vertex_attributes(&cmd, VBO, instance_buffer, instance_index)
 	return
 }
 
@@ -273,7 +323,7 @@ ren_make_text_draw_cmd :: proc (
 	gl.GenBuffers(1, &cmd.index_buffer)
 	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
-	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, instance_buffer, instance_index)
+	init_cmd_with_basic_vertex_attributes(&cmd, VBO, instance_buffer, instance_index)
 
 	return
 }
@@ -302,15 +352,20 @@ ren_make_water_draw_cmd :: proc (
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 	
 
-	use_basic_vertex_attribute_layout(&cmd.VAO, VBO, globals.instance_buffer, instance_index)
+	init_cmd_with_basic_vertex_attributes(&cmd, VBO, globals.instance_buffer, instance_index)
 	return
 }
+
+
+//////////////////////////////////////////////////////////////////////
+// GL_UTIL
+//////////////////////////////////////////////////////////////////////
 
 GLES_MAX_BINDINGS :: 16 // per spec
 GLES_MAX_FRAGMENT_TEXTURES :: 16 // limit from Intel HD 4000
 
 set_VAO_attributes :: proc (
-	VAO:        ^gl.VertexArrayObject,
+	VAO:        gl.VertexArrayObject,
 	attributes: []Attribute_Binding,
 ) {
 	assert(len(attributes) <= GLES_MAX_BINDINGS , "GLSL shaders only have 16 slots.")
@@ -345,44 +400,49 @@ set_VAO_attributes :: proc (
 		}
 	}
 
-	// Create ideal VAO for this obj.
-	gl.BindVertexArray(VAO^)
-
+	gl.BindVertexArray(VAO)
 	for attr in attributes {
-		divisor: uint = 0 if attr.rate == .Vertex else 1
-		slots := slots_used_by_type(attr.type)
-		gl.BindBuffer(.ARRAY_BUFFER, attr.buffer)
-		for slot_num in 0..<slots {
-			index := attr.location + slot_num
-			num_components := attr.value_count / cast(int) slots
-			// WARNING: Breaks when you start needing ivecs... probably.
-			// This size_of in here is a little forceful.
-			// But usually if you've got a multi-slot it's an f32 matrix.
-			offset := attr.offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
-			if glsl_attrib_is_int(attr.type) {
-				gl.VertexAttribIPointer(
-					index      = index,
-					size       = num_components,
-					type       = attr.gl_type,
-					stride     = attr.stride,
-					offset     = offset
-				)
-			} else {
-				gl.VertexAttribPointer(
-					index      = index,
-					size       = num_components,
-					type       = attr.gl_type,
-					normalized = false,
-					stride     = attr.stride,
-					offset     = offset
-				)
-			}
-			gl.EnableVertexAttribArray(index)
-			gl.VertexAttribDivisor(index, divisor)
-		}
+		set_VAO_attribute(VAO, attr)
 	}
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 	gl.BindVertexArray(0)
+}
+
+set_VAO_attribute :: proc (
+	VAO:  gl.VertexArrayObject,
+	attr: Attribute_Binding,
+) {
+	divisor: uint = 0 if attr.rate == .Vertex else 1
+	slots := slots_used_by_type(attr.type)
+	gl.BindBuffer(.ARRAY_BUFFER, attr.buffer)
+	for slot_num in 0..<slots {
+		index := attr.location + slot_num
+		num_components := attr.value_count / cast(int) slots
+		// WARNING: Breaks when you start needing ivecs... probably.
+		// This size_of in here is a little forceful.
+		// But usually if you've got a multi-slot it's an f32 matrix.
+		offset := attr.offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
+		if glsl_attrib_is_int(attr.type) {
+			gl.VertexAttribIPointer(
+				index      = index,
+				size       = num_components,
+				type       = attr.gl_type,
+				stride     = attr.stride,
+				offset     = offset
+			)
+		} else {
+			gl.VertexAttribPointer(
+				index      = index,
+				size       = num_components,
+				type       = attr.gl_type,
+				normalized = false,
+				stride     = attr.stride,
+				offset     = offset
+			)
+		}
+		gl.EnableVertexAttribArray(index)
+		gl.VertexAttribDivisor(index, divisor)
+	}
 }
 
 glsl_attrib_is_int :: proc (type: GLSL_Attribute_Type) -> bool {
@@ -680,59 +740,3 @@ text_fragment_shader_source :: fragment_preamble + `
 		outColor = mix(vec4(0.0), io_color, io_color.a * glyph_alpha);
 	}
 `
-//////////////////////////////////////////////////////////////////////
-// Section: Geometry
-//////////////////////////////////////////////////////////////////////
-import "core:math/linalg/glsl"
-
-make_circle_cap_2D :: proc (
-  mesh: ^[dynamic]Ren_Vertex_Base,
-  sides: int,
-  radius: f32,
-) {
-  assert(mesh != nil)
-  // Begin by appending zero. (center point)
-  append(mesh, Ren_Vertex_Base { position = Vec4{0,0,0,1}.xyz })
-
-  // Find the step through the circle to make N sides. 0...(360-theta_step)
-  theta_step := glsl.radians_f32(360.0) / f32(sides)
-  for i in 0 ..< sides {
-    theta := f32(i) * theta_step
-    // I find it easier to look down at this shape from above,
-    // So for my imagination, the sine component is mapped to the Z dimension.
-    vertex: Ren_Vertex_Base
-    vertex.position = {
-      glsl.cos(theta) * radius,
-      glsl.sin(theta) * radius,
-      0,
-    }
-    append(mesh, vertex)
-  }
-}
-
-make_circle_2D :: proc (radius: f32, sides: int = 32) -> ([]Ren_Vertex_Base, []u32) {
-  verts := make([dynamic]Ren_Vertex_Base)
-  make_circle_cap_2D(&verts, sides, radius)
-  VERTS_PER_CAP: u32 = cast(u32) sides + 1 // counting center-point
-
-  // Now that the geometry has been baked in position according to the transforms,
-  // We can build an index buffer to from triagles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32)
-  EDGE_SEGMENTS: u32 = cast(u32) sides
-  geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
-  //geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
-
-  return verts[:], indices[:]
-}
-
-make_triangle_2D :: proc () -> ([]Ren_Vertex_Base, []u32) {
-  verts := make([dynamic]Ren_Vertex_Base)
-  append(&verts, Ren_Vertex_Base{position = Vec3{-1,1,0}})
-  append(&verts, Ren_Vertex_Base{position = Vec3{1,1,0}})
-  append(&verts, Ren_Vertex_Base{position = Vec3{0,-1,0}})
-  indices: [dynamic]u32 = make([dynamic]u32)
-  append(&indices, 0)
-  append(&indices, 1)
-  append(&indices, 2)
-  return verts[:], indices[:]
-}

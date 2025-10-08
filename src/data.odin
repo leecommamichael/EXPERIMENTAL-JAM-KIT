@@ -52,8 +52,9 @@ Globals :: struct {
 	collisions: [dynamic]Collision,
 	pointer_focus: ^Entity,
 	button_focus:  ^Entity,
-	// frame_pointer_press:   Vec2, // point of this frame's press
-	// frame_pointer_release: Vec2, // point of this frame's release
+	collider_draw_commands: [Collision_Shape]Draw_Command,
+	collider_meshes: [Collision_Shape]Geom_Mesh2,
+	draw_colliders: bool,
 
 	// App Data
 	water_plane:     ^Entity,
@@ -179,7 +180,7 @@ Ren_Vertex_Base :: struct {
 Draw_Command :: struct {
 	program:      gl.Program,
 	VAO:          gl.VertexArrayObject,
-	// attributes:   []Attribute_Binding, // easy to add. might do for debug.
+	attributes:   []Attribute_Binding,
 	textures:     []GPU_Texture,
 	index_buffer: gl.Buffer,
 	index_count:  int,
@@ -235,7 +236,7 @@ Attribute_Binding :: struct {
 	stride: int,
 	offset: uintptr,
 	// implementation details, don't manually init.
-	// these are initialized by ren_make_draw_command
+	//   these are initialized when the draw command is initially created.
 	location:    uint,
 	value_count: int,
 	gl_type:     gl.Data_Type

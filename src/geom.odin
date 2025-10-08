@@ -237,3 +237,59 @@ geom_make_xz_plane :: proc (
   return
 }
 
+make_circle_cap_2D :: proc (
+  mesh: ^[dynamic]Ren_Vertex_Base,
+  sides: int,
+  radius: f32,
+) {
+  assert(mesh != nil)
+  // Begin by appending zero. (center point)
+  append(mesh, Ren_Vertex_Base { position = Vec4{0,0,0,1}.xyz })
+
+  // Find the step through the circle to make N sides. 0...(360-theta_step)
+  theta_step := glsl.radians_f32(360.0) / f32(sides)
+  for i in 0 ..< sides {
+    theta := f32(i) * theta_step
+    // I find it easier to look down at this shape from above,
+    // So for my imagination, the sine component is mapped to the Z dimension.
+    vertex: Ren_Vertex_Base
+    vertex.position = {
+      glsl.cos(theta) * radius,
+      glsl.sin(theta) * radius,
+      0,
+    }
+    append(mesh, vertex)
+  }
+}
+
+make_circle_2D :: proc (
+  radius: f32,
+  sides: int = 32,
+  allocator: runtime.Allocator
+) -> Geom_Mesh2 {
+  verts := make([dynamic]Ren_Vertex_Base, allocator)
+  make_circle_cap_2D(&verts, sides, radius)
+  VERTS_PER_CAP: u32 = cast(u32) sides + 1 // counting center-point
+
+  // Now that the geometry has been baked in position according to the transforms,
+  // We can build an index buffer to from triagles from the points.
+  indices: [dynamic]u32 = make([dynamic]u32)
+  EDGE_SEGMENTS: u32 = cast(u32) sides
+  geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
+  //geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
+
+  return { verts[:], indices[:] }
+}
+
+make_triangle_2D :: proc (allocator: runtime.Allocator) -> Geom_Mesh2 {
+  verts := make([dynamic]Ren_Vertex_Base, allocator)
+  append(&verts, Ren_Vertex_Base{position = Vec3{-1,1,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{1,1,0}})
+  append(&verts, Ren_Vertex_Base{position = Vec3{0,-1,0}})
+  indices: [dynamic]u32 = make([dynamic]u32, allocator)
+  append(&indices, 0)
+  append(&indices, 1)
+  append(&indices, 2)
+  return { verts[:], indices[:] }
+}
+
