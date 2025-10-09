@@ -14,8 +14,8 @@ Geom_Mesh :: struct {
 }
 
 Geom_Mesh2 :: struct {
-  vertices: []Ren_Vertex_Base,
-  indices:  []u32,
+  vertices: [dynamic]Ren_Vertex_Base,
+  indices:  [dynamic]u32,
 }
 
 // Prior to transformation, points are:
@@ -49,7 +49,7 @@ geom_make_ring :: proc (
 }
 
 // start_of_mesh is both the center-point, and first vertex.
-geom_make_cap_indices :: proc (
+geom_make_circle_indices :: proc (
   indices: ^[dynamic]u32,
   start_of_mesh: u32,
   sides_in_mesh: u32,
@@ -143,39 +143,52 @@ using glsl
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
   indices: [dynamic]u32 = make([dynamic]u32, allocator)
-  geom_make_cap_indices(&indices, 0, CYLINDER_SIDES)
-  geom_make_cap_indices(&indices, verts_per_mesh, CYLINDER_SIDES)
+  geom_make_circle_indices(&indices, 0, CYLINDER_SIDES)
+  geom_make_circle_indices(&indices, verts_per_mesh, CYLINDER_SIDES)
   geom_make_faces_between_rings(&indices, 0, verts_per_mesh, CYLINDER_SIDES)
 
   return { mesh, indices, {}, }
 }
 
 // On the XY plane
-geom_make_quad :: proc (
-  size: Vec2,
-  allocator: runtime.Allocator
-) -> (m: Geom_Mesh2) {
-using glsl
-  p :: 0.5
-  TL :: Vec3{ -p, p, 0, }
-  TR :: Vec3{  p, p, 0, }
-  BL :: Vec3{ -p,-p, 0, }
-  BR :: Vec3{  p,-p, 0, }
-  m.vertices = make([]Ren_Vertex_Base, 4, allocator)
-  m.indices = make([]u32, 6, allocator)
-  //                position                            | tex  | norm
-  m.vertices[0] = {{ TL.x * size.x , TL.y * size.y , 0 }, {0,0}, {}}
-  m.vertices[1] = {{ TR.x * size.x , TR.y * size.y , 0 }, {1,0}, {}}
-  m.vertices[2] = {{ BL.x * size.x , BL.y * size.y , 0 }, {0,1}, {}}
-  m.vertices[3] = {{ BR.x * size.x , BR.y * size.y , 0 }, {1,1}, {}}
-  m.indices[0] = 0 // TL
-  m.indices[1] = 2 // BL
-  m.indices[2] = 1 // TR
-  m.indices[3] = 3 // BR
-  m.indices[4] = 1 // TR
-  m.indices[5] = 2 // BL
+geom_write_quad :: proc (
+  vertices: []Ren_Vertex_Base,
+  indices:  []u32,
+  start_of_mesh: u32,
+  position: Vec3 = 0,
+  size: Vec3 = 1,
+) {
+  p := size * 0.5
+  TL := position + Vec3{ -p.x, p.y, p.z, }
+  TR := position + Vec3{  p.x, p.y, p.z, }
+  BL := position + Vec3{ -p.x,-p.y, p.z, }
+  BR := position + Vec3{  p.x,-p.y, p.z, }
+  vertices[0] = Ren_Vertex_Base {{ TL.x, TL.y, 0 }, {0,0}, {}}
+  vertices[1] = Ren_Vertex_Base {{ TR.x, TR.y, 0 }, {1,0}, {}}
+  vertices[2] = Ren_Vertex_Base {{ BL.x, BL.y, 0 }, {0,1}, {}}
+  vertices[3] = Ren_Vertex_Base {{ BR.x, BR.y, 0 }, {1,1}, {}}
+  indices[0] = start_of_mesh + 0 /*TL*/
+  indices[1] = start_of_mesh + 2 /*BL*/
+  indices[2] = start_of_mesh + 1 /*TR*/
+  indices[3] = start_of_mesh + 3 /*BR*/
+  indices[4] = start_of_mesh + 1 /*TR*/
+  indices[5] = start_of_mesh + 2 /*BL*/
+}
 
-  return m
+geom_append_quad :: proc (
+  mesh: ^Geom_Mesh2,
+  position: Vec3,
+  size: Vec3 = 1,
+) -> runtime.Allocator_Error {
+  num_verts := len(mesh.vertices)
+  num_indices := len(mesh.vertices)
+  resize(&mesh.vertices, num_verts+4) or_return
+  resize(&mesh.indices, num_indices+6) or_return
+  geom_write_quad(
+    mesh.vertices[num_verts:][:4],
+    mesh.indices[num_indices:][:6],
+    u32(num_verts))
+  return nil
 }
 
 // A grid of points along the XZ plane.
@@ -232,19 +245,20 @@ geom_make_xz_plane :: proc (
       BR, TR, BL) // Triangle 2
   }
 
-  result.vertices = vertices[:]
-  result.indices = indices[:]
+  result.vertices = vertices
+  result.indices = indices
   return
 }
 
-make_circle_cap_2D :: proc (
-  mesh: ^[dynamic]Ren_Vertex_Base,
-  sides: int,
-  radius: f32,
+// needs sides+1 vertices.
+geom_write_circle :: proc (
+  vertices: []Ren_Vertex_Base,
+  sides:    int,
+  position: Vec3,
+  radius:   f32,
 ) {
-  assert(mesh != nil)
   // Begin by appending zero. (center point)
-  append(mesh, Ren_Vertex_Base { position = Vec4{0,0,0,1}.xyz })
+  vertices[0] = Ren_Vertex_Base { position = position + Vec4{0,0,0,1}.xyz }
 
   // Find the step through the circle to make N sides. 0...(360-theta_step)
   theta_step := glsl.radians_f32(360.0) / f32(sides)
@@ -252,14 +266,35 @@ make_circle_cap_2D :: proc (
     theta := f32(i) * theta_step
     // I find it easier to look down at this shape from above,
     // So for my imagination, the sine component is mapped to the Z dimension.
-    vertex: Ren_Vertex_Base
-    vertex.position = {
+    vertices[i+1] = { position = position + {
       glsl.cos(theta) * radius,
       glsl.sin(theta) * radius,
       0,
-    }
-    append(mesh, vertex)
+    }}
   }
+}
+
+geom_append_circle :: proc (
+  mesh: ^Geom_Mesh2,
+  sides:    int,
+  position: Vec3,
+  radius:   f32,
+) -> runtime.Allocator_Error {
+  num_verts := len(mesh.vertices)
+  resize(&mesh.vertices, num_verts+sides+1) or_return
+  geom_write_circle(mesh.vertices[num_verts:], sides, position, radius)
+
+  geom_make_circle_indices(&mesh.indices, u32(num_verts), u32(sides))
+  return nil
+}
+
+geom_make_quad :: proc (size: Vec3, allocator: runtime.Allocator) -> Geom_Mesh2 {
+  mesh := Geom_Mesh2 {
+    vertices = make([dynamic]Ren_Vertex_Base, allocator),
+    indices = make([dynamic]u32, allocator)
+  }
+  geom_append_quad(&mesh, position=0, size=size)
+  return mesh
 }
 
 make_circle_2D :: proc (
@@ -268,17 +303,18 @@ make_circle_2D :: proc (
   allocator: runtime.Allocator
 ) -> Geom_Mesh2 {
   verts := make([dynamic]Ren_Vertex_Base, allocator)
-  make_circle_cap_2D(&verts, sides, radius)
+  resize(&verts, sides+1)
+  geom_write_circle(verts[0:sides+1], sides, 0, radius)
   VERTS_PER_CAP: u32 = cast(u32) sides + 1 // counting center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triagles from the points.
   indices: [dynamic]u32 = make([dynamic]u32)
   EDGE_SEGMENTS: u32 = cast(u32) sides
-  geom_make_cap_indices(&indices, 0, EDGE_SEGMENTS)
+  geom_make_circle_indices(&indices, 0, EDGE_SEGMENTS)
   //geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
 
-  return { verts[:], indices[:] }
+  return { verts, indices }
 }
 
 make_triangle_2D :: proc (allocator: runtime.Allocator) -> Geom_Mesh2 {
@@ -290,6 +326,6 @@ make_triangle_2D :: proc (allocator: runtime.Allocator) -> Geom_Mesh2 {
   append(&indices, 0)
   append(&indices, 1)
   append(&indices, 2)
-  return { verts[:], indices[:] }
+  return { verts, indices }
 }
 
