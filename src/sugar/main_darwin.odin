@@ -8,6 +8,76 @@ import "core:dynlib"
 import gl "../nord_gl"
 import NS "core:sys/darwin/Foundation"
 
+NativeDisplayType :: distinct rawptr
+NativeWindowType  :: distinct rawptr
+Display :: distinct rawptr
+Surface :: distinct rawptr
+Config  :: distinct rawptr
+Context :: distinct rawptr
+
+Boolean :: b32
+
+NO_DISPLAY :: Display(uintptr(0))
+NO_CONTEXT :: Context(uintptr(0))
+NO_SURFACE :: Surface(uintptr(0))
+
+DEFAULT_DISPLAY :: NativeDisplayType(uintptr(0))
+
+CONTEXT_OPENGL_CORE_PROFILE_BIT :: 0x00000001
+WINDOW_BIT        :: 0x0004
+OPENGL_BIT        :: 0x0008
+OPENGL_ES2_BIT    :: 0x0004
+OPENGL_ES3_BIT    :: 0x00000040
+
+ALPHA_SIZE        :: 0x3021
+BLUE_SIZE         :: 0x3022
+GREEN_SIZE        :: 0x3023
+RED_SIZE          :: 0x3024
+DEPTH_SIZE        :: 0x3025
+STENCIL_SIZE      :: 0x3026
+NATIVE_VISUAL_ID  :: 0x302E
+
+SURFACE_TYPE      :: 0x3033
+EGL_NONE          :: 0x3038
+COLOR_BUFFER_TYPE :: 0x303F
+RENDERABLE_TYPE   :: 0x3040
+CONFORMANT        :: 0x3042
+HEIGHT            :: 0x3056
+WIDTH             :: 0x3057
+
+BACK_BUFFER          :: 0x3084
+RENDER_BUFFER        :: 0x3086
+GL_COLORSPACE_SRGB   :: 0x3089
+GL_COLORSPACE_LINEAR :: 0x308A
+RGB_BUFFER           :: 0x308E
+GL_COLORSPACE        :: 0x309D
+
+CONTEXT_CLIENT_VERSION      :: 0x3098
+CONTEXT_MAJOR_VERSION       :: 0x3098
+CONTEXT_MINOR_VERSION       :: 0x30FB
+CONTEXT_OPENGL_PROFILE_MASK :: 0x30FD
+
+OPENGL_API        :: 0x30A2
+
+foreign import egl "../libEGL.dylib"
+@(default_calling_convention="c")
+foreign egl {
+  eglGetDisplay          :: proc(display: NativeDisplayType) -> Display ---
+  eglInitialize          :: proc(display: Display, major: ^i32, minor: ^i32) -> Boolean ---
+  eglBindAPI             :: proc(api: u32) -> Boolean ---
+  eglChooseConfig        :: proc(display: Display, attrib_list: ^i32, configs: ^Config, config_size: i32, num_config: ^i32) -> Boolean ---
+  eglCreateWindowSurface :: proc(display: Display, config: Config, native_window: NativeWindowType, attrib_list: ^i32) -> Surface ---
+  eglCreateContext       :: proc(display: Display, config: Config, share_context: Context, attrib_list: ^i32) -> Context ---
+  eglMakeCurrent         :: proc(display: Display, draw: Surface, read: Surface, ctx: Context) -> Boolean ---
+  eglQuerySurface        :: proc(display: Display, surface: Surface, attribute: i32, value: ^i32) -> Boolean ---
+  eglSwapInterval        :: proc(display: Display, interval: i32) -> Boolean ---
+  eglSwapBuffers         :: proc(display: Display, surface: Surface) -> Boolean ---
+  eglGetProcAddress      :: proc(name: cstring) -> rawptr ---
+  eglGetConfigAttrib     :: proc(display: Display, config: Config, attribute: i32, value: ^i32) -> Boolean ---
+  eglDestroyContext      :: proc(display: Display, ctx: Context) -> Boolean ---
+  eglDestroySurface      :: proc(display: Display, surface: Surface) -> Boolean ---
+  eglTerminate           :: proc(display: Display) -> Boolean ---
+}
 // import NS "../../../darwodin/darwodin-macos-lite/darwodin/AppKit"
 // import CG "../../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
 // import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
@@ -26,7 +96,7 @@ create_window :: proc (
   title: string,
   use_gl: bool
 ) -> bool {
-  lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/nord_gl/src/nord_gl/libGLESv2.dylib`)
+  lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/nord_gl/src/libGLESv2.dylib`)
   ensure(lib_ok)
   NS.application_delegate_register_and_alloc({}, title, context)
   app := NS.Application.sharedApplication()
@@ -46,23 +116,16 @@ create_window :: proc (
   window->setTitle(title_str)
   window->makeKeyAndOrderFront(nil)
   content_view := window->contentView()
-  assert(content_view != nil)
+assert(content_view != nil)
   content_view->setWantsLayer(true)
-  // pixel_format_attributes := []OpenGLPixelFormatAttribute {
-  //   .OpenGLProfile, .NSOpenGLProfileVersion3_2Core,
-  //   .ColorSize,     auto_cast 24,
-  //   .AlphaSize,     auto_cast 8,
-  //   .DoubleBuffer,
-  //   .Accelerated,
-  //   auto_cast 0 // sentinel
-  // }
-  // pixel_format := OpenGLPixelFormat.alloc()->initWithAttributes(raw_data(pixel_format_attributes))
-  // ctx: ^OpenGLContext = auto_cast OpenGLContext.alloc()->initWithFormat(pixel_format, nil)
-  // assert(ctx != nil)
-  // ctx->setView(content_view)
-  // ctx->makeCurrentContext()
-  //
-// Set_Proc_Address_Type :: #type proc(p: rawptr, name: cstring)
+  content_view->layer()->setContentsScale(1) // From Chromium: scales framebuffer otherwise.
+  maj: i32 = 3
+  min: i32 = 2
+  display := eglGetDisplay(auto_cast content_view->layer())
+  egl_ok := eglInitialize(display, &maj, &min)
+  // surface := eglCreateWindowSurface(display, config, display)
+  assert(egl_ok == true)
+
   set_proc_address :: proc (set_me: rawptr, name: cstring) {
     dest := set_me
     // 
