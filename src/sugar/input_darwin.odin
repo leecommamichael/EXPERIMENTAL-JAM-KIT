@@ -1,11 +1,29 @@
 package sugar
 
-
 import NS "../../../darwodin/darwodin-macos-lite/darwodin/AppKit"
 import CG "../../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
 import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
 
-Button :: enum {
+init_native_input :: proc () {}
+
+Gamepad_Button :: enum u32 {
+	Start,
+	Select,
+	A,
+	B,
+	X,
+	Y,
+	Up,
+	Down,
+	Left,
+	Right,
+	Left_Shoulder  ,
+	Right_Shoulder ,
+	Left_Stick     ,
+	Right_Stick    ,
+}
+
+Key :: enum {
 	Escape      =0,
 	Left_Mouse  =1,
 	Right_Mouse =2,

@@ -4,6 +4,7 @@ import "base:runtime"
 import "base:intrinsics"
 import "core:log"
 import "core:sys/posix"
+import "core:dynlib"
 import gl "../nord_gl"
 import NS "core:sys/darwin/Foundation"
 
@@ -12,10 +13,12 @@ import NS "core:sys/darwin/Foundation"
 // import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
 msgSend :: intrinsics.objc_send
 
-
 platform_calls_step :: false
 
 Window :: NS.Window
+
+lib: dynlib.Library
+lib_ok: bool
 
 @require_results
 create_window :: proc (
@@ -23,6 +26,8 @@ create_window :: proc (
   title: string,
   use_gl: bool
 ) -> bool {
+  lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/nord_gl/src/nord_gl/libGLESv2.dylib`)
+  ensure(lib_ok)
   NS.application_delegate_register_and_alloc({}, title, context)
   app := NS.Application.sharedApplication()
   app->setActivationPolicy(.Regular)
@@ -42,24 +47,28 @@ create_window :: proc (
   window->makeKeyAndOrderFront(nil)
   content_view := window->contentView()
   assert(content_view != nil)
-  pixel_format_attributes := []OpenGLPixelFormatAttribute {
-    .OpenGLProfile, .NSOpenGLProfileVersion3_2Core,
-    .ColorSize,     auto_cast 24,
-    .AlphaSize,     auto_cast 8,
-    .DoubleBuffer,
-    .Accelerated,
-    auto_cast 0 // sentinel
-  }
-  pixel_format := OpenGLPixelFormat.alloc()->initWithAttributes(raw_data(pixel_format_attributes))
-  ctx: ^OpenGLContext = auto_cast OpenGLContext.alloc()->initWithFormat(pixel_format, nil)
-  assert(ctx != nil)
-  ctx->setView(content_view)
-  ctx->makeCurrentContext()
+  content_view->setWantsLayer(true)
+  // pixel_format_attributes := []OpenGLPixelFormatAttribute {
+  //   .OpenGLProfile, .NSOpenGLProfileVersion3_2Core,
+  //   .ColorSize,     auto_cast 24,
+  //   .AlphaSize,     auto_cast 8,
+  //   .DoubleBuffer,
+  //   .Accelerated,
+  //   auto_cast 0 // sentinel
+  // }
+  // pixel_format := OpenGLPixelFormat.alloc()->initWithAttributes(raw_data(pixel_format_attributes))
+  // ctx: ^OpenGLContext = auto_cast OpenGLContext.alloc()->initWithFormat(pixel_format, nil)
+  // assert(ctx != nil)
+  // ctx->setView(content_view)
+  // ctx->makeCurrentContext()
   //
 // Set_Proc_Address_Type :: #type proc(p: rawptr, name: cstring)
   set_proc_address :: proc (set_me: rawptr, name: cstring) {
     dest := set_me
-    source: rawptr = posix.dlsym(transmute(posix.Symbol_Table)int(-1), name)
+    // 
+    // source: rawptr = posix.dlsym(transmute(posix.Symbol_Table)int(-1), name)
+    source, found := dynlib.symbol_address(lib, string(name))
+    ensure(found)
     log.debugf("%v = %v AKA %s", dest, source, name)
     ensure(dest != nil)
     (^rawptr)(set_me)^ = source

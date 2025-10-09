@@ -176,7 +176,7 @@ load_bundled_fonts :: proc (result: ^image.Image, use_binary: bool) {
 	} else {
 		img, img_err := tga.load_from_bytes(font_atlas_bytes)
 		if img_err != nil {
-			log.errorf("%v", img_err)
+			log.errorf("Failed to load font atlas (%d bytes). %v", len(font_atlas_bytes), img_err)
 			assert(img_err == nil)
 		}
 		result^ = img^
@@ -240,6 +240,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 	// CBOR Fonts
 	//////////////////////////////////////////////////////////////////////	
 	serialized_fonts := make([]Serialized_Atlas_Font, FONT_COUNT)
+	assert(len(font_atlas_metadata_bytes) > 0)
 	unmarshal_error2 := cbor.unmarshal_from_bytes(font_atlas_metadata_bytes, &serialized_fonts)
 	if unmarshal_error2 != nil {
 		log.errorf("Failed to unmarshal font atlas metadata %v", unmarshal_error2)
@@ -283,7 +284,10 @@ log_time("render_font")
 	total_rects: c.int = 0
 	font_index: int = 0
 	font_files, dir_err := read_files_in_directory_with_suffix("../assets", "ttf")
-assert(dir_err == nil)
+	if dir_err != nil {
+		log.errorf("failed to read fonts %v", dir_err)
+		assert(dir_err == nil)
+	}
 	for font_file in font_files {
 		splits := strings.split(font_file.name, "-") // LEAK
 		if len(splits) < 2 {
@@ -462,14 +466,21 @@ log_time("write_font")
 			i += 1
 		}
 	}
-	file, err := os2.open(FONT_ATLAS_METADATA, {.Read, .Trunc, .Create})
-	defer os2.close(file)
+	file, err := os2.open(FONT_ATLAS_METADATA, {.Write, .Trunc, .Create})
 	assert(err == nil)
 	writer := os2.to_writer(file)
-	cbor.marshal_into_writer(writer, serialized_fonts)
+	merr := cbor.marshal_into_writer(writer, serialized_fonts)
+	if merr != nil {
+		log.errorf("Failed to write cbor. %v", merr)
+		log.errorf("POSIX err is %v", posix.get_errno())
+	}
+	assert(merr == nil)
+	os2.close(file)
+	log.infof("FYI: Wrote %d fonts", len(serialized_fonts))
 	delete(serialized_fonts)
 	log_time("write_font")
 }
+import "core:sys/posix"
 
 //////////////////////////////////////////////////////////////////////
 // Implementation (2/2) Texture Atlas                (4 channel image)
@@ -614,6 +625,10 @@ assert(dir_err2 == nil)
 		}
 	}
 
+	if len(pack_list) == 0 {
+		log.infof("No textures to pack.")
+		return
+	}
 // 2. Pack  //////////////////////////////////////////////////////////////////////////////
 	n_chan :: 4 // it's the job of the program to expand to 4 (and premult alpha) by now.
 	pad_px :: 1 // pixels
@@ -726,7 +741,7 @@ log_time("render_textures")
 			entries.sprites[asset.filename] = asset.sprite
 		}
 	}
-	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Read, .Trunc, .Create})
+	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Write, .Trunc, .Create})
 	defer os2.close(file)
 assert(err == nil)
 	writer := os2.to_writer(file)
@@ -820,7 +835,7 @@ write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Erro
 	buffer: bytes.Buffer
 	qoi.save_to_buffer(&buffer, &img) or_return
 	file: ^os2.File
-	file = os2.open(path, {.Read, .Trunc, .Create}) or_return
+	file = os2.open(path, {.Write, .Trunc, .Create}) or_return
 	num_bytes := os2.write(file, buffer.buf[:]) or_return
 	os2.close(file)
 	return nil

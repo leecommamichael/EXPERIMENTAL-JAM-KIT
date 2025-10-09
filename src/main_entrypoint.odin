@@ -13,11 +13,8 @@ create_sublime_text_logger :: proc () -> log.Logger {
 }
 
 frame_number: uint = 0
-
+import "core:fmt"
 main :: proc() {
-	_, k := audio.init(); assert(k)
-	sugar.init_input()
-	asset_init()
 	log_time("initializing platform")
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
@@ -25,6 +22,9 @@ main :: proc() {
 		runtime.default_context_ptr().logger = create_sublime_text_logger()
 		context = runtime.default_context_ptr()^
 	}
+	_, k := audio.init(); assert(k)
+	sugar.init_input()
+	asset_init()
 	ok := sugar.create_window([4]int{0,0, 900, 900}, "Wave Racer", use_gl = true)
 	if !ok { panic("Window creation failed.") }
 	log_time("initializing platform")

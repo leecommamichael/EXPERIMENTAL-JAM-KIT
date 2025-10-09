@@ -65,7 +65,11 @@ when NGL_DEBUG {
 				last_compile_error_type = type
 
 				log_func(id)
-				fmt.printf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]));
+				if len(last_compile_error_message) > 0 {
+					fmt.printf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]));
+				} else {
+					fmt.printf("Error in %v:\n.", type);
+				}
 			} else {
 
 				delete(last_link_error_message)
@@ -73,7 +77,11 @@ when NGL_DEBUG {
 				last_compile_error_type = type
 
 				log_func(id)
-				fmt.printf("Error in %v:\n%s", type, string(last_link_error_message[0:len(last_link_error_message)-1]));
+				if len(last_compile_error_message) > 0 {
+					fmt.printf("Error in %v:\n%s", type, string(last_compile_error_message[0:len(last_compile_error_message)-1]));
+				} else {
+					fmt.printf("Error in %v:\n.", type);
+				}
 			}
 
 			return false
