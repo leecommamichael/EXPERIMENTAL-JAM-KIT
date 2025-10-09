@@ -20,6 +20,7 @@ game_init :: proc () {
 	globals.plane_mesh = geom_make_xz_plane(AXIS_SQUARES, context.temp_allocator)
 
 	globals.water_plane = make_entity()
+	globals.water_plane.position.z = 1
 	globals.water_plane.flags += {.Is_3D }
 	globals.water_plane.draw_command = ren_make_water_draw_cmd(
 		globals.instance_buffer,
