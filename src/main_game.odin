@@ -26,8 +26,9 @@ game_init :: proc () {
 		cast(int) globals.water_plane.id,
 		globals.plane_mesh.vertices[:],
 		globals.plane_mesh.indices[:])
-	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 1)
+	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 0.5)
 	globals.water_heightmap = make([]f32, PLANE_POINTS)
+	globals.draw_colliders = true
 
 	img = make_image(`gameplayboard.aseprite`)
 	img.position.y = 100
@@ -36,7 +37,7 @@ game_init :: proc () {
 	spr.position.z = 2
 	spr.position.xy = 42
 	spr.collider.shape = .Circle
-	spr.collider.half_size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
+	spr.collider.size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
 	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
@@ -48,7 +49,7 @@ game_init :: proc () {
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
 	cursor.collider.shape = .Circle
-	cursor.collider.half_size = 20
+	cursor.collider.size = 20
 
 	hello := make_text(`hello`)
 	hello.color = Vec4{1,1,1, 1}
@@ -126,7 +127,7 @@ game_step :: proc () {
 			globals.button_focus = next_btn
 		}
 	}
-	
+
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1

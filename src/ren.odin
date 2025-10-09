@@ -54,8 +54,8 @@ ren_init :: proc (ren: ^Ren) {
 		.AABB = unit_quad_mesh,
 		.Circle = unit_circle_mesh,
 	}
-	circle_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_circle_mesh.vertices, unit_circle_mesh.indices)
-	quad_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_quad_mesh.vertices, unit_quad_mesh.indices)
+	circle_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_circle_mesh.vertices[:], unit_circle_mesh.indices[:])
+	quad_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_quad_mesh.vertices[:], unit_quad_mesh.indices[:])
 	globals.collider_draw_commands = {
 		.None = {},
 		.Point = circle_draw_cmd,
@@ -171,6 +171,33 @@ ren_draw :: proc (ren: ^Ren) {
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	for entity in globals.entities_2D {
 		ren_draw_entity(ren, entity)
+	}
+
+	if globals.draw_colliders {
+		ren_draw_colliders :: proc (allocator: runtime.Allocator) {
+			mesh := Geom_Mesh2 {
+				vertices = make([dynamic]Ren_Vertex_Base, allocator),
+				indices = make([dynamic]u32, allocator)
+			}
+			for entity in globals.entities {
+				if .Collider_Enabled not_in entity.flags || entity.collider.shape == .None {
+					continue
+				}
+				switch entity.collider.shape {
+				case .None:
+				case .Point: fallthrough
+				case .Circle:
+					geom_append_circle(&mesh, 16, entity.position, entity.collider.size.x)
+				case .AABB:
+					geom_append_quad(&mesh, entity.position, entity.collider.size)
+				}
+			}
+			ent := globals.entities[0]
+			ent.flags -= {.Is_3D}
+			ent.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, 0, mesh.vertices[:], mesh.indices[:])
+			ren_draw_entity(globals.ren, ent)
+		}
+		ren_draw_colliders(context.temp_allocator)
 	}
 }
 

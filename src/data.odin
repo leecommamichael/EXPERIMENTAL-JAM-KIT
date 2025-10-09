@@ -117,10 +117,10 @@ Transform :: struct {
 }
 
 Collider :: struct {
-	shape:     Collision_Shape,
-	half_size: Vec3,
-	layer:     bit_set[Collision_Layer; u32], // in
-	mask:      bit_set[Collision_Layer; u32], // touches
+	shape: Collision_Shape,
+	size:  Vec3,
+	layer: bit_set[Collision_Layer; u32], // in
+	mask:  bit_set[Collision_Layer; u32], // touches
 }
 
 Collision_Layer :: enum { Default }

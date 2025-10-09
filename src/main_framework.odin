@@ -95,24 +95,6 @@ framework_step :: proc (dt: f64) {
 			}
 		} else {
 			append(&globals.entities_2D, entity)
-			if .Collider_Enabled in entity.flags {
-				e := get_temp_entity()
-				unit_circle_mesh := make_circle_2D(0.5, 64, context.allocator)
-				circle_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, cast(int)e.id, unit_circle_mesh.vertices, unit_circle_mesh.indices)
-				e.draw_command = circle_draw_cmd
-				// e.draw_command = globals.collider_draw_commands[entity.collider.shape]
-				// set_basic_draw_command_instance(&e.draw_command, e^)
-				e.flags -= { .Collider_Enabled }
-				// e.flags += { .Hidden }
-				e.transform = entity.transform
-				e.scale = entity.collider.half_size*2
-				e.position.z = entity.position.z + 10 // nearer
-				e.position = entity.position
-				e.color = 1
-				entity_step(e)
-				append(&globals.entities_2D, e)
-					// free_entity(e)
-			}
 		}
 
 		if .Collider_Enabled in entity.flags {
@@ -144,10 +126,10 @@ framework_step :: proc (dt: f64) {
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
-	TR1 := box1.position + box1.collider.half_size
-	BL1 := box1.position - box1.collider.half_size
-	TR2 := box2.position + box2.collider.half_size
-	BL2 := box2.position - box2.collider.half_size
+	TR1 := box1.position + box1.collider.size
+	BL1 := box1.position - box1.collider.size
+	TR2 := box2.position + box2.collider.size
+	BL2 := box2.position - box2.collider.size
 	return \
 	   (TR2.x <= TR1.x && BL1.x <= TR2.x  \
 	&&  TR2.y <= TR1.y && BL1.y <= TR2.y  \
@@ -164,8 +146,8 @@ hit_test_aabb_circle   :: proc (box, circle: ^Entity) -> bool {
 	return hit_test_aabb_aabb(box, circle)
 }
 hit_test_aabb_point    :: proc (box,p: ^Entity) -> bool {
-	TR := box.position + box.collider.half_size
-	BL := box.position - box.collider.half_size
+	TR := box.position + box.collider.size
+	BL := box.position - box.collider.size
 	point := p.position
 	return \
 	   point.x <= TR.x && BL.x <= point.x\
@@ -174,11 +156,11 @@ hit_test_aabb_point    :: proc (box,p: ^Entity) -> bool {
 }
 hit_test_circle_circle :: proc (circle1, circle2: ^Entity) -> bool {
 	dist := distance(circle1.position, circle2.position)
-	return dist <= (circle1.collider.half_size.x + circle2.collider.half_size.x)
+	return dist <= (circle1.collider.size.x + circle2.collider.size.x)
 }
 hit_test_circle_point  :: proc (circle, point: ^Entity) -> bool {
 	dist := distance(circle.position, point.position)
-	return dist <= circle.collider.half_size.x
+	return dist <= circle.collider.size.x
 }
 hit_test_rect_rect     :: proc (r1,r2: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_aabb     :: proc (r,bb: ^Entity) -> bool { panic("TODO") }
