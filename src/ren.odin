@@ -33,7 +33,7 @@ ren_make :: proc () -> ^Ren {
 
 	ren.programs[Game_Shader.Basic]  = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[Game_Shader.Water]  = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
-	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
+	// ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
 	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
 	return ren
@@ -468,6 +468,7 @@ set_VAO_attribute :: proc (
 			)
 		}
 		gl.EnableVertexAttribArray(index)
+		ensure(gl.glVertexAttribDivisor != nil)
 		gl.VertexAttribDivisor(index, divisor)
 	}
 }
@@ -658,6 +659,7 @@ basic_vertex_inputs :: `
 basic_vertex_shader_source :: vertex_preamble +
 basic_vertex_inputs +
 `
+//basicvert
 	out vec4 io_color;
 
 	void main() {
@@ -668,7 +670,7 @@ basic_vertex_inputs +
 `
 
 basic_fragment_shader_source :: fragment_preamble + `
-
+//basicfrag
 	in vec4 io_color;
 	out vec4 outColor;
 	void main() {
@@ -679,6 +681,7 @@ basic_fragment_shader_source :: fragment_preamble + `
 // Basic: Water ////////////////////////////////////////////////////////////////
 water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 `
+//watervert
 	out vec4 color;
 	out vec3 raw_surface_normal;
 	out vec3 world_position;
@@ -706,6 +709,7 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 `
 
 water_fragment_shader_source :: fragment_preamble + `
+//waterfrag
 	in vec4 color;
 	in vec3 raw_surface_normal;
 	in vec3 world_position;
@@ -729,6 +733,7 @@ water_fragment_shader_source :: fragment_preamble + `
 // Text ////////////////////////////////////////////////////////////////////////
 text_vertex_shader_source :: vertex_preamble +
 `
+//text_vert
 	layout (location = 0) in vec3 v_position;
 	layout (location = 1) in vec2 v_texcoord;
 	layout (location = 2) in vec3 v_normal;
@@ -748,6 +753,7 @@ text_vertex_shader_source :: vertex_preamble +
 `
 
 text_fragment_shader_source :: fragment_preamble + `
+//text_frag
 	uniform sampler2D font_atlas;
 
 	in vec4 io_color;

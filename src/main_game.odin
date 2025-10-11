@@ -52,11 +52,11 @@ game_init :: proc () {
 	cursor.collider.shape = .Circle
 	cursor.collider.size = 20
 
-	hello := make_text(`hello`)
-	hello.color = Vec4{1,1,1, 1}
+	// hello := make_text(`hello`)
+	// hello.color = Vec4{1,1,1, 1}
 	// hello.color = Vec4{0,0,0, 1.0}
-	hello.position.x = 400
-	hello.position.z = 4
+	// hello.position.x = 400
+	// hello.position.z = 4
 }
 
 old_target: ^Entity

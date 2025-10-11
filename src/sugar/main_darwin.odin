@@ -121,9 +121,36 @@ assert(content_view != nil)
   content_view->layer()->setContentsScale(1) // From Chromium: scales framebuffer otherwise.
   maj: i32 = 3
   min: i32 = 2
+  assert(maj >= 3)
+  assert(min >= 2)
   display := eglGetDisplay(auto_cast content_view->layer())
+  assert(display != NO_DISPLAY)
   egl_ok := eglInitialize(display, &maj, &min)
-  // surface := eglCreateWindowSurface(display, config, display)
+  assert(egl_ok == true)
+  attrib_list: []i32 = {
+      RED_SIZE, 8,
+      GREEN_SIZE, 8,
+      BLUE_SIZE, 8,
+      ALPHA_SIZE, 8,
+      EGL_NONE
+  }
+  config: Config
+  configs_found: i32
+  egl_ok = eglChooseConfig(display, raw_data(attrib_list), &config, 1, &configs_found)
+  assert(egl_ok == true)
+  assert(configs_found > 0)
+  surface_attribs: []i32 = { EGL_NONE }
+  surface := eglCreateWindowSurface(display, config, auto_cast content_view->layer(), raw_data(surface_attribs))
+  assert(surface != NO_SURFACE)
+  ctx_attribs: []i32 = { 
+    CONTEXT_MAJOR_VERSION, 3,
+    CONTEXT_MINOR_VERSION, 0,
+    CONTEXT_OPENGL_PROFILE_MASK, OPENGL_ES3_BIT,
+    // TODO Look into CONTEXT_DEBUG
+    EGL_NONE }
+  ctx := eglCreateContext(display, config, share_context=nil, attrib_list=raw_data(ctx_attribs))
+  assert(ctx != NO_CONTEXT)
+  egl_ok = eglMakeCurrent(display, surface, surface, ctx)
   assert(egl_ok == true)
 
   set_proc_address :: proc (set_me: rawptr, name: cstring) {
@@ -131,8 +158,10 @@ assert(content_view != nil)
     // 
     // source: rawptr = posix.dlsym(transmute(posix.Symbol_Table)int(-1), name)
     source, found := dynlib.symbol_address(lib, string(name))
+    if !found {
+      log.errorf("%v = %v AKA %s", dest, source, name)
+    }
     ensure(found)
-    log.debugf("%v = %v AKA %s", dest, source, name)
     ensure(dest != nil)
     (^rawptr)(set_me)^ = source
     ensure(dest != nil)

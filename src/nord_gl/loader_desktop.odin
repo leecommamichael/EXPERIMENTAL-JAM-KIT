@@ -734,6 +734,8 @@ load_3_2 :: proc(set_proc_address: Set_Proc_Address_Type) {
 	set_proc_address(&glTexImage3DMultisample,           "glTexImage3DMultisample")
 	set_proc_address(&glGetMultisamplefv,                "glGetMultisamplefv")
 	set_proc_address(&glSampleMaski,                     "glSampleMaski")
+	// ES AMMENDED
+	set_proc_address(&glVertexAttribDivisor,         "glVertexAttribDivisor")
 }
 
 
