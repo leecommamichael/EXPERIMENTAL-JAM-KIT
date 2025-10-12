@@ -85,8 +85,6 @@ msgSend :: intrinsics.objc_send
 
 platform_calls_step :: false
 
-Window :: NS.Window
-
 lib: dynlib.Library
 lib_ok: bool
 
@@ -115,7 +113,7 @@ create_window :: proc (
   title_str: ^NS.String = NS.String.alloc()->initWithOdinString(title)
   window->setTitle(title_str)
   window->makeKeyAndOrderFront(nil)
-  content_view := window->contentView()
+  content_view: ^NS.View = (cast(^NS.View)msgSend(^NS.View, NS.View, "alloc"))->initWithFrame(window_rect)
 assert(content_view != nil)
   content_view->setWantsLayer(true)
   content_view->layer()->setContentsScale(1) // From Chromium: scales framebuffer otherwise.
@@ -153,6 +151,7 @@ assert(content_view != nil)
   egl_ok = eglMakeCurrent(display, surface, surface, ctx)
   assert(egl_ok == true)
 
+  window->setContentView(content_view)
   set_proc_address :: proc (set_me: rawptr, name: cstring) {
     dest := set_me
     // 
