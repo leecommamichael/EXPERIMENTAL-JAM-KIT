@@ -63,7 +63,7 @@ old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
 	cursor.position.x = sugar.mouse_position.x
-	cursor.position.y = f32(sugar.viewport_size.y) - sugar.mouse_position.y
+	cursor.position.y = sugar.mouse_position.y
 	cursor.position.z = 0
 
 	btn := button()
@@ -117,6 +117,7 @@ game_step :: proc () {
 	if globals.button_focus == nil { globals.button_focus = btn }
 	if sugar.on_button_press(.Left) {
 		if hit_test_ray_aabb(next_btn.position, 100*Vec3{-1,0,0}, btn) {
+
 			log.infof("Go Left")
 			globals.button_focus = btn
 		}

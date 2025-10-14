@@ -76,7 +76,7 @@ on_key_up :: proc (message: windows.MSG) {
 @private
 on_mousemove :: proc (message: windows.MSG) {
 	mouse_position.x = cast(f32) windows.GET_X_LPARAM(message.lParam)
-	mouse_position.y = cast(f32) windows.GET_Y_LPARAM(message.lParam)
+	mouse_position.y = cast(f32) viewport_size.y - cast(f32) windows.GET_Y_LPARAM(message.lParam)
 }
 
 // With the exception of "Should_Exit" you don't need to handle these.
