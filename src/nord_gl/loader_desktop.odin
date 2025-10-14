@@ -34,7 +34,6 @@ load_up_to :: proc(major, minor: int, set_proc_address: Set_Proc_Address_Type) {
 }
 
 sync_t :: distinct rawptr
-// debug_proc_t :: #type proc "c" (source: uint, type: uint, id: uint, severity: uint, length: int, message: cstring, userParam: rawptr)
 
 
 // VERSION_1_0
@@ -714,6 +713,8 @@ glTexImage3DMultisample:           proc "c" (target: uint, samples: int, interna
 glGetMultisamplefv:                proc "c" (pname: uint, index: uint, val: ^GLfloat)
 glSampleMaski:                     proc "c" (maskNumber: uint, mask: uint)
 
+debug_proc_t :: #type proc "c" (source: uint, type: uint, id: uint, severity: uint, length: int, message: cstring, userParam: rawptr)
+glDebugMessageCallback:        proc "c" (callback: debug_proc_t, userParam: rawptr)
 load_3_2 :: proc(set_proc_address: Set_Proc_Address_Type) {
 	set_proc_address(&glDrawElementsBaseVertex,          "glDrawElementsBaseVertex")
 	set_proc_address(&glDrawRangeElementsBaseVertex,     "glDrawRangeElementsBaseVertex")
@@ -736,6 +737,7 @@ load_3_2 :: proc(set_proc_address: Set_Proc_Address_Type) {
 	set_proc_address(&glSampleMaski,                     "glSampleMaski")
 	// ES AMMENDED
 	set_proc_address(&glVertexAttribDivisor,         "glVertexAttribDivisor")
+	set_proc_address(&glDebugMessageCallback,            "glDebugMessageCallback")
 }
 
 
@@ -859,3 +861,4 @@ load_3_3 :: proc(set_proc_address: Set_Proc_Address_Type) {
 	set_proc_address(&glSecondaryColorP3ui,          "glSecondaryColorP3ui")
 	set_proc_address(&glSecondaryColorP3uiv,         "glSecondaryColorP3uiv")
 }
+
