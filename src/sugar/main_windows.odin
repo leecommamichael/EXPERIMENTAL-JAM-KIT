@@ -18,6 +18,10 @@ create_window :: proc (
   title: string,
   use_gl: bool
 ) -> bool {
+  scale_windows_manually := windows.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+  result := windows.SetThreadDpiAwarenessContext(scale_windows_manually)
+  assert(result != nil)
+
   // Just pasting this here for reference on which Windows-native features can be added.
   ////////////////////////////////////////////////////////////////////// 
   Native_Extras :: struct {
