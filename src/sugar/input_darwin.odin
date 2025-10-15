@@ -53,8 +53,13 @@ poll_events :: proc () -> (feedback: Feedback) {
 		mode = NSF.DefaultRunLoopMode,
 		deqFlag = true) // dequeue
 
+	if g_window_resized {
+		g_window_resized = false
+		feedback = .Resized
+	}
+
 	if event == nil {
-		return .None
+		return feedback if feedback != .None else .None
 	}
 	
 	switch event->type() {

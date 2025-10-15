@@ -33,7 +33,7 @@ ren_make :: proc () -> ^Ren {
 
 	ren.programs[Game_Shader.Basic]  = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[Game_Shader.Water]  = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
-	// ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
+	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
 	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
 	return ren
@@ -769,7 +769,7 @@ text_fragment_shader_source :: fragment_preamble + `
 	}
 
 	void main() {
-		float glyph_alpha = texture(font_atlas, uv);
-		outColor = mix(vec4(0.0), io_color, io_color.a * glyph_alpha);
+		vec4 glyph_alpha = texture(font_atlas, uv);
+		outColor = mix(vec4(0.0), io_color, io_color.a * glyph_alpha.r);
 	}
 `

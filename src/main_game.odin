@@ -94,22 +94,22 @@ game_step :: proc () {
 			next_btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
-	// ro := ui_element(
-	// 	row(
-	// 		text("rThis"),
-	// 		text("isRow"),
-	// 	)
-	// )
-	// ro.position.xy = {32,32}
-	// elem := ui_element(
-	// 	column(
-	// 		text("This"),
-	// 		text("is"),
-	// 		text("a"),
-	// 		text("_"),
-	// 		text("column")
-	// 	)
-	// )
+	ro := ui_element(
+		row(
+			text("rThis"),
+			text("isRow"),
+		)
+	)
+	ro.position.xy = {32,32}
+	elem := ui_element(
+		column(
+			text("This"),
+			text("is"),
+			text("a"),
+			text("_"),
+			text("column")
+		)
+	)
 
 	if sugar.on_button_press(.Select) {
 		globals.draw_colliders = !globals.draw_colliders

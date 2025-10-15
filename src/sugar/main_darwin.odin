@@ -7,6 +7,10 @@ import "core:sys/posix"
 import "core:dynlib"
 import gl "../nord_gl"
 import NS "core:sys/darwin/Foundation"
+import Metal "vendor:darwin/Metal"
+import MTK "vendor:darwin/MetalKit"
+
+g_window_resized: bool
 
 NativeDisplayType :: distinct rawptr
 NativeWindowType  :: distinct rawptr
@@ -83,13 +87,11 @@ foreign egl {
 
 @private
 resize_viewport :: proc (w,h: int) {
+  g_window_resized = true
   viewport_size = { w, h }
   gl.Viewport(0,0, w, h)
   log.infof("viewport set to %d,%d", w,h)
 }
-// import NS "../../../darwodin/darwodin-macos-lite/darwodin/AppKit"
-// import CG "../../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
-// import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
 msgSend :: intrinsics.objc_send
 
 platform_calls_step :: false
@@ -100,6 +102,7 @@ surface: Surface
 lib: dynlib.Library
 lib_ok: bool
 import "core:fmt"
+
 @require_results
 create_window :: proc (
   rect: [4]int, // xywh
@@ -110,6 +113,7 @@ create_window :: proc (
   ensure(lib_ok)
   NS.application_delegate_register_and_alloc({
     applicationShouldTerminateAfterLastWindowClosed = proc(app: ^NS.Application) -> NS.BOOL {
+      app->terminate(app)
       return true 
     }
   }, title, context)
@@ -125,25 +129,31 @@ create_window :: proc (
     contentRect = window_rect,
     styleMask = NS.WindowStyleMask { .Titled, .Closable, .Resizable },
     backing = NS.BackingStoreType.Buffered,
-    doDefer = false) // defer? NO
+    doDefer = false)
+  window_delegate := NS.window_delegate_register_and_alloc({
+    windowWillClose = proc(notification: ^NS.Notification) {
+      NS.Application.sharedApplication()->terminate(nil)
+    }
+  }, "NSWindowDelegate", context)
+  assert(window_delegate != nil)
+  window->setDelegate(window_delegate)
   title_str: ^NS.String = NS.String.alloc()->initWithOdinString(title)
   window->setTitle(title_str)
   window->makeKeyAndOrderFront(nil)
-  content_view: ^NS.View = (cast(^NS.View)msgSend(^NS.View, NS.View, "alloc"))->initWithFrame(window_rect)
+  device := Metal.CreateSystemDefaultDevice()
+  assert(device != nil)
+  content_view: ^MTK.View = MTK.View.alloc()->initWithFrame(window_rect, device)
 assert(content_view != nil)
   content_view->setWantsLayer(true)
   content_view->layer()->setContentsScale(1) // From Chromium: scales framebuffer otherwise.
   window->setContentView(content_view)
-  maj: i32 = 3
-  min: i32 = 2
-  assert(maj >= 3)
-  assert(min >= 2)
-  // ogl_layer: ^NS.Layer = (cast(^NS.Layer)msgSend(^NS.Layer,"CAOpenGLLayer", "layer"))
-  // assert(ogl_layer != nil)
+  maj: i32 = 0
+  min: i32 = 0
   display = eglGetDisplay(auto_cast content_view->layer())
   assert(display != NO_DISPLAY)
-  // display : Display = {}
   egl_ok := eglInitialize(display, &maj, &min)
+  assert(maj >= 1)
+  assert(min >= 5)
   assert(egl_ok != false)
   attrib_list: []i32 = {
       RED_SIZE, 8,
@@ -160,10 +170,10 @@ assert(content_view != nil)
   surface_attribs: []i32 = { EGL_NONE }
   surface = eglCreateWindowSurface(display, config, auto_cast content_view->layer(), raw_data(surface_attribs))
   assert(surface != NO_SURFACE)
-  ctx_attribs: []i32 = { 
+  ctx_attribs: []i32 = {
     CONTEXT_MAJOR_VERSION, 3,
     CONTEXT_MINOR_VERSION, 0,
-    CONTEXT_OPENGL_PROFILE_MASK, OPENGL_ES3_BIT,
+    CONTEXT_OPENGL_PROFILE_MASK, OPENGL_ES3_BIT | CONTEXT_OPENGL_CORE_PROFILE_BIT,
     CONTEXT_OPENGL_ROBUST_ACCESS, 1,
     CONTEXT_OPENGL_DEBUG, 1,
     EGL_NONE }
@@ -187,16 +197,6 @@ assert(content_view != nil)
   }
   gl.load_up_to(3, 2, set_proc_address)
   resize_viewport(rect.z, rect.w)
-  // TODO: Version check the context.
-  // actual_version: [2]int
-  // gl.glGetIntegerv(gl.MAJOR_VERSION, &actual_version[0])
-  // gl.glGetIntegerv(gl.MINOR_VERSION, &actual_version[1])
-  // log.debugf("Mac GL Version: %v", actual_version)
-  // if actual_version.x < CONTEXT_MAJOR || actual_version.y < CONTEXT_MINOR {
-  //   log.errorf("Insufficient GL version. Got %v", actual_version)
-  //   return false
-  // }
-  //
   return true
 }
 
