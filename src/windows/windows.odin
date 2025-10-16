@@ -4,6 +4,24 @@ import "core:sys/windows"
 import "base:intrinsics"
 import "core:log"
 
+GetMonitorPixelResolution :: proc(monitor: windows.HMONITOR) -> [2]int {
+  using windows
+  info: MONITORINFOEXW = { cbSize = size_of(MONITORINFOEXW) }
+  _, ok := nonzero(GetMonitorInfoW(monitor, &info))
+  assert(ok)
+  devmode: DEVMODEW = { dmSize = size_of(DEVMODEW) }
+  _, ok = nonzero(EnumDisplaySettingsW(
+    cstring16(&info.szDevice[0]),
+    ENUM_CURRENT_SETTINGS, 
+    &devmode)
+  )
+  assert(ok)
+  return {
+    cast(int) devmode.dmPelsWidth,
+    cast(int) devmode.dmPelsHeight
+  }
+}
+
 @require_results
 nonzero :: proc (result: $T, caller_expr := #caller_expression) -> (T, bool)
 where intrinsics.type_is_integer(T) || intrinsics.type_is_pointer(T) || intrinsics.type_is_boolean(T) {

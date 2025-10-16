@@ -7,21 +7,60 @@ import win "../windows"
 
 platform_calls_step :: false
 
-Window :: windows.HWND
+list_displays :: proc (allocator := context.allocator) -> [dynamic]Display {
+  displays := make([dynamic]Display, allocator)
+  context.user_ptr = &displays
 
+  display_iterator :: proc "system" (
+    mon: windows.HMONITOR,
+    hdc: windows.HDC,      // nil if EnumDisplayMonitors:hdc was nil
+    rect: windows.LPRECT,  // virtual screen coordinates if hdc is nil
+    data: windows.LPARAM
+  ) -> windows.BOOL {
+    context = (cast(^runtime.Context) cast(uintptr) data)^
+    array := cast(^[dynamic]Display) context.user_ptr
+    resolution := win.GetMonitorPixelResolution(mon)
+    dpi: windows.UINT
+    _, ok := win.ok(windows.GetDpiForMonitor(
+      mon,
+      .MDT_EFFECTIVE_DPI,
+      &dpi,
+      &dpi))
+    append(array, Display {
+      {
+        cast(int) rect.left,
+        cast(int) rect.top 
+      },
+      resolution,
+      cast(int) dpi
+    })
+    return true // keep looking for monitors
+  }
+
+  context_copy := context
+  enumerate_monitors := windows.EnumDisplayMonitors(
+    hdc      = nil,
+    lprcClip = nil,
+    lpfnEnum = display_iterator,
+    dwData   = cast(int) cast(uintptr) &context_copy
+  )
+  assert(enumerate_monitors == true)
+  return displays
+}
+
+Window :: windows.HWND
 g_window: Window
 g_window_resized: bool // set in wndproc, unset in message queue reader
 
 @require_results
 create_window :: proc (
-  rect: [4]int, // xywh
+  rect: [4]int, // Packed as xywh, xy is in virtual screen coordinates.
   title: string,
   use_gl: bool
 ) -> bool {
   scale_windows_manually := windows.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
-  result := windows.SetThreadDpiAwarenessContext(scale_windows_manually)
-  assert(result != nil)
-
+  old_scaling_mode := windows.SetThreadDpiAwarenessContext(scale_windows_manually)
+  assert(old_scaling_mode != nil)
   // Just pasting this here for reference on which Windows-native features can be added.
   ////////////////////////////////////////////////////////////////////// 
   Native_Extras :: struct {
@@ -52,14 +91,31 @@ create_window :: proc (
   ////////////////////////////////////////////////////////////////////// 
   viewport_size = { rect[2], rect[3] }
   uses_menu: windows.BOOL : false
+  log.infof("desired rect %v", rect)
   desired_client_rect: windows.RECT = {
     cast(i32) rect[0],
     cast(i32) rect[1],
     cast(i32) rect[2],
     cast(i32) rect[3],
   }
-  adjusted := windows.AdjustWindowRectEx(&desired_client_rect, default_extras.dwStyle, uses_menu, default_extras.dwExStyle)
+  hMonitor := windows.MonitorFromPoint({i32(rect.x),i32(rect.y)}, .MONITOR_DEFAULTTOPRIMARY)
+  assert(hMonitor != nil)
+  current_dpi: windows.UINT
+  _, ok := win.ok(windows.GetDpiForMonitor(
+    hMonitor,
+    .MDT_EFFECTIVE_DPI,
+    &current_dpi,
+    &current_dpi))
+  log.infof("DPI %v", current_dpi)
+  assert(ok)
+  adjusted := windows.AdjustWindowRectExForDpi(
+    &desired_client_rect,
+    default_extras.dwStyle,
+    uses_menu,
+    default_extras.dwExStyle,
+    current_dpi)
   assert(cast(bool) adjusted)
+  log.infof("adjusted rect %v", desired_client_rect)
 
   instance := cast(windows.HINSTANCE) win.nonzero(windows.GetModuleHandleW(nil)) or_return
   wtitle := windows.utf8_to_utf16(title)

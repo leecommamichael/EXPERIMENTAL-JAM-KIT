@@ -11,7 +11,6 @@ import "audio"
 create_sublime_text_logger :: proc () -> log.Logger {
 		return log.create_console_logger(lowest = log.Level.Debug, opt = { .Level, })
 }
-
 frame_number: uint = 0
 import "core:fmt"
 main :: proc() {
@@ -25,7 +24,14 @@ main :: proc() {
 	_, k := audio.init(); assert(k)
 	sugar.init_input()
 	asset_init()
-	ok := sugar.create_window([4]int{0,0, 900, 900}, "Wave Racer", use_gl = true)
+	displays := sugar.list_displays()
+	display := displays[1] if len(displays) > 1 else displays[0]
+	log.debugf("Display: %v", display)
+	ok := sugar.create_window(
+		[4]int{0,0, 800, 800} + {8,44,0,0},
+		"Wave Racer",
+		use_gl = true
+	)
 	if !ok { panic("Window creation failed.") }
 	log_time("initializing platform")
 
@@ -35,7 +41,7 @@ main :: proc() {
 	log_time("initializing framework")
 
 	// sugar.capture_cursor()
-	sugar.set_cursor_visible(false)
+	// sugar.set_cursor_visible(false)
 
 	when !sugar.platform_calls_step {
 		tick := time.tick_now()
@@ -58,7 +64,7 @@ step :: proc (dt: f64) -> bool {
 	}
 	switch sugar.poll_events() { // begins input frame.
 	case .Should_Exit: return false
-	case .Resized:     resolution_changed(sugar.viewport_size)
+	case .Resized:     viewport_resized(sugar.viewport_size)
 	case .None:
 	}
 
@@ -75,7 +81,7 @@ step :: proc (dt: f64) -> bool {
 
 // TODO: Read various data from Globals such that the game
 //       can program the camera simply by setting parameters.
-resolution_changed :: proc (res: [2]int) {
+viewport_resized :: proc (res: [2]int) {
 	aspect_ratio := cast(f32)res.x / cast(f32)res.y
 	globals.game_camera = linalg.matrix4_perspective_f32(
 		fovy   = linalg.to_radians(f32(90.0)),

@@ -22,7 +22,7 @@ Image_Asset :: struct {
 // Immediate Interface
 //////////////////////////////////////////////////////////////////////
 
-image :: proc (filename: string, loc := #caller_location) -> ^Entity {
+image :: proc (filename: string, loc := #caller_location) -> (^Entity, bool) {
 // This way I don't have to explode the API into retained/immediate
 // The storage can be in the system, only necessary copies.
 	entity, is_new := do_entity(loc)
@@ -33,7 +33,7 @@ image :: proc (filename: string, loc := #caller_location) -> ^Entity {
 		// TODO: Come up with comprehensive state diffing.
 		set_image(entity, filename)
 	}
-	return entity
+	return entity, is_new
 }
 
 //////////////////////////////////////////////////////////////////////

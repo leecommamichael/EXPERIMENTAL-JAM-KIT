@@ -57,9 +57,6 @@ Globals :: struct {
 	draw_colliders: bool,
 
 	// App Data
-	water_plane:     ^Entity,
-	water_heightmap: []f32,
-	plane_mesh:      Geom_Mesh2
 }
 
 GL_Standard :: struct {                 // RTX-4070 ,          ,

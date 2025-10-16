@@ -14,21 +14,17 @@ import glsl "core:math/linalg/glsl"
 img: ^Entity
 spr: ^Entity
 cursor: ^Entity
+debug_colliders: ^Entity
 
 game_init :: proc () {
 	globals.camera.position.y = 5
-	globals.plane_mesh = geom_make_xz_plane(AXIS_SQUARES, context.temp_allocator)
-
-	globals.water_plane = make_entity()
-	globals.water_plane.position.z = 1
-	globals.water_plane.flags += {.Is_3D }
-	globals.water_plane.draw_command = ren_make_water_draw_cmd(
+	debug_colliders = make_entity()
+	debug_colliders.position.z = 1
+	debug_colliders.flags += {.Is_3D }
+	debug_colliders.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer,
-		cast(int) globals.water_plane.id,
-		globals.plane_mesh.vertices[:],
-		globals.plane_mesh.indices[:])
-	globals.water_plane.color = vec4(0.33, 0.45, 0.9, 0.5)
-	globals.water_heightmap = make([]f32, PLANE_POINTS)
+		cast(int) debug_colliders.id, {},{})
+	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
 	globals.draw_colliders = true
 
 	img = make_image(`gameplayboard.aseprite`)
@@ -42,26 +38,22 @@ game_init :: proc () {
 	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
-	// cursor = make_entity()
 	cursor = sprite(`berserker.aseprite`)
-	// cursor.draw_command = globals.collider_draw_commands[.Circle]
-	// set_basic_draw_command_instance(&cursor.draw_command, cursor^)
 	cursor.basis.scale /= 2
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
 	cursor.collider.shape = .Circle
 	cursor.collider.size = 20
-
-	// hello := make_text(`hello`)
-	// hello.color = Vec4{1,1,1, 1}
-	// hello.color = Vec4{0,0,0, 1.0}
-	// hello.position.x = 400
-	// hello.position.z = 4
 }
 
 old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
+	bg, is_new := image(`bg.png`)
+	if is_new {
+		// bg.basis.scale *= 1/1.5
+		// bg.basis.position *= 1/1.5
+	}
 	cursor.position.x = sugar.mouse_position.x
 	cursor.position.y = sugar.mouse_position.y
 	cursor.position.z = 0
@@ -150,17 +142,4 @@ game_step :: proc () {
 	if sugar.on_button_press(.Start) {
 		spr.scale.y *=  -1
 	}
-}
-
-AXIS_SQUARES  :: 100 // Squares per axis
-AXIS_POINTS   :: AXIS_SQUARES + 1
-PLANE_SQUARES :: AXIS_SQUARES * AXIS_SQUARES
-PLANE_POINTS :: AXIS_POINTS * AXIS_POINTS
-
-
-height_func :: #force_inline proc (x, z: int, y: ^f32) {
-	using globals
-	using glsl
-	derived_y := 1.5 * sin((0.2*uniforms.tau_time) + f32(x))
-	y^ = cast(f32) derived_y
 }

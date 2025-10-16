@@ -8,6 +8,7 @@ import wgi "vendor:windows/GameInput"
 
 init_native_input :: proc () {
 	result, ok := win.ok(wgi.Create(&game_input))
+  assert(ok)
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -75,8 +76,9 @@ on_key_up :: proc (message: windows.MSG) {
 
 @private
 on_mousemove :: proc (message: windows.MSG) {
+	size_y := cast(f32)(viewport_size.y)
 	mouse_position.x = cast(f32) windows.GET_X_LPARAM(message.lParam)
-	mouse_position.y = cast(f32) viewport_size.y - cast(f32) windows.GET_Y_LPARAM(message.lParam)
+	mouse_position.y = size_y - cast(f32) windows.GET_Y_LPARAM(message.lParam)
 }
 
 // With the exception of "Should_Exit" you don't need to handle these.
