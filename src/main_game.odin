@@ -60,7 +60,7 @@ game_step :: proc () {
 
 	btn := button()
 	btn.position.z = 0
-	btn.position.xy = {500,100}
+	btn.position.xy = {400,100}
 	btn.scale.xy = {100,100}
 	btn.color.rgb = 0.2
 	if globals.button_focus == btn {
@@ -74,7 +74,7 @@ game_step :: proc () {
 
 	next_btn := button()
 	next_btn.position.z = 0
-	next_btn.position.xy = {650,100}
+	next_btn.position.xy = {550,100}
 	next_btn.scale.xy = {100,100}
 	next_btn.color.rgb = 0.2
 	if globals.button_focus == next_btn {

@@ -13,6 +13,7 @@ create_sublime_text_logger :: proc () -> log.Logger {
 }
 frame_number: uint = 0
 import "core:fmt"
+import "core:sys/windows"
 main :: proc() {
 	log_time("initializing platform")
 	when !sugar.platform_calls_step {
@@ -22,14 +23,14 @@ main :: proc() {
 		context = runtime.default_context_ptr()^
 	}
 	_, k := audio.init(); assert(k)
-	sugar.init_input()
+	sugar.init()
 	asset_init()
 	displays := sugar.list_displays()
-	display := displays[1] if len(displays) > 1 else displays[0]
-	log.debugf("Display: %v", display)
+	display := displays[0] if len(displays) > 1 else displays[0]
+	log.debugf("Displays: %v", displays)
 	ok := sugar.create_window(
-		[4]int{0,0, 800, 800} + {8,44,0,0},
-		"Wave Racer",
+		[4]int{display.top_left.x,display.top_left.y, 800, 800} + {8,44,0,0},
+		"Tonic",
 		use_gl = true
 	)
 	if !ok { panic("Window creation failed.") }
@@ -81,6 +82,7 @@ step :: proc (dt: f64) -> bool {
 
 // TODO: Read various data from Globals such that the game
 //       can program the camera simply by setting parameters.
+import "core:math"
 viewport_resized :: proc (res: [2]int) {
 	aspect_ratio := cast(f32)res.x / cast(f32)res.y
 	globals.game_camera = linalg.matrix4_perspective_f32(

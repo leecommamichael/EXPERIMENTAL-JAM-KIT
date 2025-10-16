@@ -14,7 +14,7 @@ g_gl_ready: bool
 // https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#Create_a_False_Context
 // https://www.khronos.org/opengl/wiki/Load_OpenGL_Functions#Windows_2
 @require_results
-load_gl :: proc (window_size: [2]int) -> bool {
+load_gl :: proc () -> bool {
   g_dc = win.nonzero(windows.GetDC(g_window)) or_return
   pf := dummy_gl_pixel_format
   pf_id := windows.ChoosePixelFormat(g_dc, &pf)
@@ -74,6 +74,8 @@ resize_viewport :: proc () {
   sized_rect: windows.RECT
   got_rect := windows.GetClientRect(g_window, &sized_rect)
   assert(cast(bool) got_rect)
-  viewport_size = { cast(int) sized_rect.right, cast(int) sized_rect.bottom }
+  viewport_size = {
+    cast(int) (sized_rect.right - sized_rect.left),
+    cast(int) (sized_rect.bottom - sized_rect.top) }
   gl.Viewport(0,0, viewport_size.x, viewport_size.y)
 }

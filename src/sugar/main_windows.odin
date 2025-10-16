@@ -7,6 +7,12 @@ import win "../windows"
 
 platform_calls_step :: false
 
+init :: proc () {
+  scale_windows_manually := windows.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+  assert(windows.SetProcessDpiAwarenessContext(scale_windows_manually) == true)
+  init_input()
+}
+
 list_displays :: proc (allocator := context.allocator) -> [dynamic]Display {
   displays := make([dynamic]Display, allocator)
   context.user_ptr = &displays
@@ -26,6 +32,7 @@ list_displays :: proc (allocator := context.allocator) -> [dynamic]Display {
       .MDT_EFFECTIVE_DPI,
       &dpi,
       &dpi))
+    assert(ok)
     append(array, Display {
       {
         cast(int) rect.left,
@@ -58,9 +65,6 @@ create_window :: proc (
   title: string,
   use_gl: bool
 ) -> bool {
-  scale_windows_manually := windows.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
-  old_scaling_mode := windows.SetThreadDpiAwarenessContext(scale_windows_manually)
-  assert(old_scaling_mode != nil)
   // Just pasting this here for reference on which Windows-native features can be added.
   ////////////////////////////////////////////////////////////////////// 
   Native_Extras :: struct {
@@ -89,16 +93,14 @@ create_window :: proc (
     dwStyle = windows.WS_OVERLAPPEDWINDOW
   }
   ////////////////////////////////////////////////////////////////////// 
-  viewport_size = { rect[2], rect[3] }
   uses_menu: windows.BOOL : false
-  log.infof("desired rect %v", rect)
   desired_client_rect: windows.RECT = {
-    cast(i32) rect[0],
-    cast(i32) rect[1],
-    cast(i32) rect[2],
-    cast(i32) rect[3],
+    left   = cast(i32) rect[0],
+    top    = cast(i32) rect[1],
+    right  = cast(i32) (rect[0] + rect[2]),
+    bottom = cast(i32) (rect[1] + rect[3]),
   }
-  hMonitor := windows.MonitorFromPoint({i32(rect.x),i32(rect.y)}, .MONITOR_DEFAULTTOPRIMARY)
+  hMonitor := windows.MonitorFromPoint({i32(rect.x),i32(rect.y)}, .MONITOR_DEFAULTTONULL)
   assert(hMonitor != nil)
   current_dpi: windows.UINT
   _, ok := win.ok(windows.GetDpiForMonitor(
@@ -125,7 +127,7 @@ create_window :: proc (
     cbSize        = size_of(windows.WNDCLASSEXW),
     lpfnWndProc   = thread_wndproc,
     hInstance     = instance,
-    lpszClassName = cast(cstring16) class_name,
+    lpszClassName = cast(cstring16) class_name, // TODO unsafe assumes \0-term
     style         = default_extras.style
   }
   class_atom : windows.ATOM = win.nonzero(windows.RegisterClassExW(&window_class)) or_return
@@ -137,10 +139,10 @@ create_window :: proc (
     dwExStyle    = default_extras.dwExStyle,
     lpClassName  = cast(cstring16) class_name,
     lpWindowName = window_title,
-    X            = cast(windows.INT) desired_client_rect.left,
-    Y            = cast(windows.INT) desired_client_rect.top,
-    nWidth       = cast(windows.INT) desired_client_rect.right,
-    nHeight      = cast(windows.INT) desired_client_rect.bottom,
+    X            = desired_client_rect.left,
+    Y            = desired_client_rect.top,
+    nWidth       = desired_client_rect.right - desired_client_rect.left,
+    nHeight      = desired_client_rect.bottom - desired_client_rect.top,
     hWndParent   = default_extras.hWndParent,
     hMenu        = default_extras.hMenu,
     hInstance    = instance,
@@ -168,7 +170,7 @@ create_window :: proc (
 
   // Now let's deal with graphics.
   if use_gl {
-    gl_ok := load_gl(viewport_size)
+    gl_ok := load_gl()
     if !gl_ok {
       log.debug("Failed to initialize GL when creating a window.")
       return false
@@ -213,6 +215,8 @@ thread_wndproc :: proc "system" (
   //////////////////////////////////////////////////////////////////////
 
   switch message {
+  case windows.WM_DPICHANGED:
+
   case windows.WM_CLOSE:
     windows.DestroyWindow(hwnd)
   case windows.WM_DESTROY:
