@@ -216,12 +216,13 @@ thread_wndproc :: proc "system" (
 
   switch message {
   case windows.WM_DPICHANGED:
-
   case windows.WM_CLOSE:
     windows.DestroyWindow(hwnd)
   case windows.WM_DESTROY:
     windows.PostQuitMessage(0)
     return 0;
+  // case windows.WM_ENTERSIZEMOVE:
+  // case windows.WM_EXITSIZEMOVE:
   case windows.WM_SIZE:
     g_window_resized = true
     if g_gl_ready {

@@ -161,10 +161,10 @@ poll_events :: proc () -> (feedback: Feedback) {
       wRemoveMsg = windows.PM_REMOVE
     )
     if message.message == windows.WM_QUIT { return .Should_Exit }
-
     switch (message.message) {
-  	case windows.WM_KEYDOWN: on_key_down(message)
-  	case windows.WM_KEYUP:   on_key_up(message)
+    case windows.WM_ENTERSIZEMOVE:
+  	case windows.WM_KEYDOWN:   on_key_down(message)
+  	case windows.WM_KEYUP:     on_key_up(message)
   	case windows.WM_MOUSEMOVE: on_mousemove(message)
   	case windows.WM_LBUTTONDOWN:
 			set_pressed(Key.Left_Mouse)

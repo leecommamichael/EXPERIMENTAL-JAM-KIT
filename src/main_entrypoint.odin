@@ -8,14 +8,8 @@ import "core:math/linalg/glsl"
 import "sugar"
 import "audio"
 
-create_sublime_text_logger :: proc () -> log.Logger {
-		return log.create_console_logger(lowest = log.Level.Debug, opt = { .Level, })
-}
 frame_number: uint = 0
-import "core:fmt"
-import "core:sys/windows"
 main :: proc() {
-	log_time("initializing platform")
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
 	} else when ODIN_OS == .JS {
@@ -26,7 +20,7 @@ main :: proc() {
 	sugar.init()
 	asset_init()
 	displays := sugar.list_displays()
-	display := displays[0] if len(displays) > 1 else displays[0]
+	display := displays[1] if len(displays) > 1 else displays[0]
 	log.debugf("Displays: %v", displays)
 	ok := sugar.create_window(
 		[4]int{display.top_left.x,display.top_left.y, 800, 800} + {8,44,0,0},
@@ -34,24 +28,21 @@ main :: proc() {
 		use_gl = true
 	)
 	if !ok { panic("Window creation failed.") }
-	log_time("initializing platform")
 
-	log_time("initializing framework")
 	asset_upload()
 	framework_init()
-	log_time("initializing framework")
 
 	// sugar.capture_cursor()
 	// sugar.set_cursor_visible(false)
 
-	when !sugar.platform_calls_step {
-		tick := time.tick_now()
-		dt: f64
-		for {
-			dt = time.duration_seconds(time.tick_lap_time(&tick))
-			step(dt) or_break
-			sugar.swap_buffers()
-		}
+	when sugar.platform_calls_step { return }
+	
+	tick := time.tick_now()
+	dt: f64
+	for {
+		dt = time.duration_seconds(time.tick_lap_time(&tick))
+		step(dt) or_break
+		sugar.swap_buffers()
 	}
 }
 

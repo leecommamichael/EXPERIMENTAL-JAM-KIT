@@ -50,6 +50,10 @@ bats :: proc "contextless" (byte_array: []u8) -> string {
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+// Sublime Text doesn't do ANSI color.
+create_sublime_text_logger :: proc () -> log.Logger {
+		return log.create_console_logger(lowest = log.Level.Debug, opt = { .Level, })
+}
 // A stopwatch timer for quick and dirty measurements.
 @(thread_local)
 log_timers: map[string]time.Tick
