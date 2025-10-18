@@ -126,31 +126,6 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_sprite.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
-        query: input: ""
-        cursor_line: 54
-        cursor_column: 1
-        mark_line: 54
-        mark_column: 1
-      }
-      text:
-      {
-        selected
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/geom.odin\".data"
-        auto: 1
-        query:
-        {
-          input: ""
-          cmd: search
-        }
-        cursor_line: 302
-        cursor_column: 1
-        mark_line: 302
-        mark_column: 1
-      }
-      text:
-      {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_text.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -168,10 +143,49 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/sugar.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 15
-        cursor_column: 2
-        mark_line: 15
-        mark_column: 2
+        cursor_line: 9
+        cursor_column: 23
+        mark_line: 9
+        mark_column: 23
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/nord_gl/impl_desktop.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query:
+        {
+          input: ""
+          cmd: search
+        }
+        cursor_line: 567
+        cursor_column: 1
+        mark_line: 567
+        mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/ren.odin\".data"
+        auto: 1
+        query: input: ""
+        cursor_line: 538
+        cursor_column: 1
+        mark_line: 538
+        mark_column: 1
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query:
+        {
+          input: ""
+          cmd: search
+        }
+        cursor_line: 98
+        cursor_column: 1
+        mark_line: 98
+        mark_column: 1
       }
     }
     0.132358:
@@ -200,7 +214,7 @@ window:
     }
   }
   split_x
-  pos: 1255 110
+  pos: 2095 110
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0
@@ -327,4 +341,4 @@ keybindings:
   { log_marker m ctrl shift alt }
   { toggle_dev_menu d ctrl shift alt }
 }
-current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src/sugar"
+current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src"

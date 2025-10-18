@@ -40,12 +40,15 @@ ren_make :: proc () -> ^Ren {
 }
 
 ren_init :: proc (ren: ^Ren) {
+	gl.FrontFace(.CCW)
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	// gl.glClearDepth(1) // Makes black screen.
+	// gl.DepthRangef(0,1) // Do
+	gl.glDepthMask(true)
+	gl.Enable(.DEPTH_TEST)
+	gl.glDepthFunc(gl.LESS) // TODO: Why need LEQUAL? Depth buffer must be wrong.
 	gl.Enable(.BLEND)
 	gl.BlendFunc(.ONE, .ONE_MINUS_SRC_ALPHA)
-	gl.Enable(.DEPTH_TEST)
-	gl.FrontFace(.CCW)
-
 	unit_circle_mesh := make_circle_2D(0.5, 64, context.allocator)
 	unit_quad_mesh := geom_make_quad(1.0, context.allocator)
 	globals.collider_meshes = {
@@ -66,6 +69,8 @@ ren_init :: proc (ren: ^Ren) {
 
 FRAME_UNIFORM_INDEX :: 0
 INSTANCE_UNIFORM_INDEX :: 1
+FONT_ATLAS_TU :: 1
+TEX_ATLAS_TU :: 2
 
 ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	// Compile program
@@ -77,11 +82,11 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
 	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
 	if font_atlas_sampler != -1 {
-		gl.glUniform1i(font_atlas_sampler, 0)
+		gl.glUniform1i(font_atlas_sampler, FONT_ATLAS_TU)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	if texture_atlas_sampler != -1 {
-		gl.glUniform1i(texture_atlas_sampler, 1)
+		gl.glUniform1i(texture_atlas_sampler, TEX_ATLAS_TU)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	// Link Uniform Block
@@ -99,6 +104,11 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 	next := &entity.draw_command
 	prev := &globals.ren.prev_cmd
 	pipeline_changed: bool = false
+	if prev.render_target != next.render_target {
+		pipeline_changed = true
+		log.infof("Set FB [%p]%v -> [%p]%v)", prev, prev.render_target, next, next.render_target)
+		gl.BindFramebuffer(.FRAMEBUFFER, next.render_target)
+	}
 
 	if prev.program != next.program {
 		pipeline_changed = true
@@ -131,7 +141,7 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 	if pipeline_changed {
 		// At the time of writing, freeing an entity doesn't wipe the draw command.
 		// This works for now, but if there's a bug in the future, suspect this.
-		prev = next
+		prev^ = next^
 	}
 }
 
@@ -148,7 +158,11 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 }
 
 ren_clear :: proc () {
-	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT})
+	gl.BindFramebuffer(.FRAMEBUFFER, 0)
+	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
+	gl.BindFramebuffer(.FRAMEBUFFER, fb)
+	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
+	gl.BindFramebuffer(.FRAMEBUFFER, globals.ren.prev_cmd.render_target)
 }
 
 ren_draw :: proc (ren: ^Ren) {

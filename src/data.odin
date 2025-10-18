@@ -175,17 +175,18 @@ Ren_Vertex_Base :: struct {
 }
 
 Draw_Command :: struct {
-	program:      gl.Program,
-	VAO:          gl.VertexArrayObject,
-	attributes:   []Attribute_Binding,
-	textures:     []GPU_Texture,
-	index_buffer: gl.Buffer,
-	index_count:  int,
+	render_target: gl.Framebuffer,
+	program:       gl.Program,
+	VAO:           gl.VertexArrayObject,
+	attributes:    []Attribute_Binding,
+	textures:      []GPU_Texture,
+	index_buffer:  gl.Buffer,
+	index_count:   int,
 		// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
 	mode:         Ren_Mode,  // default triangles
 	cull_mode:    Cull_Mode, // default none
 }
-#assert(size_of(Draw_Command) < 90, "Be mindful of this increasing.")
+#assert(size_of(Draw_Command) < 256, "Be mindful of this increasing.")
 
 GPU_Texture :: struct {
 	target:         gl.Texture_Target,

@@ -495,19 +495,20 @@ make_texture_2D :: proc (
 	target: Texture_2D_Target,
 	internalformat: Internal_Color_Format,
 	width, height: int,
-	data: $Indistinct/[]$T,
-	lod: uint = 0,
+	data: []u8,
+	lod: int = 0,
 	_loc := #caller_location
 ) -> ( err: Error = .NO_ERROR ) {
 	info := Internal_Format_Infos[internalformat]
 	TexImage2D_verbatim(
-		target,
-		lod,
-		info.gl_name,
-		width, height,
-		info.format,
-		info.type,
-		data
+		target = target,
+		level  = lod,
+		internalformat = cast(int) info.gl_name,
+		width = width, 
+		height = height,
+		format = cast(GLenum) info.format,
+		type = cast(GLenum) info.type,
+		data = data
 	)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
@@ -517,9 +518,9 @@ TexImage2D_verbatim :: proc (
 	level: int,
 	internalformat: int,
 	width, height: int,
-	format: uint, // TODO scoped enum
+	format: uint,
 	type: uint,
-	data: $Indistinct/[]$T,
+	data: []u8,
 	_loc := #caller_location
 ) -> ( err: Error = .NO_ERROR ) {
 	glTexImage2D(
@@ -602,6 +603,39 @@ Set_Texture_Wrap_T       :: proc (target: Texture_Parameter_Target, param: Textu
 }
 Set_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
 	glTexParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
+}
+
+
+
+
+CreateFramebuffer :: proc () -> (out: Framebuffer) {
+	glGenFramebuffers(1, cast(^uint)&out)
+	return
+}
+
+GenFramebuffers :: proc (len: int, out: $A/[^]uint) {
+	glGenFramebuffers(len, out)
+}
+
+BindFramebuffer :: proc (target: Framebuffer_Target, fb: Framebuffer) {
+	glBindFramebuffer(cast(uint)target, cast(uint)fb)
+}
+
+FramebufferTexture2D :: proc (
+	target: Framebuffer_Target,
+	attachment: Framebuffer_Attachment,
+	textarget: Texture_2D_Target,
+	texture: Texture,
+	level: int,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
+	glFramebufferTexture2D(
+		cast(uint) target,
+		cast(uint) attachment,
+		cast(uint) textarget,
+		cast(uint) texture,
+		level)
+	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 //////////////////////////////////////////////////////////////////////
 // Platform-Specific Stuff Below

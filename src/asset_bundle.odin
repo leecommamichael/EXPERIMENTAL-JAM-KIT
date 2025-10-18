@@ -196,7 +196,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		format = .R8, // <----------- CANT RELEASE .TGA UNTIL THEY TAKE MY PR (RGB8 otherwise)
 	}
 	bw := globals.assets.bw_atlas_image
-	init_and_upload_texture(0, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
+	init_and_upload_texture(FONT_ATLAS_TU, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
 	globals.assets.images[FONT_ATLAS_PATH] = Image_Asset {
 		FONT_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
@@ -213,7 +213,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		format = .RGBA8,
 	}
 	rgba := globals.assets.rgba_atlas_image
-	init_and_upload_texture(1, &globals.assets.texture_atlas, rgba.pixels.buf[:], {rgba.width, rgba.height})
+	init_and_upload_texture(TEX_ATLAS_TU, &globals.assets.texture_atlas, rgba.pixels.buf[:], {rgba.width, rgba.height})
 	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
 		TEXTURE_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?

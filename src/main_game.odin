@@ -14,41 +14,136 @@ import glsl "core:math/linalg/glsl"
 img: ^Entity
 spr: ^Entity
 cursor: ^Entity
-debug_colliders: ^Entity
+// debug_colliders: ^Entity
 
+render_resolution :: [2]int
+
+make_framebuffer :: proc (size: [2]int, _loc := #caller_location) -> gl.Framebuffer {
+	gl.glActiveTexture(gl.TEXTURE0)
+	_, color_tex := gl.CreateTexture()
+	assert(color_tex != 0)
+	gl.BindTexture(.TEXTURE_2D, color_tex)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.make_texture_2D(
+		.TEXTURE_2D,
+		.RGBA8,
+		size.x, size.y,
+		{},
+		lod=0)
+	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
+	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.BindTexture(.TEXTURE_2D, 0)
+
+		_, depth_tex := gl.CreateTexture()
+	assert(depth_tex != 0)
+	gl.BindTexture(.TEXTURE_2D, depth_tex)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.make_texture_2D(
+		.TEXTURE_2D,
+		.DEPTH24_STENCIL8,
+		size.x, size.y,
+		{},
+		lod=0)
+	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
+	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.BindTexture(.TEXTURE_2D, 0)
+
+	fb := gl.CreateFramebuffer()
+	assert(fb != 0)
+	gl.BindFramebuffer(.FRAMEBUFFER, fb)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.FramebufferTexture2D(.FRAMEBUFFER, .COLOR_ATTACHMENT0, .TEXTURE_2D, color_tex, level=0)
+	gl.FramebufferTexture2D(.FRAMEBUFFER, .DEPTH_STENCIL_ATTACHMENT, .TEXTURE_2D, depth_tex, level=0)
+	val := gl.glCheckFramebufferStatus(gl.FRAMEBUFFER)
+	assert(val == gl.FRAMEBUFFER_COMPLETE)
+	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
+	assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.BindFramebuffer(.FRAMEBUFFER, 0)
+	assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	return fb
+}
+
+
+fb: gl.Framebuffer
+
+near_draws: f32 = -90
+far_draws: f32 = 90
 game_init :: proc () {
-	globals.camera.position.y = 5
-	debug_colliders = make_entity()
-	debug_colliders.position.z = 1
-	debug_colliders.flags += {.Is_3D }
-	debug_colliders.draw_command = ren_make_basic_draw_cmd(
-		globals.instance_buffer,
-		cast(int) debug_colliders.id, {},{})
-	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
-	globals.draw_colliders = true
+	// log.infof("Made FB: %v", fb)
+	// debug_colliders = make_entity()
+	// debug_colliders.position.z = 1
+	// debug_colliders.flags += {.Is_3D }
+	// debug_colliders.draw_command = ren_make_basic_draw_cmd(
+	// 	globals.instance_buffer,
+	// 	cast(int) debug_colliders.id, {},{})
+	// debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
+	// globals.draw_colliders = true
+
+	// fb = make_framebuffer({800,800})
+	cursor = sprite(`berserker.aseprite`)
+	cursor.basis.position = 0
+	cursor.flags += {.Collider_Enabled}
+	cursor.collider.shape = .Circle
+	cursor.collider.size = 20
+	// cursor.draw_command.render_target = fb
+
+	rt := make_text("retained text")
+	rt.draw_command.render_target = fb
 
 	img = make_image(`gameplayboard.aseprite`)
 	img.position.y = 100
-	img.position.z = 1
+	// img.draw_command.render_target = fb
+
 	spr = sprite(`berserker.aseprite`)
-	spr.position.z = 2
+	// spr.draw_command.render_target = fb
 	spr.position.xy = 42
 	spr.collider.shape = .Circle
 	spr.collider.size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
 	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
-	cursor = sprite(`berserker.aseprite`)
-	cursor.basis.scale /= 2
-	cursor.basis.position = 0
-	cursor.flags += {.Collider_Enabled}
-	cursor.collider.shape = .Circle
-	cursor.collider.size = 20
+	globals.camera.position.z = near_draws // position so cam isn't at 0 so near/far are different distance from camera
 }
 
 old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
+	img.position.z = far_draws
+	spr.position.z = far_draws
+	cursor.position.x = 310//sugar.mouse_position.x
+	cursor.position.y = 210//sugar.mouse_position.y
+	cursor.position.z = near_draws
+	tn1 := text("-1")
+	{
+		tn1.position.xy = 10
+		tn1.color.rgb = 1.0
+	}
+	t0 := text(" 0")
+	{
+		t0.position.xy = 20
+		t0.color.rgb = 0.8
+	}
+	t1 := text("+1")
+	{
+		t1.position.xy = 30
+		t1.color.rgb = 0.6
+	}
+	t2 := text("+2")
+	{
+		t2.position.xy = 40
+		t2.color.rgb = 0.4
+	}
+
+	tn1.position.z = far_draws + -1
+	t0.position.z  = far_draws + 0
+	t1.position.z  = far_draws + +1
+	t2.position.z  = far_draws + +2
+}
+
+all_test_Step :: proc () {
 	bg, is_new := image(`bg.png`)
 	if is_new {
 		// bg.basis.scale *= 1/1.5

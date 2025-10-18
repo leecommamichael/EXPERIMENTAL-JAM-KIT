@@ -88,8 +88,8 @@ viewport_resized :: proc (res: [2]int) {
 		right  = cast(f32) res.x,
 		top    = cast(f32) res.y,
 		bottom = 0,
-		near   = -10,
-		far    = 1000
+		near   = 100,
+		far    = -100
 	)
 }
 
