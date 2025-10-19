@@ -53,7 +53,8 @@ Globals :: struct {
 	pointer_focus: ^Entity,
 	button_focus:  ^Entity,
 	collider_draw_commands: [Collision_Shape]Draw_Command,
-	collider_meshes: [Collision_Shape]Geom_Mesh2,
+	unit_circle_mesh: Geom_Mesh2,
+	unit_quad_mesh:   Geom_Mesh2,
 	draw_colliders: bool,
 
 	// App Data
@@ -151,7 +152,8 @@ Game_Shader :: enum {
 	Image,
 	UI_Box,
 	Water,
-	Sprite
+	Sprite,
+	Framebuffer_Texture,
 }
 
 Any_Instance :: struct {

@@ -63,9 +63,12 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.BindFramebuffer(.FRAMEBUFFER, 0)
 	assert(gl.Error.NO_ERROR == gl.validate(_loc))
+
+	gl.glActiveTexture(gl.TEXTURE0 + cast(uint) Texture_Unit.Framebuffer_Texture)
+	gl.BindTexture(.TEXTURE_2D, color_tex)
+	assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	return fb
 }
-
 
 fb: gl.Framebuffer
 
@@ -82,40 +85,43 @@ game_init :: proc () {
 	// debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
 	// globals.draw_colliders = true
 
-	// fb = make_framebuffer({800,800})
+	fb = make_framebuffer({800,800})
 	cursor = sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
 	cursor.collider.shape = .Circle
 	cursor.collider.size = 20
-	// cursor.draw_command.render_target = fb
-
-	rt := make_text("retained text")
-	rt.draw_command.render_target = fb
 
 	img = make_image(`gameplayboard.aseprite`)
 	img.position.y = 100
-	// img.draw_command.render_target = fb
 
 	spr = sprite(`berserker.aseprite`)
-	// spr.draw_command.render_target = fb
 	spr.position.xy = 42
 	spr.collider.shape = .Circle
 	spr.collider.size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
 	spr.flags += {.Collider_Enabled}
 	spr_state := &spr.variant.(Sprite_State)
 	spr_state.repetitions = 10
-	globals.camera.position.z = near_draws // position so cam isn't at 0 so near/far are different distance from camera
+	globals.camera.position.z = -8000// position so cam isn't at 0 so near/far are different distance from camera
 }
 
 old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
+	rect := framebuffer_quad(from = fb, to = 0)
+	// rect.draw_command.render_target = 1
+	rect.position.x = sugar.mouse_position.x
+	rect.position.y = sugar.mouse_position.y
+	rect.position.z = near_draws
+	rect.scale.xy = array_cast(sugar.viewport_size, f32)
+	rect.basis.scale.y = -1 // because textures are flipped...
+	rect.basis.position.xy = rect.scale.xy/2
+	// rect.color = 1
 	img.position.z = far_draws
 	spr.position.z = far_draws
 	cursor.position.x = 310//sugar.mouse_position.x
 	cursor.position.y = 210//sugar.mouse_position.y
-	cursor.position.z = near_draws
+	// cursor.position.z = near_draws
 	tn1 := text("-1")
 	{
 		tn1.position.xy = 10

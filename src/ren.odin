@@ -36,29 +36,30 @@ ren_make :: proc () -> ^Ren {
 	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
 	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
+	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
 	return ren
 }
 
 ren_init :: proc (ren: ^Ren) {
 	gl.FrontFace(.CCW)
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-	// gl.glClearDepth(1) // Makes black screen.
+	// gl.glClearDepth(0) // Makes black screen.
 	// gl.DepthRangef(0,1) // Do
 	gl.glDepthMask(true)
 	gl.Enable(.DEPTH_TEST)
 	gl.glDepthFunc(gl.LESS) // TODO: Why need LEQUAL? Depth buffer must be wrong.
 	gl.Enable(.BLEND)
 	gl.BlendFunc(.ONE, .ONE_MINUS_SRC_ALPHA)
-	unit_circle_mesh := make_circle_2D(0.5, 64, context.allocator)
-	unit_quad_mesh := geom_make_quad(1.0, context.allocator)
-	globals.collider_meshes = {
-		.None = {},
-		.Point = unit_circle_mesh,
-		.AABB = unit_quad_mesh,
-		.Circle = unit_circle_mesh,
-	}
-	circle_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_circle_mesh.vertices[:], unit_circle_mesh.indices[:])
-	quad_draw_cmd := ren_make_basic_draw_cmd(globals.instance_buffer, 0, unit_quad_mesh.vertices[:], unit_quad_mesh.indices[:])
+	globals.unit_circle_mesh = make_circle_2D(0.5, 64, context.allocator)
+	globals.unit_quad_mesh = geom_make_quad(1.0, context.allocator)
+	circle_draw_cmd := ren_make_basic_draw_cmd(
+		globals.instance_buffer, 0,
+		globals.unit_circle_mesh.vertices[:],
+		globals.unit_circle_mesh.indices[:])
+	quad_draw_cmd := ren_make_basic_draw_cmd(
+		globals.instance_buffer, 0,
+		globals.unit_quad_mesh.vertices[:],
+		globals.unit_quad_mesh.indices[:])
 	globals.collider_draw_commands = {
 		.None = {},
 		.Point = circle_draw_cmd,
@@ -69,8 +70,15 @@ ren_init :: proc (ren: ^Ren) {
 
 FRAME_UNIFORM_INDEX :: 0
 INSTANCE_UNIFORM_INDEX :: 1
+
 FONT_ATLAS_TU :: 1
 TEX_ATLAS_TU :: 2
+Texture_Unit :: enum uint { // TODO: delete the constants.
+	Swap = 0,
+	Font = FONT_ATLAS_TU,
+	Texture = TEX_ATLAS_TU,
+	Framebuffer_Texture = 3,
+}
 
 ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	// Compile program
@@ -80,13 +88,18 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	log.assertf(ok, "A shader failed to compile/link.\n%s\n%s", vert, frag)
 
 	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
-	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
 	if font_atlas_sampler != -1 {
 		gl.glUniform1i(font_atlas_sampler, FONT_ATLAS_TU)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
+	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
 	if texture_atlas_sampler != -1 {
 		gl.glUniform1i(texture_atlas_sampler, TEX_ATLAS_TU)
+		assert(gl.glGetError() == gl.NO_ERROR)
+	}
+	fb_sampler := gl.GetUniformLocation(program, "framebuffer_color")
+	if fb_sampler != -1 {
+		gl.glUniform1i(fb_sampler, cast(int)Texture_Unit.Framebuffer_Texture)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	// Link Uniform Block
@@ -245,6 +258,7 @@ init_cmd_with_basic_vertex_attributes :: proc (
 	instance_index: int,
 	allocator := context.allocator,
 ) {
+	cmd.render_target = 1
 	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
 	attributes: []Attribute_Binding = {
 		{
