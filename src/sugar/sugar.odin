@@ -6,6 +6,7 @@ import "core:time"
 // Common/Easy Interface
 //////////////////////////////////////////////////////////////////////
 
+scale_factor:   f32
 viewport_size:  [2]int
 mouse_position: [2]f32
 mouse_delta:    [2]f32

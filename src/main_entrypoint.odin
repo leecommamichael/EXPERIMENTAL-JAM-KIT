@@ -74,7 +74,9 @@ step :: proc (dt: f64) -> bool {
 // TODO: Read various data from Globals such that the game
 //       can program the camera simply by setting parameters.
 import "core:math"
+import gl "nord_gl"
 viewport_resized :: proc (res: [2]int) {
+  gl.Viewport(0,0, res.x, res.y)
 	aspect_ratio := cast(f32)res.x / cast(f32)res.y
 	globals.game_camera = linalg.matrix4_perspective_f32(
 		fovy   = linalg.to_radians(f32(90.0)),

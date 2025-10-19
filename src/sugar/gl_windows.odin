@@ -9,7 +9,6 @@ import win "../windows"
 GL_Context :: windows.HGLRC
 g_dc: windows.HDC
 g_context: GL_Context
-g_gl_ready: bool
 
 // https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#Create_a_False_Context
 // https://www.khronos.org/opengl/wiki/Load_OpenGL_Functions#Windows_2
@@ -53,8 +52,6 @@ load_gl :: proc () -> bool {
     log.errorf("Insufficient GL version. Got %v", actual_version)
     return false
   }
-  resize_viewport()
-  g_gl_ready = true
   return true
 }
 
@@ -67,15 +64,4 @@ dummy_gl_pixel_format: windows.PIXELFORMATDESCRIPTOR : {
   cDepthBits = 24,
   cStencilBits = 8,
   iLayerType = windows.PFD_MAIN_PLANE,
-}
-
-@private
-resize_viewport :: proc () {
-  sized_rect: windows.RECT
-  got_rect := windows.GetClientRect(g_window, &sized_rect)
-  assert(cast(bool) got_rect)
-  viewport_size = {
-    cast(int) (sized_rect.right - sized_rect.left),
-    cast(int) (sized_rect.bottom - sized_rect.top) }
-  gl.Viewport(0,0, viewport_size.x, viewport_size.y)
 }

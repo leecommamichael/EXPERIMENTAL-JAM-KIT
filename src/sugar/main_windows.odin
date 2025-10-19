@@ -58,6 +58,7 @@ list_displays :: proc (allocator := context.allocator) -> [dynamic]Display {
 Window :: windows.HWND
 g_window: Window
 g_window_resized: bool // set in wndproc, unset in message queue reader
+g_dpi_changed: bool
 
 @require_results
 create_window :: proc (
@@ -109,6 +110,7 @@ create_window :: proc (
     &current_dpi,
     &current_dpi))
   log.infof("DPI %v", current_dpi)
+  set_scale_factor_from_dpi(current_dpi)
   assert(ok)
   adjusted := windows.AdjustWindowRectExForDpi(
     &desired_client_rect,
@@ -116,6 +118,7 @@ create_window :: proc (
     uses_menu,
     default_extras.dwExStyle,
     current_dpi)
+
   assert(cast(bool) adjusted)
   log.infof("adjusted rect %v", desired_client_rect)
 
@@ -133,7 +136,6 @@ create_window :: proc (
   class_atom : windows.ATOM = win.nonzero(windows.RegisterClassExW(&window_class)) or_return
 
   window_title := windows.utf8_to_wstring(title)
-  window_context := context
   g_window = win.nonzero(windows.CreateWindowExW(
     dwStyle      = default_extras.dwStyle,
     dwExStyle    = default_extras.dwExStyle,
@@ -146,7 +148,7 @@ create_window :: proc (
     hWndParent   = default_extras.hWndParent,
     hMenu        = default_extras.hMenu,
     hInstance    = instance,
-    lpParam      = &window_context,
+    lpParam      = nil,
   )) or_return
   // Basic window creation succeeded.
 
@@ -168,6 +170,15 @@ create_window :: proc (
   }
   register_mouse_rawinput(g_window)
 
+  // Set initial size for viewport from client-area.
+  sized_rect: windows.RECT
+  got_rect := windows.GetClientRect(g_window, &sized_rect)
+  assert_contextless(cast(bool) got_rect)
+  viewport_size = {
+    cast(int) (sized_rect.right - sized_rect.left),
+    cast(int) (sized_rect.bottom - sized_rect.top) 
+  }
+  g_window_resized = true
   // Now let's deal with graphics.
   if use_gl {
     gl_ok := load_gl()
@@ -192,30 +203,11 @@ thread_wndproc :: proc "system" (
   w: windows.WPARAM,
   l: windows.LPARAM
 ) -> windows.LRESULT {
-  // Initialize the runtime.Context.
-  // In Practice: Only a WM_GETMINMAXINFO arrives before we can receive a context.
-  // In Reality : You've got to check context_ready to do anything of importance.
-  //////////////////////////////////////////////////////////////////////
-  context = {}
-  @static context_ready: bool
-  if context_ready {
-    window_user_data := windows.GetWindowLongPtrW(hwnd, windows.GWLP_USERDATA)
-    context = ( cast(^runtime.Context) cast(uintptr) window_user_data )^
-  } else {
-    // NCCREATE receives a context pointer from create_window.
-    // Here we persist that pointer using SetWindowLongPtr.
-    if message == windows.WM_NCCREATE {
-      context_ready = true
-      createstruct := transmute(^windows.CREATESTRUCTW)l
-      context = ( transmute(^runtime.Context)createstruct.lpCreateParams )^
-      ctx := cast(windows.LONG_PTR) cast(uintptr) createstruct.lpCreateParams
-      windows.SetWindowLongPtrW(hwnd, windows.GWLP_USERDATA, ctx)
-    }
-  }
-  //////////////////////////////////////////////////////////////////////
-
   switch message {
   case windows.WM_DPICHANGED:
+    g_dpi_changed = true
+    dpi := windows.HIWORD(w)
+    scale_factor = cast(f32)dpi / 96
   case windows.WM_CLOSE:
     windows.DestroyWindow(hwnd)
   case windows.WM_DESTROY:
@@ -224,11 +216,11 @@ thread_wndproc :: proc "system" (
   // case windows.WM_ENTERSIZEMOVE:
   // case windows.WM_EXITSIZEMOVE:
   case windows.WM_SIZE:
+    viewport_size.x = cast(int) windows.LOWORD(l)
+    viewport_size.y = cast(int) windows.HIWORD(l)
     g_window_resized = true
-    if g_gl_ready {
-      resize_viewport()
-    }
   }
+
   return windows.DefWindowProcW(hwnd, message, w, l)
 }
 
@@ -241,4 +233,8 @@ capture_cursor :: proc () {
 
 set_cursor_visible :: proc (show: bool) {
   windows.ShowCursor(cast(windows.BOOL) show)
+}
+
+set_scale_factor_from_dpi :: proc (dpi: windows.DWORD) {
+  scale_factor = cast(f32) dpi / 96
 }

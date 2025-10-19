@@ -16,12 +16,12 @@ spr: ^Entity
 cursor: ^Entity
 // debug_colliders: ^Entity
 
-render_resolution :: [2]int
+resolution: [2]int = {384, 216}
 
 make_framebuffer :: proc (size: [2]int, _loc := #caller_location) -> gl.Framebuffer {
 	gl.glActiveTexture(gl.TEXTURE0)
 	_, color_tex := gl.CreateTexture()
-	assert(color_tex != 0)
+assert(color_tex != 0)
 	gl.BindTexture(.TEXTURE_2D, color_tex)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.make_texture_2D(
@@ -36,7 +36,7 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.BindTexture(.TEXTURE_2D, 0)
 
 		_, depth_tex := gl.CreateTexture()
-	assert(depth_tex != 0)
+assert(depth_tex != 0)
 	gl.BindTexture(.TEXTURE_2D, depth_tex)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.make_texture_2D(
@@ -51,22 +51,22 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.BindTexture(.TEXTURE_2D, 0)
 
 	fb := gl.CreateFramebuffer()
-	assert(fb != 0)
+assert(fb != 0)
 	gl.BindFramebuffer(.FRAMEBUFFER, fb)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.FramebufferTexture2D(.FRAMEBUFFER, .COLOR_ATTACHMENT0, .TEXTURE_2D, color_tex, level=0)
 	gl.FramebufferTexture2D(.FRAMEBUFFER, .DEPTH_STENCIL_ATTACHMENT, .TEXTURE_2D, depth_tex, level=0)
 	val := gl.glCheckFramebufferStatus(gl.FRAMEBUFFER)
-	assert(val == gl.FRAMEBUFFER_COMPLETE)
+assert(val == gl.FRAMEBUFFER_COMPLETE)
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
-	assert(gl.Error.NO_ERROR == gl.validate(_loc))
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.BindFramebuffer(.FRAMEBUFFER, 0)
-	assert(gl.Error.NO_ERROR == gl.validate(_loc))
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
 
 	gl.glActiveTexture(gl.TEXTURE0 + cast(uint) Texture_Unit.Framebuffer_Texture)
 	gl.BindTexture(.TEXTURE_2D, color_tex)
-	assert(gl.Error.NO_ERROR == gl.validate(_loc))
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	return fb
 }
 
@@ -93,15 +93,16 @@ game_init :: proc () {
 	cursor.collider.size = 20
 
 	img = make_image(`gameplayboard.aseprite`)
-	img.position.y = 100
 
-	spr = sprite(`berserker.aseprite`)
-	spr.position.xy = 42
-	spr.collider.shape = .Circle
-	spr.collider.size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
-	spr.flags += {.Collider_Enabled}
-	spr_state := &spr.variant.(Sprite_State)
-	spr_state.repetitions = 10
+	// spr = sprite(`berserker.aseprite`)
+	// spr.position.xy = 42
+	// spr.collider.shape = .Circle
+	// spr.collider.size = array_cast(spr.variant.(Sprite_State).asset.size_px/2, f32).x
+	// spr.flags += {.Collider_Enabled}
+	// spr_state := &spr.variant.(Sprite_State)
+	// spr_state.repetitions = 10
+	// spr.position.z = far_draws
+
 	globals.camera.position.z = -8000// position so cam isn't at 0 so near/far are different distance from camera
 }
 
@@ -110,17 +111,16 @@ old_target: ^Entity
 game_step :: proc () {
 	rect := framebuffer_quad(from = fb, to = 0)
 	// rect.draw_command.render_target = 1
-	rect.position.x = sugar.mouse_position.x
-	rect.position.y = sugar.mouse_position.y
+	// rect.position.x = sugar.mouse_position.x
+	// rect.position.y = sugar.mouse_position.y
 	rect.position.z = near_draws
 	rect.scale.xy = array_cast(sugar.viewport_size, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
 	// rect.color = 1
 	img.position.z = far_draws
-	spr.position.z = far_draws
-	cursor.position.x = 310//sugar.mouse_position.x
-	cursor.position.y = 210//sugar.mouse_position.y
+	cursor.position.x = sugar.mouse_position.x
+	cursor.position.y = sugar.mouse_position.y
 	// cursor.position.z = near_draws
 	tn1 := text("-1")
 	{

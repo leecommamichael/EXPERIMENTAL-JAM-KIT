@@ -119,7 +119,7 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 	pipeline_changed: bool = false
 	if prev.render_target != next.render_target {
 		pipeline_changed = true
-		log.infof("Set FB [%p]%v -> [%p]%v)", prev, prev.render_target, next, next.render_target)
+		// log.infof("Set FB [%p]%v -> [%p]%v)", prev, prev.render_target, next, next.render_target)
 		gl.BindFramebuffer(.FRAMEBUFFER, next.render_target)
 	}
 
