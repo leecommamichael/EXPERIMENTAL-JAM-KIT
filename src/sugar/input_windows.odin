@@ -87,12 +87,13 @@ on_mousemove :: proc (message: windows.MSG) {
 Feedback :: enum {
 	None,
 	Should_Exit,
-	Resized, // the new resolution is already in global state.
+	Window_Resized, // the new resolution is already in global state.
+	Window_DPI_Changed,
 }
 
 // returns Should_Exit when the application should stop executing.
 @require_results
-poll_events :: proc () -> (feedback: Feedback) {
+poll_events :: proc () -> (feedback: bit_set[Feedback]) {
 	begin_input_frame()
 
 	poll_game_input :: proc () {
@@ -160,7 +161,10 @@ poll_events :: proc () -> (feedback: Feedback) {
       wMsgFilterMax = 0,
       wRemoveMsg = windows.PM_REMOVE
     )
-    if message.message == windows.WM_QUIT { return .Should_Exit }
+    if message.message == windows.WM_QUIT {
+    	feedback += {.Should_Exit}
+    	return
+    }
     switch (message.message) {
     case windows.WM_ENTERSIZEMOVE:
   	case windows.WM_KEYDOWN:   on_key_down(message)
@@ -172,8 +176,12 @@ poll_events :: proc () -> (feedback: Feedback) {
   		set_released(Key.Left_Mouse)
     }
     if g_window_resized {
-    	g_window_resized = false
-    	feedback = .Resized
+    	g_window_resized = false // set by peek
+    	feedback += {.Window_Resized}
+    }
+    if g_dpi_changed {
+    	g_dpi_changed = false // set by peek
+    	feedback += {.Window_DPI_Changed}
     }
 
     if !has_more_messages { break }

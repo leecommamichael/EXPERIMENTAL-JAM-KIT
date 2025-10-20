@@ -11,70 +11,18 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
+near_draws: f32 = -90
+far_draws: f32 = 90
+
 img: ^Entity
 spr: ^Entity
 cursor: ^Entity
 // debug_colliders: ^Entity
 
-resolution: [2]int = {384, 216}
-
-make_framebuffer :: proc (size: [2]int, _loc := #caller_location) -> gl.Framebuffer {
-	gl.glActiveTexture(gl.TEXTURE0)
-	_, color_tex := gl.CreateTexture()
-assert(color_tex != 0)
-	gl.BindTexture(.TEXTURE_2D, color_tex)
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-	gl.make_texture_2D(
-		.TEXTURE_2D,
-		.RGBA8,
-		size.x, size.y,
-		{},
-		lod=0)
-	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
-	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
-	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
-	gl.BindTexture(.TEXTURE_2D, 0)
-
-		_, depth_tex := gl.CreateTexture()
-assert(depth_tex != 0)
-	gl.BindTexture(.TEXTURE_2D, depth_tex)
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-	gl.make_texture_2D(
-		.TEXTURE_2D,
-		.DEPTH24_STENCIL8,
-		size.x, size.y,
-		{},
-		lod=0)
-	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
-	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
-	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
-	gl.BindTexture(.TEXTURE_2D, 0)
-
-	fb := gl.CreateFramebuffer()
-assert(fb != 0)
-	gl.BindFramebuffer(.FRAMEBUFFER, fb)
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-	gl.FramebufferTexture2D(.FRAMEBUFFER, .COLOR_ATTACHMENT0, .TEXTURE_2D, color_tex, level=0)
-	gl.FramebufferTexture2D(.FRAMEBUFFER, .DEPTH_STENCIL_ATTACHMENT, .TEXTURE_2D, depth_tex, level=0)
-	val := gl.glCheckFramebufferStatus(gl.FRAMEBUFFER)
-assert(val == gl.FRAMEBUFFER_COMPLETE)
-	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-	gl.BindFramebuffer(.FRAMEBUFFER, 0)
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-
-	gl.glActiveTexture(gl.TEXTURE0 + cast(uint) Texture_Unit.Framebuffer_Texture)
-	gl.BindTexture(.TEXTURE_2D, color_tex)
-assert(gl.Error.NO_ERROR == gl.validate(_loc))
-	return fb
-}
-
-fb: gl.Framebuffer
-
-near_draws: f32 = -90
-far_draws: f32 = 90
 game_init :: proc () {
+	globals.unscaled_frame_size_px = {384, 216}
+	globals.pixel_scaling = .Integer
+	globals.ren.framebuffer = make_framebuffer({800,800})
 	// log.infof("Made FB: %v", fb)
 	// debug_colliders = make_entity()
 	// debug_colliders.position.z = 1
@@ -84,8 +32,6 @@ game_init :: proc () {
 	// 	cast(int) debug_colliders.id, {},{})
 	// debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
 	// globals.draw_colliders = true
-
-	fb = make_framebuffer({800,800})
 	cursor = sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
@@ -109,7 +55,7 @@ game_init :: proc () {
 old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
-	rect := framebuffer_quad(from = fb, to = 0)
+	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
 	// rect.draw_command.render_target = 1
 	// rect.position.x = sugar.mouse_position.x
 	// rect.position.y = sugar.mouse_position.y

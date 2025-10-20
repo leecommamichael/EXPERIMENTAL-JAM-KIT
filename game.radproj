@@ -1,5 +1,7 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/main_entrypoint.odin"
+recent_file: path: "src/sugar/main_windows.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/nord_gl/impl_desktop.odin"
 recent_file: path: "src/geom.odin"
@@ -10,7 +12,6 @@ recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builti
 recent_file: path: "src/main_game.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/ren_image.odin"
-recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "../../applications (compilers)/odin/core/thread/thread.odin"
 recent_file: path: "../../applications (compilers)/odin/core/image/qoi/qoi.odin"
 recent_file: path: "src/sugar/input_windows.odin"
@@ -35,7 +36,6 @@ recent_file: path: "../../applications (compilers)/odin/core/mem/alloc.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/internal.odin"
 recent_file: path: "src/main_app.odin"
 recent_file: path: "src/main.odin"
-recent_file: path: "src/sugar/main_windows.odin"
 recent_file: path: "src/sugar/gl_windows.odin"
 recent_file: path: "src/nord_gl/loader_desktop.odin"
 target:
@@ -58,6 +58,6 @@ type_view:
 }
 breakpoint:
 {
-  source_location: "src/ren.odin:98:1"
+  source_location: "src/main_entrypoint.odin:58:1"
   hit_count: 1
 }

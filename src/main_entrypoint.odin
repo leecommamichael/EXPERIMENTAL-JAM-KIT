@@ -3,8 +3,6 @@ package main
 import "base:runtime"
 import "core:time"
 import "core:log"
-import "core:math/linalg"
-import "core:math/linalg/glsl"
 import "sugar"
 import "audio"
 
@@ -54,10 +52,15 @@ step :: proc (dt: f64) -> bool {
 	if frame_number == 2 {
 		log_runtime("first_paint")
 	}
-	switch sugar.poll_events() { // begins input frame.
-	case .Should_Exit: return false
-	case .Resized:     viewport_resized(sugar.viewport_size)
-	case .None:
+	events := sugar.poll_events() // begins input frame.
+	if .Should_Exit in events { return false }
+	if .Window_DPI_Changed in events {
+		log.infof("DPI %v", sugar.scale_factor)
+		sugar.set_window_size(sugar.viewport_size)
+		window_resized(sugar.viewport_size)
+	}
+	if .Window_Resized in events {
+		window_resized(sugar.viewport_size)
 	}
 
 	if sugar.on_key_release(.Escape) || sugar.on_button_release(.Select) {
@@ -73,11 +76,15 @@ step :: proc (dt: f64) -> bool {
 
 // TODO: Read various data from Globals such that the game
 //       can program the camera simply by setting parameters.
-import "core:math"
 import gl "nord_gl"
-viewport_resized :: proc (res: [2]int) {
-  gl.Viewport(0,0, res.x, res.y)
+import "core:math"
+import "core:math/linalg"
+import "core:math/linalg/glsl"
+window_resized :: proc (res: [2]int) { // needs more px sometimes.
+	res := array_cast(res, f32)
+  gl.Viewport(0,0, cast(int)res.x, cast(int)res.y)
 	aspect_ratio := cast(f32)res.x / cast(f32)res.y
+
 	globals.game_camera = linalg.matrix4_perspective_f32(
 		fovy   = linalg.to_radians(f32(90.0)),
 		aspect = aspect_ratio,
@@ -94,4 +101,3 @@ viewport_resized :: proc (res: [2]int) {
 		far    = -100
 	)
 }
-

@@ -39,7 +39,13 @@ Globals :: struct {
 	glyph_buffer:     gl.Buffer,
 	glpyh_offset:     int,
 
-	// Render+Entity Integration
+	unscaled_frame_size_px: [2]int,
+	// Render+Entity Integration /////////////////////////////////////////////////
+	// How much each pixel stretched while fitting to the window AFTER framebuffer scaling.
+	// Measures the # of fragments covered by each input pixel.
+	// See `Pixel_Scaling`
+	pixel_scale:     f32,
+	pixel_scaling:   Pixel_Scaling,
 	uniforms:        Uniforms,
 	game_camera:     Mat4,
 	ui_orthographic: Mat4,
@@ -60,12 +66,21 @@ Globals :: struct {
 	// App Data
 }
 
+// Looks like 16K textures is standard for the past decade.
 GL_Standard :: struct {                 // RTX-4070 ,          ,
 	UNIFORM_BUFFER_OFFSET_ALIGNMENT: int, // 256   web, same  win,
 	MAX_UNIFORM_BLOCK_SIZE: i64,          // 65536 web, same  win,
 	MAX_TEXTURE_SIZE: i64,                // 16384 web, 32768 win,
 }
-// Looks like 16K textures is standard for the past decade.
+
+Pixel_Scaling :: enum {
+	// The framework will not set the `pixel_scale` as the window resizes.
+	Fixed,
+	// `pixel_scale` changes as the OS window changes. Fills the window.
+	Smooth,
+	// `pixel_scale` will only have integer values.
+	Integer, 
+}
 
 //////////////////////////////////////////////////////////////////////
 // Section: Entities
@@ -140,10 +155,11 @@ Collision :: struct {
 //////////////////////////////////////////////////////////////////////
 
 Ren :: struct {
-	prev_cmd:  Draw_Command,
-	frame_UBO: gl.Buffer,
-	programs:  [Game_Shader]gl.Program, // constant
-	textures: [16]GPU_Texture
+	framebuffer: gl.Framebuffer,
+	prev_cmd:    Draw_Command,
+	frame_UBO:   gl.Buffer,
+	programs:    [Game_Shader]gl.Program, // constant
+	textures:    [16]GPU_Texture
 }
 
 Game_Shader :: enum {
@@ -253,8 +269,3 @@ Shader_Input_Rate :: enum {
 	Vertex,
 	Instance,
 }
-
-//////////////////////////////////////////////////////////////////////
-// Section: Text
-//////////////////////////////////////////////////////////////////////
-

@@ -17,6 +17,7 @@ window:
           selected
           expression: "query:locals"
           normal: 0.350000 0.410432 0.239568
+          sub_type: 0.350000 0.200317 0.177406 0.272277
         }
         watch: expression: "query:type_views"
         watch:
@@ -45,6 +46,9 @@ window:
           watch: "globals.assets"
           watch: "cmd.attributes"
           normal: 0.218506 0.531494 0.250000
+          watch: "sugar.scale_factor"
+          watch: size_px
+          watch: size_px
         }
       }
       0.123260: text:
@@ -59,7 +63,6 @@ window:
       }
       0.274248:
       {
-        selected
         watch: selected expression: "query:call_stack"
         disasm:
         {
@@ -76,15 +79,17 @@ window:
     }
     0.448422:
     {
+      selected
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 35
-        cursor_column: 1
-        mark_line: 35
-        mark_column: 1
+        cursor_line: 84
+        cursor_column: 50
+        mark_line: 84
+        mark_column: 50
       }
       text:
       {
@@ -164,17 +169,16 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/ren.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/sugar/main_windows.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 538
+        cursor_line: 61
         cursor_column: 1
-        mark_line: 538
+        mark_line: 61
         mark_column: 1
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -214,7 +218,7 @@ window:
     }
   }
   split_x
-  pos: 2095 110
+  pos: 1255 110
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0

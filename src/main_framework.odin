@@ -24,6 +24,9 @@ framework_init :: proc () {
 	}
 	init_gl_constants()
 
+	globals.pixel_scale = 1
+	globals.pixel_scaling = .Integer
+
 	globals.game_view = 1
 	globals.ui_view = 1
 
@@ -65,7 +68,7 @@ framework_step :: proc (dt: f64) {
 		if .Allocated in e.flags {
 			append(&globals.entities, &e)
 			if .Immediate_In_Use in e.flags {
-				// assume it is not used.
+				// assume it is not used
 				// after the game_step, if it is still not used, free it.
 				e.flags -= { .Immediate_In_Use }
 			}

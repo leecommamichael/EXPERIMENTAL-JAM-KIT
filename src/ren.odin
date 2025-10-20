@@ -173,7 +173,7 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 ren_clear :: proc () {
 	gl.BindFramebuffer(.FRAMEBUFFER, 0)
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
-	gl.BindFramebuffer(.FRAMEBUFFER, fb)
+	gl.BindFramebuffer(.FRAMEBUFFER, globals.ren.framebuffer)
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
 	gl.BindFramebuffer(.FRAMEBUFFER, globals.ren.prev_cmd.render_target)
 }
@@ -228,6 +228,61 @@ ren_draw :: proc (ren: ^Ren) {
 	}
 }
 
+//////////////////////////////////////////////////////////////////////
+// Section: Framebuffer
+//////////////////////////////////////////////////////////////////////
+
+make_framebuffer :: proc (size: [2]int, _loc := #caller_location) -> gl.Framebuffer {
+	gl.glActiveTexture(gl.TEXTURE0)
+	_, color_tex := gl.CreateTexture()
+assert(color_tex != 0)
+	gl.BindTexture(.TEXTURE_2D, color_tex)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.make_texture_2D(
+		.TEXTURE_2D,
+		.RGBA8,
+		size.x, size.y,
+		{},
+		lod=0)
+	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
+	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.BindTexture(.TEXTURE_2D, 0)
+
+		_, depth_tex := gl.CreateTexture()
+assert(depth_tex != 0)
+	gl.BindTexture(.TEXTURE_2D, depth_tex)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.make_texture_2D(
+		.TEXTURE_2D,
+		.DEPTH24_STENCIL8,
+		size.x, size.y,
+		{},
+		lod=0)
+	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
+	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
+	gl.BindTexture(.TEXTURE_2D, 0)
+
+	fb := gl.CreateFramebuffer()
+assert(fb != 0)
+	gl.BindFramebuffer(.FRAMEBUFFER, fb)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.FramebufferTexture2D(.FRAMEBUFFER, .COLOR_ATTACHMENT0, .TEXTURE_2D, color_tex, level=0)
+	gl.FramebufferTexture2D(.FRAMEBUFFER, .DEPTH_STENCIL_ATTACHMENT, .TEXTURE_2D, depth_tex, level=0)
+	val := gl.glCheckFramebufferStatus(gl.FRAMEBUFFER)
+assert(val == gl.FRAMEBUFFER_COMPLETE)
+	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.BindFramebuffer(.FRAMEBUFFER, 0)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+
+	gl.glActiveTexture(gl.TEXTURE0 + cast(uint) Texture_Unit.Framebuffer_Texture)
+	gl.BindTexture(.TEXTURE_2D, color_tex)
+assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	return fb
+}
 
 //////////////////////////////////////////////////////////////////////
 // Section: Draw Commands
