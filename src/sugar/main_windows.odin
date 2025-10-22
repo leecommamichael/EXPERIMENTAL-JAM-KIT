@@ -131,6 +131,7 @@ create_window :: proc (
 		cbSize        = size_of(windows.WNDCLASSEXW),
 		lpfnWndProc   = thread_wndproc,
 		hInstance     = instance,
+		hCursor       = windows.LoadCursorA(nil, windows.IDC_ARROW),
 		lpszClassName = cast(cstring16) class_name, // TODO unsafe assumes \0-term
 		style         = window_style.style
 	}
