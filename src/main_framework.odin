@@ -130,6 +130,7 @@ framework_step :: proc (dt: f64) {
     return i.distance_from_camera > j.distance_from_camera
   })
 	ren_draw(globals.ren)
+	sugar.swap_buffers()
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {

@@ -52,6 +52,8 @@ load_gl :: proc () -> bool {
     log.errorf("Insufficient GL version. Got %v", actual_version)
     return false
   }
+  windows.wglSwapIntervalEXT = cast(windows.SwapIntervalEXTType)windows.wglGetProcAddress("wglSwapIntervalEXT")
+  windows.wglSwapIntervalEXT(1)
   return true
 }
 

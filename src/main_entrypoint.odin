@@ -31,13 +31,12 @@ main :: proc() {
 	framework_init()
 
 	when sugar.platform_calls_step { return }
-	
+
 	tick := time.tick_now()
 	dt: f64
 	for {
 		dt = time.duration_seconds(time.tick_lap_time(&tick))
 		step(dt) or_break
-		sugar.swap_buffers()
 	}
 }
 
@@ -45,9 +44,15 @@ main :: proc() {
 // The context is defaulted each time you enter. Related: `runtime.default_context_ptr()`
 @export
 step :: proc (dt: f64) -> bool {
+	@static start_time: time.Tick
 	@static frame_number: uint = 0
 	if frame_number == 1 {
 		log_runtime("first_paint")
+		start_time = time.tick_now()
+	}
+	globals.avg_fps = f64(frame_number) / time.duration_seconds(time.tick_since(start_time))
+	if frame_number % 300 == 0 {
+		log.infof("[FPS] %v", globals.avg_fps)
 	}
 	frame_number += 1
 	events := sugar.poll_events() // begins input frame.

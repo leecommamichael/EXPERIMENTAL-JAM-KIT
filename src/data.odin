@@ -16,6 +16,7 @@ MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
 	dt: f64,
+	avg_fps: f64,
 	// Assets
 	assets: Asset_Bundle,
 	fonts: [Font_Usage]Font_Family,
