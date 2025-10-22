@@ -21,7 +21,7 @@ main :: proc() {
 	ok := sugar.create_window(
 		[4]int{
 			display.top_left.x,
-			display.top_left.y, 800, 800} + {2,44,0,0},
+			display.top_left.y, 0,0} + {2,44,0,0} + (4*{0,0,384,216}),
 		"Tonic",
 		use_gl = true
 	)
