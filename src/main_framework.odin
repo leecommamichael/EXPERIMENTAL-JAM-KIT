@@ -12,6 +12,7 @@ import "base:runtime"
 import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
+import "sugar"
 
 framework_init :: proc () {
 	init_gl_constants :: proc () {
@@ -55,6 +56,7 @@ framework_init :: proc () {
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
 	ren_clear()
+	globals.mouse_position = sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch
 	globals.dt = dt
 	globals.uniforms.tau_time += f32(dt)
 	overflow := linalg.TAU - globals.uniforms.tau_time

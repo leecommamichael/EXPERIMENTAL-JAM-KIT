@@ -18,7 +18,7 @@ window_style: Window_Style
 window_uses_menu: windows.BOOL : false
 @private
 Window_Style :: struct {
-	// Extras for CreateWindowExW
+	// CreateWindowExW parameters //////////////////////////////////////////////////////////
 	// https://learn.microsoft.com/en-us/windows/win32/winmsg/extended-window-styles
 	dwExStyle:  windows.DWORD,
 	// https://learn.microsoft.com/en-us/windows/win32/winmsg/window-styles
@@ -28,7 +28,7 @@ Window_Style :: struct {
 	lpParam:    windows.LPVOID,
 
 	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-wndclassexw
-	// WNDCLASSEXw
+	// WNDCLASSEXw /////////////////////////////////////////////////////////////////////////
 	style:         windows.UINT,
 	// cbClsExtra:    windows.INT,
 	// cbWndExtra:    windows.INT,
@@ -197,7 +197,6 @@ swap_buffers :: proc () {
 	windows.SwapBuffers(g_dc)
 }
 
-// The runtime.Context used to create the main window is available.
 thread_wndproc :: proc "system" (
 	hwnd: windows.HWND,
 	message: windows.UINT,

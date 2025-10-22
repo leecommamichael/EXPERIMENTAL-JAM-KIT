@@ -45,6 +45,7 @@ Globals :: struct {
 	canvas_stretch:      [2]f32, // after scaling.
 	canvas_stretching:   Canvas_Scaling,
 	framebuffer_size_px: [2]f32, // canvas_size_px * canvas_scale * canvas_stretch
+	mouse_position:      [2]f32, // in the canvas.
 	// Render+Entity Integration /////////////////////////////////////////////////
 	// How much each pixel stretched while fitting to the window AFTER framebuffer scaling.
 	// Measures the # of fragments covered by each input pixel.

@@ -67,7 +67,7 @@ game_step :: proc () {
 	rect.basis.position.xy = rect.scale.xy/2
 	// rect.color = 1
 	img.position.z = far_draws
-	cursor.position.xy = sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch
+	cursor.position.xy = globals.mouse_position
 	// cursor.position.z = near_draws
 	tn1 := text("-1")
 	{

@@ -142,19 +142,19 @@ poll_events :: proc () -> (feedback: bit_set[Feedback]) {
 	}
 	get_raw_input()
 
-  message: windows.MSG
-  for {
-    has_more_messages := windows.PeekMessageW(
-      lpMsg = &message,
-      hWnd = {}, // thread-level, not window (to get WM_QUIT)
-      wMsgFilterMin = 0,
-      wMsgFilterMax = 0,
-      wRemoveMsg = windows.PM_REMOVE
-    )
+  for message: windows.MSG; windows.PeekMessageW(
+    lpMsg = &message,
+    hWnd = {}, // thread-level, not window (to get WM_QUIT)
+    wMsgFilterMin = 0,
+    wMsgFilterMax = 0,
+    wRemoveMsg = windows.PM_REMOVE
+  );{
+
     if message.message == windows.WM_QUIT {
     	feedback += {.Should_Exit}
     	return
     }
+
     switch (message.message) {
     case windows.WM_ENTERSIZEMOVE:
   	case windows.WM_KEYDOWN:   on_key_down(message)
@@ -165,6 +165,7 @@ poll_events :: proc () -> (feedback: bit_set[Feedback]) {
   	case windows.WM_LBUTTONUP:
   		set_released(Key.Left_Mouse)
     }
+
     if g_window_resized {
     	g_window_resized = false // set by peek
     	feedback += {.Window_Resized}
@@ -174,7 +175,6 @@ poll_events :: proc () -> (feedback: bit_set[Feedback]) {
     	feedback += {.Window_Scale_Factor_Changed}
     }
 
-    if !has_more_messages { break }
     windows.TranslateMessage(&message)
     windows.DispatchMessageW(&message)
   }
