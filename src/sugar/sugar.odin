@@ -6,7 +6,31 @@ import "core:time"
 // Common/Easy Interface
 //////////////////////////////////////////////////////////////////////
 
-scale_factor:   f32 // physical px per logical px
+// With the exception of "Should_Exit" you don't need to handle these.
+// Sugar tries to handle as many things as possible.
+// This is just a way of detecting what has happened.
+Feedback :: enum {
+	None,
+	Should_Exit,
+	Window_Resized, // the new resolution is already in global state.
+	Window_Scale_Factor_Changed,
+}
+
+prev_scale_factor: f32
+scale_factor: f32 // physical px per logical px
+set_scale_factor :: proc "contextless" (f: f32) {
+	g_scale_factor_changed = true
+	prev_scale_factor = scale_factor
+	scale_factor = f
+}
+
+dpi_from_scale_factor :: #force_inline proc "contextless" (scale: f32) -> f32 {
+	return scale * 96
+}
+scale_factor_from_dpi :: #force_inline proc "contextless" (dpi: f32) -> f32 {
+	return dpi / 96
+}
+
 viewport_size:  [2]int
 mouse_position: [2]f32
 mouse_delta:    [2]f32

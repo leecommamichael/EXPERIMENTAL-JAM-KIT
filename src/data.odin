@@ -39,13 +39,16 @@ Globals :: struct {
 	glyph_buffer:     gl.Buffer,
 	glpyh_offset:     int,
 
-	unscaled_frame_size_px: [2]int,
+	canvas_size_px:      [2]f32,
+	canvas_scale:        [2]f32,
+	canvas_scaling:      Canvas_Scaling,
+	canvas_stretch:      [2]f32, // after scaling.
+	canvas_stretching:   Canvas_Scaling,
+	framebuffer_size_px: [2]f32, // canvas_size_px * canvas_scale * canvas_stretch
 	// Render+Entity Integration /////////////////////////////////////////////////
 	// How much each pixel stretched while fitting to the window AFTER framebuffer scaling.
 	// Measures the # of fragments covered by each input pixel.
 	// See `Pixel_Scaling`
-	pixel_scale:     f32,
-	pixel_scaling:   Pixel_Scaling,
 	uniforms:        Uniforms,
 	game_camera:     Mat4,
 	ui_orthographic: Mat4,
@@ -73,13 +76,15 @@ GL_Standard :: struct {                 // RTX-4070 ,          ,
 	MAX_TEXTURE_SIZE: i64,                // 16384 web, 32768 win,
 }
 
-Pixel_Scaling :: enum {
-	// The framework will not set the `pixel_scale` as the window resizes.
+Canvas_Scaling :: enum {
+	// The framework will not set the `canvas_scale` as the window resizes.
 	Fixed,
-	// `pixel_scale` changes as the OS window changes. Fills the window.
-	Smooth,
-	// `pixel_scale` will only have integer values.
-	Integer, 
+	// `canvas_scale` changes as the OS window changes. Keeps base resolution aspect ratio.
+	Smooth_Aspect,
+	// `canvas_scale` changes as the OS window changes. Completely fills the window.
+	Fill_Window,
+	// `canvas_scale` will only have integer values.
+	Integer_Aspect,
 }
 
 //////////////////////////////////////////////////////////////////////

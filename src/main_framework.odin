@@ -24,8 +24,10 @@ framework_init :: proc () {
 	}
 	init_gl_constants()
 
-	globals.pixel_scale = 1
-	globals.pixel_scaling = .Integer
+	globals.canvas_scale = 1
+	globals.canvas_scaling = .Fixed
+	globals.canvas_stretch= 1
+	globals.canvas_stretching = .Integer_Aspect
 
 	globals.game_view = 1
 	globals.ui_view = 1

@@ -9,7 +9,7 @@ platform_calls_step :: false
 Window :: windows.HWND
 g_window: Window
 g_window_resized: bool // set in wndproc, unset in message queue reader
-g_dpi_changed: bool
+g_scale_factor_changed: bool
 
 // Just pasting this here for reference on which Windows-native features can be added.
 ////////////////////////////////////////////////////////////////////// 
@@ -43,41 +43,6 @@ init :: proc () {
 	scale_windows_manually := windows.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 	assert(windows.SetProcessDpiAwarenessContext(scale_windows_manually) == true)
 	init_input()
-}
-
-set_window_size :: proc (size_px: [2]int) {
-	rect: windows.RECT;
-	_, ok := win.nonzero(windows.GetWindowRect(g_window, &rect))
-	assert(ok)
-	log.infof("Window size: %v %v", rect.right-rect.left, rect.bottom-rect.top)
-
-	sized_rect: windows.RECT
-	got_rect := windows.GetClientRect(g_window, &sized_rect)
-	assert_contextless(cast(bool) got_rect)
-	old_size_dipx: [2]int = {
-		cast(int) (sized_rect.right - sized_rect.left),
-		cast(int) (sized_rect.bottom - sized_rect.top) 
-	}
-
-	rect.right  = rect.left + cast(i32) (cast(f32)size_px.x)
-	rect.bottom = rect.top  + cast(i32) (cast(f32)size_px.y)
-	adjusted := windows.AdjustWindowRectExForDpi(
-		&rect,
-		window_style.dwStyle,
-		window_uses_menu,
-		window_style.dwExStyle,
-		cast(windows.UINT) dpi_from_scale_factor(scale_factor))
-	windows.SetWindowPos(g_window, nil, 
-		rect.left, rect.top, 
-		rect.right - rect.left,
-		rect.bottom - rect.top, {})
-}
-
-dpi_from_scale_factor :: #force_inline proc "contextless" (scale: f32) -> f32 {
-	return scale * 96
-}
-scale_factor_from_dpi :: #force_inline proc "contextless" (dpi: f32) -> f32 {
-	return dpi / 96
 }
 
 list_displays :: proc (allocator := context.allocator) -> [dynamic]Display {
@@ -124,7 +89,7 @@ list_displays :: proc (allocator := context.allocator) -> [dynamic]Display {
 
 @require_results
 create_window :: proc (
-	rect: [4]int, // Packed as xywh, xy is in virtual screen coordinates.
+	xywh: [4]int,
 	title: string,
 	use_gl: bool
 ) -> bool {
@@ -133,13 +98,13 @@ create_window :: proc (
 		dwStyle = windows.WS_OVERLAPPEDWINDOW
 	}
 	////////////////////////////////////////////////////////////////////// 
-	desired_client_rect: windows.RECT = {
-		left   = cast(i32) rect[0],
-		top    = cast(i32) rect[1],
-		right  = cast(i32) (rect[0] + rect[2]),
-		bottom = cast(i32) (rect[1] + rect[3]),
+	rect: windows.RECT = {
+		left   = cast(i32) xywh[0],
+		top    = cast(i32) xywh[1],
+		right  = cast(i32) (xywh[0] + xywh[2]),
+		bottom = cast(i32) (xywh[1] + xywh[3]),
 	}
-	hMonitor := windows.MonitorFromPoint({i32(rect.x),i32(rect.y)}, .MONITOR_DEFAULTTONULL)
+	hMonitor := windows.MonitorFromPoint({i32(xywh.x),i32(xywh.y)}, .MONITOR_DEFAULTTONULL)
 	assert(hMonitor != nil)
 	current_dpi: windows.UINT
 	_, ok := win.ok(windows.GetDpiForMonitor(
@@ -147,17 +112,16 @@ create_window :: proc (
 		.MDT_EFFECTIVE_DPI,
 		&current_dpi,
 		&current_dpi))
-	set_scale_factor_from_dpi(current_dpi)
+	set_scale_factor_from_dpi(cast(windows.WORD)current_dpi)
+	prev_scale_factor = scale_factor
 	assert(ok)
 	adjusted := windows.AdjustWindowRectExForDpi(
-		&desired_client_rect,
+		&rect,
 		window_style.dwStyle,
 		window_uses_menu,
 		window_style.dwExStyle,
 		current_dpi)
-
 	assert(cast(bool) adjusted)
-	log.infof("adjusted rect %v", desired_client_rect)
 
 	instance := cast(windows.HINSTANCE) win.nonzero(windows.GetModuleHandleW(nil)) or_return
 	wtitle := windows.utf8_to_utf16(title)
@@ -171,17 +135,16 @@ create_window :: proc (
 		style         = window_style.style
 	}
 	class_atom : windows.ATOM = win.nonzero(windows.RegisterClassExW(&window_class)) or_return
-
 	window_title := windows.utf8_to_wstring(title)
 	g_window = win.nonzero(windows.CreateWindowExW(
 		dwStyle      = window_style.dwStyle,
 		dwExStyle    = window_style.dwExStyle,
 		lpClassName  = cast(cstring16) class_name,
 		lpWindowName = window_title,
-		X            = desired_client_rect.left,
-		Y            = desired_client_rect.top,
-		nWidth       = desired_client_rect.right - desired_client_rect.left,
-		nHeight      = desired_client_rect.bottom - desired_client_rect.top,
+		X            = cast(i32)rect.left,
+		Y            = cast(i32)rect.top,
+		nWidth       = rect.right - rect.left,
+		nHeight      = rect.bottom - rect.top,
 		hWndParent   = window_style.hWndParent,
 		hMenu        = window_style.hMenu,
 		hInstance    = instance,
@@ -207,7 +170,8 @@ create_window :: proc (
 	}
 	register_mouse_rawinput(g_window)
 
-	// Set initial size for viewport from client-area.
+	// Technically this isn't necessary, since we're setting 
+	// window-size in physical pixels.
 	sized_rect: windows.RECT
 	got_rect := windows.GetClientRect(g_window, &sized_rect)
 	assert_contextless(cast(bool) got_rect)
@@ -242,9 +206,9 @@ thread_wndproc :: proc "system" (
 ) -> windows.LRESULT {
 	switch message {
 	case windows.WM_DPICHANGED:
-		g_dpi_changed = true
-		dpi := windows.HIWORD(w)
-		scale_factor = cast(f32)dpi / 96 // 96 is windows base dpi (100% scale)
+		new_dpi := windows.HIWORD(w)
+		set_scale_factor_from_dpi(new_dpi)
+		g_scale_factor_changed = true
 	case windows.WM_CLOSE:
 		windows.DestroyWindow(hwnd)
 	case windows.WM_DESTROY:
@@ -272,6 +236,7 @@ set_cursor_visible :: proc (show: bool) {
 	windows.ShowCursor(cast(windows.BOOL) show)
 }
 
-set_scale_factor_from_dpi :: proc (dpi: windows.DWORD) {
-	scale_factor = cast(f32) dpi / 96
+set_scale_factor_from_dpi :: proc "contextless" (dpi: windows.WORD) {
+	prev_scale_factor = scale_factor
+	set_scale_factor(cast(f32) dpi / 96)
 }

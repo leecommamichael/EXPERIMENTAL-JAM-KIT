@@ -20,9 +20,11 @@ cursor: ^Entity
 // debug_colliders: ^Entity
 
 game_init :: proc () {
-	globals.unscaled_frame_size_px = {384, 216}
-	globals.pixel_scaling = .Integer
-	globals.ren.framebuffer = make_framebuffer({800,800})
+	globals.canvas_size_px = {384, 216}
+
+	globals.canvas_scaling = .Fixed
+	globals.canvas_stretching = .Integer_Aspect
+	globals.ren.framebuffer = make_framebuffer(array_cast(globals.canvas_size_px, int))
 	// log.infof("Made FB: %v", fb)
 	// debug_colliders = make_entity()
 	// debug_colliders.position.z = 1
@@ -60,7 +62,7 @@ game_step :: proc () {
 	// rect.position.x = sugar.mouse_position.x
 	// rect.position.y = sugar.mouse_position.y
 	rect.position.z = near_draws
-	rect.scale.xy = array_cast(sugar.viewport_size, f32)
+	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
 	// rect.color = 1

@@ -81,16 +81,6 @@ on_mousemove :: proc (message: windows.MSG) {
 	mouse_position.y = size_y - cast(f32) windows.GET_Y_LPARAM(message.lParam)
 }
 
-// With the exception of "Should_Exit" you don't need to handle these.
-// Sugar tries to handle as many things as possible.
-// This is just a way of detecting what has happened.
-Feedback :: enum {
-	None,
-	Should_Exit,
-	Window_Resized, // the new resolution is already in global state.
-	Window_DPI_Changed,
-}
-
 // returns Should_Exit when the application should stop executing.
 @require_results
 poll_events :: proc () -> (feedback: bit_set[Feedback]) {
@@ -179,9 +169,9 @@ poll_events :: proc () -> (feedback: bit_set[Feedback]) {
     	g_window_resized = false // set by peek
     	feedback += {.Window_Resized}
     }
-    if g_dpi_changed {
-    	g_dpi_changed = false // set by peek
-    	feedback += {.Window_DPI_Changed}
+    if g_scale_factor_changed {
+    	g_scale_factor_changed = false // set by peek
+    	feedback += {.Window_Scale_Factor_Changed}
     }
 
     if !has_more_messages { break }

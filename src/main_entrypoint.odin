@@ -6,7 +6,6 @@ import "core:log"
 import "sugar"
 import "audio"
 
-frame_number: uint = 0
 main :: proc() {
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
@@ -19,9 +18,10 @@ main :: proc() {
 	asset_init()
 	displays := sugar.list_displays()
 	display := displays[1] if len(displays) > 1 else displays[0]
-	log.debugf("Displays: %v", displays)
 	ok := sugar.create_window(
-		[4]int{display.top_left.x,display.top_left.y, 800, 800} + {8,44,0,0},
+		[4]int{
+			display.top_left.x,
+			display.top_left.y, 800, 800} + {2,44,0,0},
 		"Tonic",
 		use_gl = true
 	)
@@ -29,9 +29,6 @@ main :: proc() {
 
 	asset_upload()
 	framework_init()
-
-	// sugar.capture_cursor()
-	// sugar.set_cursor_visible(false)
 
 	when sugar.platform_calls_step { return }
 	
@@ -48,19 +45,18 @@ main :: proc() {
 // The context is defaulted each time you enter. Related: `runtime.default_context_ptr()`
 @export
 step :: proc (dt: f64) -> bool {
-	frame_number += 1
-	if frame_number == 2 {
+	@static frame_number: uint = 0
+	if frame_number == 1 {
 		log_runtime("first_paint")
 	}
+	frame_number += 1
 	events := sugar.poll_events() // begins input frame.
 	if .Should_Exit in events { return false }
-	if .Window_DPI_Changed in events {
-		log.infof("DPI %v", sugar.scale_factor)
-		sugar.set_window_size(sugar.viewport_size)
-		window_resized(sugar.viewport_size)
+	if .Window_Scale_Factor_Changed in events {
+		// Noop
 	}
 	if .Window_Resized in events {
-		window_resized(sugar.viewport_size)
+		window_resized()
 	}
 
 	if sugar.on_key_release(.Escape) || sugar.on_button_release(.Select) {
@@ -80,10 +76,41 @@ import gl "nord_gl"
 import "core:math"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
-window_resized :: proc (res: [2]int) { // needs more px sometimes.
-	res := array_cast(res, f32)
-  gl.Viewport(0,0, cast(int)res.x, cast(int)res.y)
-	aspect_ratio := cast(f32)res.x / cast(f32)res.y
+window_resized :: proc () {
+	viewport_size := array_cast(sugar.viewport_size,f32)
+	////////////////////////////////////////////////////////////////////////////
+	// decide how the viewport will be sized. affects render-target size.
+	switch globals.canvas_scaling {
+	case .Smooth_Aspect:
+		globals.canvas_scale = vec_min(viewport_size) / vec_max(globals.canvas_size_px)
+	case .Fill_Window:
+		globals.canvas_scale = viewport_size / globals.canvas_size_px
+	case .Integer_Aspect:
+		integer_scales := trunc(viewport_size / globals.canvas_size_px)
+		globals.canvas_scale = vec_min(integer_scales)
+	case .Fixed:
+	}
+	////////////////////////////////////////////////////////////////////////////
+	scaled_canvas_px := globals.canvas_scale * globals.canvas_size_px
+	unused_px := viewport_size - scaled_canvas_px 
+	// decide how the viewport will be stretched after sizing.
+	switch globals.canvas_stretching {
+	case .Smooth_Aspect:
+		globals.canvas_stretch = vec_min(viewport_size) / vec_max(scaled_canvas_px)
+	case .Fill_Window:
+		globals.canvas_stretch = 1.0 + unused_px / viewport_size
+	case .Integer_Aspect:
+		integer_scales := trunc(viewport_size / scaled_canvas_px)
+		globals.canvas_stretch = vec_min(integer_scales)
+	case .Fixed:
+	}
+	globals.framebuffer_size_px = globals.canvas_size_px *
+	                              globals.canvas_scale *
+	                              globals.canvas_stretch
+	////////////////////////////////////////////////////////////////////////////
+	log.infof("viewport = %v", viewport_size)
+  gl.Viewport(0,0, sugar.viewport_size.x, sugar.viewport_size.y)
+	aspect_ratio := viewport_size.x / viewport_size.y
 
 	globals.game_camera = linalg.matrix4_perspective_f32(
 		fovy   = linalg.to_radians(f32(90.0)),
@@ -94,8 +121,8 @@ window_resized :: proc (res: [2]int) { // needs more px sometimes.
 	)
 	globals.ui_orthographic = glsl.mat4Ortho3d(
 		left   = 0,
-		right  = cast(f32) res.x,
-		top    = cast(f32) res.y,
+		right  = viewport_size.x,
+		top    = viewport_size.y,
 		bottom = 0,
 		near   = 100,
 		far    = -100
