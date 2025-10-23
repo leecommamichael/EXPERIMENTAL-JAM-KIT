@@ -27,7 +27,7 @@ framework_init :: proc () {
 
 	globals.canvas_scale = 1
 	globals.canvas_scaling = .Fixed
-	globals.canvas_stretch= 1
+	globals.canvas_stretch = 1
 	globals.canvas_stretching = .Integer_Aspect
 
 	globals.game_view = 1

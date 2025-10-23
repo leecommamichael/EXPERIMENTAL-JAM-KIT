@@ -115,3 +115,4 @@ distance :: linalg.distance
 trunc :: glsl.trunc
 vec_min :: linalg.min
 vec_max :: linalg.max
+lerp :: math.lerp

@@ -51,24 +51,20 @@ game_init :: proc () {
 	// spr_state.repetitions = 10
 	// spr.position.z = far_draws
 
-	globals.camera.position.z = -8000// position so cam isn't at 0 so near/far are different distance from camera
 }
 
 old_target: ^Entity
 // Mixed-scope between renderer and game entities.
 game_step :: proc () {
+	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
 	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
-	// rect.draw_command.render_target = 1
-	// rect.position.x = sugar.mouse_position.x
-	// rect.position.y = sugar.mouse_position.y
 	rect.position.z = near_draws
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
+	log.infof("fbsz %v", rect.scale.xy)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
-	// rect.color = 1
 	img.position.z = far_draws
 	cursor.position.xy = globals.mouse_position
-	// cursor.position.z = near_draws
 	tn1 := text("-1")
 	{
 		tn1.position.xy = 10
@@ -95,8 +91,9 @@ game_step :: proc () {
 	t1.position.z  = far_draws + +1
 	t2.position.z  = far_draws + +2
 }
-
-all_test_Step :: proc () {
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+test_Step :: proc () {
 	bg, is_new := image(`bg.png`)
 	if is_new {
 		// bg.basis.scale *= 1/1.5
