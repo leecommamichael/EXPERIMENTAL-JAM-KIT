@@ -31,12 +31,21 @@ ren_make :: proc () -> ^Ren {
 	gl.BufferData(.ARRAY_BUFFER, globals.glyph_staging[:], .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
+
 	ren.programs[Game_Shader.Basic]  = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
 	ren.programs[Game_Shader.Water]  = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
 	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
 	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
 	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
+
+	ren.linear_sampler = gl.CreateSampler()
+	gl.Set_Sampler_Min_Filter(ren.linear_sampler, .LINEAR)
+	gl.Set_Sampler_Mag_Filter(ren.linear_sampler, .LINEAR)
+	ren.nearest_sampler = gl.CreateSampler()
+	gl.Set_Sampler_Min_Filter(ren.nearest_sampler, .NEAREST)
+	gl.Set_Sampler_Mag_Filter(ren.nearest_sampler, .NEAREST)
+
 	return ren
 }
 
@@ -71,12 +80,10 @@ ren_init :: proc (ren: ^Ren) {
 FRAME_UNIFORM_INDEX :: 0
 INSTANCE_UNIFORM_INDEX :: 1
 
-FONT_ATLAS_TU :: 1
-TEX_ATLAS_TU :: 2
-Texture_Unit :: enum uint { // TODO: delete the constants.
+Texture_Unit :: enum int {
 	Swap = 0,
-	Font = FONT_ATLAS_TU,
-	Texture = TEX_ATLAS_TU,
+	Font = 1,
+	Texture = 2,
 	Framebuffer_Texture = 3,
 }
 
@@ -89,17 +96,17 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 
 	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
 	if font_atlas_sampler != -1 {
-		gl.glUniform1i(font_atlas_sampler, FONT_ATLAS_TU)
+		gl.glUniform1i(font_atlas_sampler, cast(int) Texture_Unit.Font)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
 	if texture_atlas_sampler != -1 {
-		gl.glUniform1i(texture_atlas_sampler, TEX_ATLAS_TU)
+		gl.glUniform1i(texture_atlas_sampler, cast(int) Texture_Unit.Texture)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	fb_sampler := gl.GetUniformLocation(program, "framebuffer_color")
 	if fb_sampler != -1 {
-		gl.glUniform1i(fb_sampler, cast(int)Texture_Unit.Framebuffer_Texture)
+		gl.glUniform1i(fb_sampler, cast(int) Texture_Unit.Framebuffer_Texture)
 		assert(gl.glGetError() == gl.NO_ERROR)
 	}
 	// Link Uniform Block
@@ -245,7 +252,7 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 		{},
 		lod=0)
 	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
-	gl.Set_Texture_Mag_Filter(.TEXTURE_2D, .NEAREST)
+	gl.Set_Texture_Mag_Filter(.TEXTURE_2D, .LINEAR)
 	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
 	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
 	gl.BindTexture(.TEXTURE_2D, 0)
@@ -261,7 +268,7 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 		{},
 		lod=0)
 	gl.Set_Texture_Min_Filter(.TEXTURE_2D, .LINEAR)
-	gl.Set_Texture_Mag_Filter(.TEXTURE_2D, .NEAREST)
+	gl.Set_Texture_Mag_Filter(.TEXTURE_2D, .LINEAR)
 	gl.Set_Texture_Wrap_S(.TEXTURE_2D, .CLAMP_TO_EDGE)
 	gl.Set_Texture_Wrap_T(.TEXTURE_2D, .CLAMP_TO_EDGE)
 	gl.BindTexture(.TEXTURE_2D, 0)
@@ -280,9 +287,13 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.BindFramebuffer(.FRAMEBUFFER, 0)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 
-	gl.glActiveTexture(gl.TEXTURE0 + cast(uint) Texture_Unit.Framebuffer_Texture)
+	gl.glActiveTexture(gl.TEXTURE0 + cast(u32) Texture_Unit.Framebuffer_Texture)
 	gl.BindTexture(.TEXTURE_2D, color_tex)
+	gl.glBindSampler(1, cast(u32) globals.ren.nearest_sampler)
+	gl.glBindSampler(2, cast(u32) globals.ren.nearest_sampler)
+	gl.glBindSampler(3, cast(u32) globals.ren.nearest_sampler)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
+	gl.glActiveTexture(gl.TEXTURE0)
 	return fb
 }
 
@@ -483,7 +494,7 @@ set_VAO_attributes :: proc (
 	assert(len(attributes) <= GLES_MAX_BINDINGS , "GLSL shaders only have 16 slots.")
 
 	// Enable inputs
-	next_location: uint = 0
+	next_location: u32 = 0
 	for &attr in attributes {
 		attr.location = next_location
 		next_location += slots_used_by_type(attr.type)
@@ -524,7 +535,7 @@ set_VAO_attribute :: proc (
 	VAO:  gl.VertexArrayObject,
 	attr: Attribute_Binding,
 ) {
-	divisor: uint = 0 if attr.rate == .Vertex else 1
+	divisor: u32 = 0 if attr.rate == .Vertex else 1
 	slots := slots_used_by_type(attr.type)
 	gl.BindBuffer(.ARRAY_BUFFER, attr.buffer)
 	for slot_num in 0..<slots {
@@ -533,7 +544,7 @@ set_VAO_attribute :: proc (
 		// WARNING: Breaks when you start needing ivecs... probably.
 		// This size_of in here is a little forceful.
 		// But usually if you've got a multi-slot it's an f32 matrix.
-		offset := attr.offset + cast(uintptr) (cast(uint) num_components * slot_num * size_of(f32))
+		offset := attr.offset + cast(uintptr) (cast(u32) num_components * slot_num * size_of(f32))
 		if glsl_attrib_is_int(attr.type) {
 			gl.VertexAttribIPointer(
 				index      = index,
@@ -562,7 +573,7 @@ glsl_attrib_is_int :: proc (type: GLSL_Attribute_Type) -> bool {
 	return type >= .i32
 }
 
-slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
+slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> u32 {
 	if type == .mat4 {
 		return 4
 	}
@@ -614,12 +625,12 @@ slots_used_by_type :: proc (type: GLSL_Attribute_Type) -> uint {
 // Section: Textures
 //////////////////////////////////////////////////////////////////////
 
-bind_texture_to_unit :: proc (texture_unit: uint, texture: GPU_Texture) {
+bind_texture_to_unit :: proc (texture_unit: u32, texture: GPU_Texture) {
 	gl.glActiveTexture(gl.TEXTURE0 + texture_unit)
 	gl.BindTexture(texture.target, texture.texture)
 }
 
-init_and_upload_texture :: proc (texture_unit: uint, texture: ^GPU_Texture, pixels: []$T, size_px: [2]int) -> bool {
+init_and_upload_texture :: proc (texture_unit: u32, texture: ^GPU_Texture, pixels: []$T, size_px: [2]int) -> bool {
 	assert(texture.texture == 0)
 	assert(pixels != nil)
 	err, new_texture_name := gl.CreateTexture()
@@ -636,8 +647,8 @@ init_and_upload_texture :: proc (texture_unit: uint, texture: ^GPU_Texture, pixe
 		cast(int) texture.format,
 		size_px.x,
 		size_px.y,
-		cast(uint) info.format,
-		cast(uint) info.type,
+		cast(u32) info.format,
+		cast(u32) info.type,
 		pixels)
 	if err != nil { return false }
 
@@ -654,8 +665,8 @@ upload_pixels_to_texture :: proc (texture: ^GPU_Texture, pixels: []u8, size_px: 
 		0,0, // offset into image
 		size_px.x,
 		size_px.y,
-		cast(uint) info.format,
-		cast(uint) info.type,
+		cast(u32) info.format,
+		cast(u32) info.type,
 		pixels
 	)
 }

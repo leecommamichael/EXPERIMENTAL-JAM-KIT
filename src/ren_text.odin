@@ -60,7 +60,8 @@ Font_Usage :: enum {
 	body,       // 12px, sans
 	body_large, // 16px, sans
 	header,     // 20px, sans
-	mono        // 12px, mono
+	mono,       // 12px, mono
+	pixel,      // 16px, mono
 }
 
 Font_Variant :: enum {
@@ -70,8 +71,8 @@ Font_Variant :: enum {
 	bold_italic
 }
 
-Font_Family :: [Font_Variant]Font
 Font :: struct {
+	bundled:    bool,
 	name:       string,
 	file_bytes: []u8,
 	height_px:  f32,

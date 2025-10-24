@@ -41,35 +41,35 @@ GLchar :: u8  // Spec: "Characters making up strings"
 GLshort :: i16
 GLushort :: u16
 GLint :: int
-GLuint :: uint
+GLuint :: u32
 GLint64 :: i64
 GLuint64 :: u64
 GLsizei :: int // Spec: Non-negative binary integer size
-GLenum :: uint // Spec: Enumerated binary integer value
-GLbitfield :: uint
+GLenum :: GLuint // Spec: Enumerated binary integer value
+GLbitfield :: GLuint
 GLfloat :: f32
 GLclampf :: f32 // float clamped to [0,1]
-GLintptr :: i64
-GLsizeiptr :: uint
+GLintptr :: uintptr
+GLsizeiptr :: GLuint
 // GLhalf :: f16 // Spec: Doesn't exist in WebGL
 // GLfixed ::  // not in web
-// GLsync :: uint // not in web
+// GLsync :: GLuint // not in web
 
 ////////////////////////////////////////////////////////////////////// 
 // WebGL Types
 ////////////////////////////////////////////////////////////////////// 
-Buffer       :: distinct uint
-Framebuffer  :: distinct uint
-Program      :: distinct uint
-Renderbuffer :: distinct uint
-Shader       :: distinct uint
-Texture      :: distinct uint
+Buffer       :: distinct GLuint
+Framebuffer  :: distinct GLuint
+Program      :: distinct GLuint
+Renderbuffer :: distinct GLuint
+Shader       :: distinct GLuint
+Texture      :: distinct GLuint
 // WebGL2 Types
-Query             :: distinct uint
-Sampler           :: distinct uint
-Sync              :: distinct uint
-TransformFeedback :: distinct uint
-VertexArrayObject :: distinct uint
+Query             :: distinct GLuint
+Sampler           :: distinct GLuint
+Sync              :: distinct GLuint
+TransformFeedback :: distinct GLuint
+VertexArrayObject :: distinct GLuint
 
 ////////////////////////////////////////////////////////////////////// 
 Buffer_Binding_Target :: enum GLenum {

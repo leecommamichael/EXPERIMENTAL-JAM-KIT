@@ -19,7 +19,7 @@ Globals :: struct {
 	avg_fps: f64,
 	// Assets
 	assets: Asset_Bundle,
-	fonts: [Font_Usage]Font_Family,
+	fonts: [Font_Usage][Font_Variant]Font,
 	// Render Service
 	gl_standard: GL_Standard,
 	ren:         ^Ren,
@@ -166,6 +166,8 @@ Ren :: struct {
 	prev_cmd:    Draw_Command,
 	frame_UBO:   gl.Buffer,
 	programs:    [Game_Shader]gl.Program, // constant
+	linear_sampler: gl.Sampler,
+	nearest_sampler: gl.Sampler,
 	textures:    [16]GPU_Texture
 }
 
@@ -208,8 +210,8 @@ Draw_Command :: struct {
 	index_buffer:  gl.Buffer,
 	index_count:   int,
 		// Dynamic State Below (in the Vulkan sense) it's cheap to change per-draw.
-	mode:         Ren_Mode,  // default triangles
-	cull_mode:    Cull_Mode, // default none
+	mode:          Ren_Mode,  // default triangles
+	cull_mode:     Cull_Mode, // default none
 }
 #assert(size_of(Draw_Command) < 256, "Be mindful of this increasing.")
 
@@ -226,8 +228,8 @@ GPU_Texture :: struct {
 	wrap_ST:        [2]gl.Texture_Wrap_Mode,
 		// Fields below are more likely to matter in 3D.
 	wrap_R:         gl.Texture_Wrap_Mode,
-	base_level:     uint,
-	max_level:      uint,
+	base_level:     u32,
+	max_level:      u32,
 	min_LOD:        f32,
 	max_LOD:        f32,
 	compare_func:   gl.Compare_Func,
@@ -260,7 +262,7 @@ Attribute_Binding :: struct {
 	offset: uintptr,
 	// implementation details, don't manually init.
 	//   these are initialized when the draw command is initially created.
-	location:    uint,
+	location:    u32,
 	value_count: int,
 	gl_type:     gl.Data_Type
 }

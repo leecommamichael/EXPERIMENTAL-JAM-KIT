@@ -22,7 +22,7 @@ Buffer_Data_Many :: #force_inline proc (
 			return
 		}
 	}
-	glBufferData(cast(uint) target, size_of(T) * len(src), raw_data(src), cast(uint) usage)
+	glBufferData(cast(GLuint) target, size_of(T) * len(src), raw_data(src), cast(GLuint) usage)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -38,7 +38,7 @@ Buffer_Data_One :: #force_inline proc (
 			return
 		}
 	}
-	glBufferData(cast(uint) target, size_of(T), src, cast(uint) usage)
+	glBufferData(cast(GLuint) target, size_of(T), src, cast(GLuint) usage)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -52,7 +52,7 @@ BufferSubData :: proc {
 
 Buffer_SubData_Many :: #force_inline proc (
 	target: Buffer_Binding_Target,
-	offset: uintptr,
+	offset: GLintptr,
 	src: []$T, 
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
@@ -62,13 +62,13 @@ Buffer_SubData_Many :: #force_inline proc (
 			return
 		}
 	}
-	glBufferSubData(cast(uint) target, cast(int) offset, size_of(T) * len(src), raw_data(src))
+	glBufferSubData(cast(GLuint) target, cast(int) offset, size_of(T) * len(src), raw_data(src))
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 Buffer_SubData_One :: #force_inline proc (
 	target: Buffer_Binding_Target,
-	offset: uintptr,
+	offset: GLintptr,
 	src: ^$T,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
@@ -78,7 +78,7 @@ Buffer_SubData_One :: #force_inline proc (
 			return
 		}
 	}
-	glBufferSubData(cast(uint) target, cast(int) offset, size_of(T), src)
+	glBufferSubData(cast(GLuint) target, cast(int) offset, size_of(T), src)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -94,11 +94,11 @@ DrawElementsInstanced :: #force_inline proc (
 	instance_count: int,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	offset := cast(rawptr) cast(uintptr) offset
+	offset := cast(rawptr) cast(GLintptr) offset
 	glDrawElementsInstanced(
-		cast(uint) mode,
+		cast(GLuint) mode,
 		count,
-		cast(uint) type,
+		cast(GLuint) type,
 		offset,
 		instance_count)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
@@ -111,13 +111,13 @@ DrawElements :: #force_inline proc (
 	mode:   Primitive_Mode,
 	count:  int,
 	type:   Index_Type,
-	indices: uintptr = 0,
+	indices: GLintptr = 0,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glDrawElements(
-		cast(uint) mode,
+		cast(GLuint) mode,
 		count,
-		cast(uint) type,
+		cast(GLuint) type,
 		indices = cast(rawptr) indices)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
@@ -130,14 +130,14 @@ GenBuffers :: proc (
 	out: [^]Buffer,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenBuffers(len, cast([^]uint) out)
+	glGenBuffers(len, cast([^]GLuint) out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 CreateBuffer :: proc (
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR, buffer: Buffer) {
-	glGenBuffers(1, cast(^uint)&buffer)
+	glGenBuffers(1, cast(^GLuint)&buffer)
 	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
@@ -149,14 +149,14 @@ GenVertexArrays :: proc (
 	out: [^]VertexArrayObject,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenVertexArrays(len, cast([^]uint)out)
+	glGenVertexArrays(len, cast([^]GLuint)out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 CreateVertexArray :: proc (
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR, vao: VertexArrayObject) {
-	glGenVertexArrays(1, cast(^uint)&vao)
+	glGenVertexArrays(1, cast(^GLuint)&vao)
 	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
@@ -168,14 +168,14 @@ GenTextures :: proc (
 	out: [^]Texture,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenTextures(len, cast([^]uint) out)
+	glGenTextures(len, cast([^]GLuint) out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 CreateTexture :: proc (
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR, tex: Texture) {
-	glGenTextures(1, cast(^uint)&tex)
+	glGenTextures(1, cast(^GLuint)&tex)
 	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
@@ -185,7 +185,7 @@ BindBuffer :: proc (
 	buffer: Buffer,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindBuffer(cast(uint) target, cast(uint) buffer)
+	glBindBuffer(cast(GLuint) target, cast(GLuint) buffer)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -194,11 +194,11 @@ BindBuffer :: proc (
 
 BindBufferBase :: proc (
 	target,
-	index: uint,
+	index: GLuint,
 	buffer: Buffer,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindBufferBase(target, index, cast(uint)buffer)
+	glBindBufferBase(target, index, cast(GLuint)buffer)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -206,12 +206,12 @@ BindBufferBase :: proc (
 
 
 BindBufferRange :: proc (
-	target, index: uint,
+	target, index: GLuint,
 	buffer: Buffer,
 	offset, size: int,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindBufferRange(target, index, cast(uint)buffer, offset, size)
+	glBindBufferRange(target, index, cast(GLuint)buffer, offset, size)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -222,7 +222,7 @@ BindVertexArray :: proc (
 	vao: VertexArrayObject,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindVertexArray(cast(uint) vao)
+	glBindVertexArray(cast(GLuint) vao)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -238,27 +238,27 @@ VertexAttributePointer :: proc {
 }
 
 VertexAttribPointer :: proc (
-	index: uint,
+	index: GLuint,
 	size: int,
 	type: Data_Type,
 	normalized: bool,
 	stride: int,
-	offset: uintptr,
+	offset: GLintptr,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glVertexAttribPointer(index, size, cast(uint)type, normalized, stride, offset)
+	glVertexAttribPointer(index, size, cast(GLuint)type, normalized, stride, offset)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 VertexAttribIPointer :: proc (
-	index: uint,
+	index: GLuint,
 	size: int,
 	type: Data_Type,
 	stride: int,
-	offset: uintptr,
+	offset: GLintptr,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glVertexAttribIPointer(index, size, cast(uint)type, stride, offset)
+	glVertexAttribIPointer(index, size, cast(GLuint)type, stride, offset)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -267,7 +267,7 @@ VertexAttribIPointer :: proc (
 
 // WebGL mimics KHR_robust_access (bounds checking)
 EnableVertexAttribArray :: proc (
-	index: uint,
+	index: GLuint,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glEnableVertexAttribArray(index)
@@ -279,7 +279,7 @@ EnableVertexAttribArray :: proc (
 // Generates INVALID_VALUE if index > MAX_VERTEX_ATTRIBS
 VertexAttribDivisor :: proc (
 	index,
-	divisor: uint,
+	divisor: GLuint,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glVertexAttribDivisor(index, divisor)
@@ -290,7 +290,7 @@ VertexAttribDivisor :: proc (
 
 
 Clear :: proc (mask: Clear_Buffer_Mask) {
-	glClear(transmute(uint)mask)
+	glClear(transmute(GLuint)mask)
 }
 
 
@@ -304,7 +304,7 @@ ClearColor :: proc (r,g,b,a: GLfloat) {
 
 
 Enable :: proc (cap: Capability) {
-	glEnable(cast(uint) cap)
+	glEnable(cast(GLuint) cap)
 }
 
 
@@ -319,7 +319,7 @@ BlendFuncSeparate() will generate an INVALID_OPERATION error if:
   and dstRGB is set to CONSTANT_ALPHA or ONE_MINUS_CONSTANT_ALPHA or vice versa.
 */
 BlendFunc :: proc (src: Blending_Factor_Src, dst: Blending_Factor_Dest) -> Error {
-	glBlendFunc(cast(uint)src, cast(uint)dst)
+	glBlendFunc(cast(GLuint)src, cast(GLuint)dst)
 	return .NO_ERROR
 }
 
@@ -350,14 +350,14 @@ DepthRangef :: proc (near, far: f32) -> Error {
 
 
 CullFace :: proc (mode: Cull_Face_Mode) {
-	glCullFace(cast(uint)mode)
+	glCullFace(cast(GLuint)mode)
 }
 
 
 
 
 FrontFace :: proc (cw_or_ccw: Vertex_Winding_Order) {
-	glFrontFace(cast(uint)cw_or_ccw)
+	glFrontFace(cast(GLuint)cw_or_ccw)
 }
 
 
@@ -367,16 +367,16 @@ UseProgram :: proc (
 	program: Program,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glUseProgram(cast(uint) program)
+	glUseProgram(cast(GLuint) program)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 
-GetProgramInfoLog :: proc (program: uint) -> string {
+GetProgramInfoLog :: proc (program: GLuint) -> string {
 	log_length: int
-	GetProgramiv(program, cast(uint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
+	GetProgramiv(program, cast(GLuint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
 	log_bytes := make([]u8, log_length)
 	glGetProgramInfoLog(program, log_length, &log_length, raw_data(log_bytes))
 	return string(log_bytes[:log_length])
@@ -385,9 +385,9 @@ GetProgramInfoLog :: proc (program: uint) -> string {
 
 
 
-GetShaderInfoLog :: proc (shader: uint) -> string {
+GetShaderInfoLog :: proc (shader: GLuint) -> string {
 	log_length: int
-	GetShaderiv(shader, cast(uint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
+	GetShaderiv(shader, cast(GLuint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
 	log_bytes := make([]u8, log_length)
 	glGetShaderInfoLog(shader, log_length, &log_length, raw_data(log_bytes))
 	return string(log_bytes[:log_length])
@@ -397,7 +397,7 @@ GetShaderInfoLog :: proc (shader: uint) -> string {
 
 
 CreateShader :: proc (type: Shader_Type) -> Shader {
-	return cast(Shader) glCreateShader(cast(uint)type)
+	return cast(Shader) glCreateShader(cast(GLuint)type)
 }
 
 
@@ -410,14 +410,14 @@ CreateProgram :: proc () -> Program {
 
 
 
-GetProgramiv :: proc (program: uint, pname: uint, params: [^]int) {
+GetProgramiv :: proc (program: GLuint, pname: GLuint, params: [^]int) {
 	glGetProgramiv(program, pname, params)
 }
 
 
 
 
-GetShaderiv :: proc (shader: uint, pname: uint, params: [^]int) {
+GetShaderiv :: proc (shader: GLuint, pname: GLuint, params: [^]int) {
 	glGetShaderiv(shader, pname, params)
 }
 
@@ -425,7 +425,7 @@ GetShaderiv :: proc (shader: uint, pname: uint, params: [^]int) {
 
 
 DeleteShader :: proc (s: Shader) {
-	glDeleteShader(cast(uint)s)
+	glDeleteShader(cast(GLuint)s)
 }
 
 
@@ -434,44 +434,44 @@ DeleteShader :: proc (s: Shader) {
 ShaderSource :: proc (s: Shader, src: string) {
 	shader_data := cast(cstring) raw_data(src)
 	shader_len := cast(int) len(src)
-	glShaderSource(cast(uint)s, 1, &shader_data, &shader_len)
+	glShaderSource(cast(GLuint)s, 1, &shader_data, &shader_len)
 }
 
 
 
 
 CompileShader :: proc (s: Shader) {
-	glCompileShader(cast(uint) s)
+	glCompileShader(cast(GLuint) s)
 }
 
 
 
 
 AttachShader :: proc (p: Program, s: Shader) {
-	glAttachShader(cast(uint)p, cast(uint)s)
+	glAttachShader(cast(GLuint)p, cast(GLuint)s)
 }
 
 
 
 
 LinkProgram :: proc (p: Program) {
-	glLinkProgram(cast(uint)p)
+	glLinkProgram(cast(GLuint)p)
 }
 
 
 
 
-UniformBlockBinding :: proc (p: Program, index, binding: uint) {
-	glUniformBlockBinding(cast(uint) p, index, binding)
+UniformBlockBinding :: proc (p: Program, index, binding: GLuint) {
+	glUniformBlockBinding(cast(GLuint) p, index, binding)
 }
 
 
 
 
-GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
+GetUniformBlockIndex :: proc (p: Program, block_name: string) -> GLuint {
 	block_name: cstring = strings.clone_to_cstring(block_name)
 	defer { delete(block_name) }
-	return glGetUniformBlockIndex(cast(uint)p, block_name)
+	return glGetUniformBlockIndex(cast(GLuint)p, block_name)
 }
 
 
@@ -480,7 +480,7 @@ GetUniformBlockIndex :: proc (p: Program, block_name: string) -> uint {
 GetUniformLocation :: proc (p: Program, _name: string, allocator := context.allocator) -> int {
 	name := strings.clone_to_cstring(_name, allocator)
 	defer delete(name)
-	return cast(int) cast(i32) glGetUniformLocation(cast(uint)p, (name))
+	return cast(int) cast(i32) glGetUniformLocation(cast(GLuint)p, (name))
 }
 
 
@@ -518,8 +518,8 @@ TexImage2D_verbatim :: proc (
 	level: int,
 	internalformat: int,
 	width, height: int,
-	format: uint,
-	type: uint,
+	format: GLuint,
+	type: GLuint,
 	data: []u8,
 	_loc := #caller_location
 ) -> ( err: Error = .NO_ERROR ) {
@@ -537,15 +537,15 @@ TexImage2D_verbatim :: proc (
 
 
 
-// Desktop(target: uint, level: int, xoffset: int, yoffset: int, width: int, height: int, format: uint, type: uint,            pixels: rawptr)
-// JS     (target: uint, level: int, xoffset,      yoffset,      width,      height: int, format,       type: uint, size: int, data:   rawptr)
+// Desktop(target: GLuint, level: int, xoffset: int, yoffset: int, width: int, height: int, format: GLuint, type: GLuint,            pixels: rawptr)
+// JS     (target: GLuint, level: int, xoffset,      yoffset,      width,      height: int, format,       type: GLuint, size: int, data:   rawptr)
 TexSubImage2D :: proc (
 	target: Texture_2D_Target,
 	level: int,
 	xoffset, yoffset: int,
 	width, height: int,
-	format: uint, // TODO scoped enum
-	type: uint,
+	format: GLuint, // TODO scoped enum
+	type: GLuint,
 	data: $Indistinct/[]$T,
 	_loc := #caller_location
 ) -> ( err: Error = .NO_ERROR ) {
@@ -564,17 +564,17 @@ TexSubImage2D :: proc (
 
 
 BindTexture :: proc (binding: Texture_Target, tex: Texture) {
-	glBindTexture(cast(uint)binding, auto_cast tex)
+	glBindTexture(cast(GLuint)binding, auto_cast tex)
 }
 
 
 
 
 // Swizzling not present in WebGL
-Set_Texture_Base_Level   :: proc (target: Texture_Parameter_Target, param: uint) {
+Set_Texture_Base_Level   :: proc (target: Texture_Parameter_Target, param: GLuint) {
 	glTexParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
 }
-Set_Texture_Max_Level    :: proc (target: Texture_Parameter_Target, param: uint) {
+Set_Texture_Max_Level    :: proc (target: Texture_Parameter_Target, param: GLuint) {
 	glTexParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
 }
 Set_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
@@ -605,20 +605,53 @@ Set_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target, param: Textu
 	glTexParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
 }
 
+Set_Sampler_Base_Level   :: proc (target: Sampler, param: GLuint) {
+	glSamplerParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
+}
+Set_Sampler_Max_Level    :: proc (target: Sampler, param: GLuint) {
+	glSamplerParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
+}
+Set_Sampler_Min_LOD      :: proc (target: Sampler, param: f32) {
+	glSamplerParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
+}
+Set_Sampler_Max_LOD      :: proc (target: Sampler, param: f32) {
+	glSamplerParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
+}
+Set_Sampler_Mag_Filter   :: proc (target: Sampler, param: Texture_Mag_Filter) {
+	glSamplerParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
+}
+Set_Sampler_Min_Filter   :: proc (target: Sampler, param: Texture_Min_Filter) {
+	glSamplerParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
+}
+Set_Sampler_Compare_Func :: proc (target: Sampler, param: Compare_Func) {
+	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
+}
+Set_Sampler_Compare_Mode :: proc (target: Sampler, param: Texture_Compare_Mode) {
+	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
+}
+Set_Sampler_Wrap_S       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
+	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
+}
+Set_Sampler_Wrap_T       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
+	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
+}
+Set_Sampler_Wrap_R       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
+	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
+}
 
 
 
 CreateFramebuffer :: proc () -> (out: Framebuffer) {
-	glGenFramebuffers(1, cast(^uint)&out)
+	glGenFramebuffers(1, cast(^GLuint)&out)
 	return
 }
 
-GenFramebuffers :: proc (len: int, out: $A/[^]uint) {
-	glGenFramebuffers(len, out)
+GenFramebuffers :: proc (len: int, out: [^]Framebuffer) {
+	glGenFramebuffers(len, cast(^GLuint)out)
 }
 
 BindFramebuffer :: proc (target: Framebuffer_Target, fb: Framebuffer) {
-	glBindFramebuffer(cast(uint)target, cast(uint)fb)
+	glBindFramebuffer(cast(GLuint)target, cast(GLuint)fb)
 }
 
 FramebufferTexture2D :: proc (
@@ -630,11 +663,28 @@ FramebufferTexture2D :: proc (
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
 	glFramebufferTexture2D(
-		cast(uint) target,
-		cast(uint) attachment,
-		cast(uint) textarget,
-		cast(uint) texture,
+		cast(GLuint) target,
+		cast(GLuint) attachment,
+		cast(GLuint) textarget,
+		cast(GLuint) texture,
 		level)
+	when NGL_VALIDATE { return validate(_loc) } else { return }
+}
+
+
+
+
+CreateSampler :: proc () -> (out: Sampler) {
+	glGenSamplers(1, cast(^GLuint)&out)
+	return
+}
+
+GenSamplers :: proc (
+	len: int,
+	out: [^]Sampler,
+	_loc := #caller_location
+) -> (err: Error = .NO_ERROR) {
+	glGenSamplers(len, cast(^GLuint) out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 //////////////////////////////////////////////////////////////////////
@@ -648,12 +698,12 @@ GetParameter :: proc {
 	GetInteger64v,
 }
 GetIntegerv :: proc (pname: Integerv_Parameter) -> (value: int) {
-	glGetIntegerv(cast(uint)pname, &value)
+	glGetIntegerv(cast(GLuint)pname, &value)
 	return
 }
 
 GetInteger64v :: proc (pname: Integer64v_Parameter) -> (value: i64) {
-	glGetInteger64v(cast(uint)pname, &value)
+	glGetInteger64v(cast(GLuint)pname, &value)
 	return
 }
 

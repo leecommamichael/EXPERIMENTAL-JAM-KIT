@@ -60,12 +60,18 @@ game_step :: proc () {
 	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
 	rect.position.z = near_draws
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
-	log.infof("fbsz %v", rect.scale.xy)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
+
+	bg, bg_new := image(`bg.ase`)
+	if bg_new {
+		bg.basis.scale = 32
+		bg.basis.position = 32/2
+		// bg.position.z = near_draws - 10
+	}
 	img.position.z = far_draws
 	cursor.position.xy = globals.mouse_position
-	tn1 := text("-1")
+	tn1 := text("-1 hello", .pixel)
 	{
 		tn1.position.xy = 10
 		tn1.color.rgb = 1.0
@@ -86,10 +92,10 @@ game_step :: proc () {
 		t2.color.rgb = 0.4
 	}
 
-	tn1.position.z = far_draws + -1
-	t0.position.z  = far_draws + 0
-	t1.position.z  = far_draws + +1
-	t2.position.z  = far_draws + +2
+	tn1.position.z = -1
+	t0.position.z  = 0
+	t1.position.z  = +1
+	t2.position.z  = +2
 }
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////

@@ -196,7 +196,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		format = .R8, // <----------- CANT RELEASE .TGA UNTIL THEY TAKE MY PR (RGB8 otherwise)
 	}
 	bw := globals.assets.bw_atlas_image
-	init_and_upload_texture(FONT_ATLAS_TU, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
+	init_and_upload_texture(cast(u32) Texture_Unit.Font, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
 	globals.assets.images[FONT_ATLAS_PATH] = Image_Asset {
 		FONT_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
@@ -213,7 +213,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		format = .RGBA8,
 	}
 	rgba := globals.assets.rgba_atlas_image
-	init_and_upload_texture(TEX_ATLAS_TU, &globals.assets.texture_atlas, rgba.pixels.buf[:], {rgba.width, rgba.height})
+	init_and_upload_texture(cast(u32) Texture_Unit.Texture, &globals.assets.texture_atlas, rgba.pixels.buf[:], {rgba.width, rgba.height})
 	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
 		TEXTURE_ATLAS_PATH,
 		{0,0, 1,1}, // does this even go here?
@@ -254,7 +254,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
 MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
-FONT_COUNT :: len(Font_Variant) * len(Font_Usage)
+FONT_COUNT :: len(Font_Variant) * len(Font_Usage) - 3
 GLYPH_COUNT :: 95 // characters from beginning of ASCII table
 
 bundle_fonts :: proc (use_binary: bool) {
@@ -295,19 +295,21 @@ log_time("render_font")
 		} // else continue to add font to atlas
 
 		font_name := splits[0]
-		variant_name := splits[1]
 		//////////////////////////////////////////////////////////////////////	
 		// Defining fonts for usages /////////////////////////////////////////	
 		cousine :: "Cousine"
 		inter :: "Inter"
+		m3x6 :: "m3x6"
 
 		inter_usages: []Font_Usage : { .caption, .body, . body_large, .header }
 		cousine_usages: []Font_Usage : { .mono }
+		m3x6_usages: []Font_Usage : { .pixel }
 
 		usages: []Font_Usage
 		switch font_name {
 		case inter:   usages = inter_usages
 		case cousine: usages = cousine_usages
+		case m3x6:    usages = m3x6_usages
 		case:
 			log.infof("FYI: Unrecognized Font (not loaded) %v", font_file.name)
 			continue
@@ -318,15 +320,17 @@ log_time("render_font")
 			.body_large  = 18 * 1.5,
 			.header      = 24 * 1.5,
 			.mono        = 14 * 1.5,
+			.pixel       = 16,
 		}
 
 		//////////////////////////////////////////////////////////////////////	
+		variant_name := splits[1]
 		variant: Font_Variant
 		switch variant_name {
+		case "Regular.ttf"   : variant = .regular
 		case "Bold.ttf"      : variant = .bold
 		case "BoldItalic.ttf": variant = .bold_italic
 		case "Italic.ttf"    : variant = .italic
-		case "Regular.ttf"   : variant = .regular
 		case:
 			log.warnf("FYI: Unrecognized Font_Variant (not loaded) %v", font_file.name)
 			continue
@@ -337,11 +341,7 @@ log_time("render_font")
 		for usage in usages {
 			height_px := height_px_for_usage[usage]
 			font: ^Font = &globals.fonts[usage][variant]
-			load_ttf :: proc (
-				name: string,
-				file_bytes: []byte,
-				out_font: ^Font,
-			) -> (ok: bool) {
+			load_ttf :: proc (name: string, file_bytes: []byte, out_font: ^Font) -> (ok: bool) {
 				out_font.name = name
 				out_font.file_bytes = file_bytes
 				if name in globals.assets.font_infos {
@@ -360,6 +360,7 @@ log_time("render_font")
 				log.errorf("Font parsing failed. %v", font_file.name)
 				continue
 			} // else continue to add font to atlas
+			log.infof("font: %v %v %v", font.name, usage, variant)
 			set_font_height :: proc (font: ^Font, new_height_px: f32) {
 				font.height_px = new_height_px
 			  scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
@@ -400,6 +401,7 @@ log_time("render_font")
 				log.warnf("GatherRects found no rects in font: %v", font_file.name)
 				continue
 			}
+			font.bundled = true
 		} // for usage
 	} // for file
 
@@ -456,7 +458,7 @@ log_time("write_font")
 	for usage in Font_Usage {
 		for variant in Font_Variant {
 			font := globals.fonts[usage][variant]
-
+			if !font.bundled { continue }
 			serialized_font: Serialized_Atlas_Font = {
 				usage = usage,
 				variant = variant,

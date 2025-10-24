@@ -49,9 +49,9 @@ INFO_LOG_LENGTH :: 0x8B84
 when NGL_DEBUG {
 	@private
 	check_error :: proc(
-		id: uint, type: EShader_Type, status: uint,
-		iv_func: proc (uint, uint, [^]int),
-		log_func: proc (uint) -> string, 
+		id: GLuint, type: EShader_Type, status: GLuint,
+		iv_func: proc (GLuint, GLuint, [^]int),
+		log_func: proc (GLuint) -> string, 
 		loc := #caller_location,
 	) -> (success: bool) {
 		result, info_log_length: int
@@ -92,9 +92,9 @@ when NGL_DEBUG {
 } else {
 	@private
 	check_error :: proc(
-		id: uint, type: EShader_Type, status: uint,
-		iv_func: proc (uint, uint, [^]int),
-		log_func: proc (uint) -> string,
+		id: GLuint, type: EShader_Type, status: GLuint,
+		iv_func: proc (GLuint, GLuint, [^]int),
+		log_func: proc (GLuint) -> string,
 	) -> (success: bool) {
 		result, info_log_length: int
 		iv_func(id, status, &result)
@@ -131,7 +131,7 @@ compile_shader_from_source :: proc(shader_data: string, shader_type: EShader_Typ
 	ShaderSource(shader_id, shader_data)
 	CompileShader(shader_id)
 
-	check_error(cast(uint)shader_id, shader_type, COMPILE_STATUS, GetShaderiv, GetShaderInfoLog) or_return
+	check_error(cast(GLuint)shader_id, shader_type, COMPILE_STATUS, GetShaderiv, GetShaderInfoLog) or_return
 	ok = true
 	return
 }
@@ -144,7 +144,7 @@ create_and_link_program :: proc(shader_ids: []Shader) -> (program_id: Program, o
 	}
 	LinkProgram(program_id)
 
-	check_error(cast(uint)program_id, EShader_Type.SHADER_LINK, LINK_STATUS, GetProgramiv, GetProgramInfoLog) or_return
+	check_error(cast(GLuint)program_id, EShader_Type.SHADER_LINK, LINK_STATUS, GetProgramiv, GetProgramInfoLog) or_return
 	ok = true
 	return
 }

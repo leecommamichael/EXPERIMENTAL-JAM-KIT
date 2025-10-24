@@ -8,7 +8,7 @@ import "base:intrinsics"
 
 
 
-ContextAttribute :: enum uint {
+ContextAttribute :: enum GLuint {
 	disableAlpha                 = 0,
 	disableAntialias             = 1,
 	disableDepth                 = 2,
@@ -18,7 +18,7 @@ ContextAttribute :: enum uint {
 	stencil                      = 6,
 	desynchronized               = 7,
 }
-ContextAttributes :: distinct bit_set[ContextAttribute; uint]
+ContextAttributes :: distinct bit_set[ContextAttribute; GLuint]
 
 DEFAULT_CONTEXT_ATTRIBUTES :: ContextAttributes{}
 
@@ -42,35 +42,35 @@ foreign webgl {
 	// IsExtensionSupported :: proc(name: string) -> bool ---
 
 	@(link_name="ActiveTexture")
-	glActiveTexture         :: proc(x: uint) ---
+	glActiveTexture         :: proc(x: GLuint) ---
 	@(link_name="AttachShader")
 	glAttachShader          :: proc(program: Program, shader: Shader) ---
 	@(link_name="BindAttribLocation")
 	glBindAttribLocation    :: proc(program: Program, index: int, name: string) ---
 	@(link_name="BindBuffer")
-	glBindBuffer            :: proc(target: uint, buffer: Buffer) ---
+	glBindBuffer            :: proc(target: GLuint, buffer: Buffer) ---
 	@(link_name="BindFramebuffer")
-	glBindFramebuffer       :: proc(target: uint, framebuffer: Framebuffer) ---
+	glBindFramebuffer       :: proc(target: GLuint, framebuffer: Framebuffer) ---
 	@(link_name="BindTexture")
-	glBindTexture           :: proc(target: uint, texture: Texture) ---
+	glBindTexture           :: proc(target: GLuint, texture: Texture) ---
 	@(link_name="BlendColor")
 	glBlendColor            :: proc(red, green, blue, alpha: GLfloat) ---
 	@(link_name="BlendEquation")
-	glBlendEquation         :: proc(mode: uint) ---
+	glBlendEquation         :: proc(mode: GLuint) ---
 	@(link_name="BlendEquationSeparate")
-	glBlendEquationSeparate :: proc(modeRGB: uint, modeAlpha: uint) ---
+	glBlendEquationSeparate :: proc(modeRGB: GLuint, modeAlpha: GLuint) ---
 	@(link_name="BlendFunc")
-	glBlendFunc             :: proc(sfactor, dfactor: uint) ---
+	glBlendFunc             :: proc(sfactor, dfactor: GLuint) ---
 	@(link_name="BlendFuncSeparate")
-	glBlendFuncSeparate     :: proc(srcRGB, dstRGB, srcAlpha, dstAlpha: uint) ---
+	glBlendFuncSeparate     :: proc(srcRGB, dstRGB, srcAlpha, dstAlpha: GLuint) ---
 	
 	@(link_name="BufferData")
-	glBufferData    :: proc(target: uint, size: int, data: rawptr, usage: uint) ---
+	glBufferData    :: proc(target: GLuint, size: int, data: rawptr, usage: GLuint) ---
 	@(link_name="BufferSubData")
-	glBufferSubData :: proc(target: uint, offset: uintptr, size: int, data: rawptr) ---
+	glBufferSubData :: proc(target: GLuint, offset: GLuintptr, size: int, data: rawptr) ---
 
 	@(link_name="Clear")
-	glClear         :: proc(bits: uint) ---
+	glClear         :: proc(bits: GLuint) ---
 	@(link_name="ClearColor")
 	glClearColor    :: proc(r, g, b, a: GLfloat) ---
 	@(link_name="ClearDepth")
@@ -83,13 +83,13 @@ foreign webgl {
 	glCompileShader :: proc(shader: Shader) ---
 	
 	@(link_name="CompressedTexImage2D")
-	glCompressedTexImage2D    :: proc(target: uint, level: int, internalformat: uint, width, height: int, border: int, imageSize: int, data: rawptr) ---
+	glCompressedTexImage2D    :: proc(target: GLuint, level: int, internalformat: GLuint, width, height: int, border: int, imageSize: int, data: rawptr) ---
 	@(link_name="CompressedTexSubImage2D")
-	glCompressedTexSubImage2D :: proc(target: uint, level: int, xoffset, yoffset, width, height: int, format: uint, imageSize: int, data: rawptr) ---
+	glCompressedTexSubImage2D :: proc(target: GLuint, level: int, xoffset, yoffset, width, height: int, format: GLuint, imageSize: int, data: rawptr) ---
 	@(link_name="CopyTexImage2D")
-	glCopyTexImage2D          :: proc(target: uint, level: int, internalformat: uint, x, y, width, height: int, border: int) ---
+	glCopyTexImage2D          :: proc(target: GLuint, level: int, internalformat: GLuint, x, y, width, height: int, border: int) ---
 	@(link_name="CopyTexSubImage2D")
-	glCopyTexSubImage2D       :: proc(target: uint, level: int, xoffset, yoffset, x, y: int, width, height: int) ---
+	glCopyTexSubImage2D       :: proc(target: GLuint, level: int, xoffset, yoffset, x, y: int, width, height: int) ---
 	
 
 	@(link_name="CreateBuffer")
@@ -101,12 +101,12 @@ foreign webgl {
 	@(link_name="CreateRenderbuffer")
 	glCreateRenderbuffer :: proc() -> Renderbuffer ---
 	@(link_name="CreateShader")
-	glCreateShader       :: proc(shaderType: uint) -> Shader ---
+	glCreateShader       :: proc(shaderType: GLuint) -> Shader ---
 	@(link_name="CreateTexture")
 	glCreateTexture      :: proc() -> Texture ---
 	
 	@(link_name="CullFace")
-	glCullFace :: proc(mode: uint) ---
+	glCullFace :: proc(mode: GLuint) ---
 	
 	@(link_name="DeleteBuffer")
 	glDeleteBuffer       :: proc(buffer: Buffer) ---
@@ -122,7 +122,7 @@ foreign webgl {
 	glDeleteTexture      :: proc(texture: Texture) ---
 	
 	@(link_name="DepthFunc")
-	glDepthFunc                :: proc(func: uint) ---
+	glDepthFunc                :: proc(func: GLuint) ---
 	@(link_name="DepthMask")
 	glDepthMask                :: proc(flag: bool) ---
 	@(link_name="DepthRange")
@@ -130,52 +130,52 @@ foreign webgl {
 	@(link_name="DetachShader")
 	glDetachShader             :: proc(program: Program, shader: Shader) ---
 	@(link_name="Disable")
-	glDisable                  :: proc(cap: uint) ---
+	glDisable                  :: proc(cap: GLuint) ---
 	@(link_name="DisableVertexAttribArray")
 	glDisableVertexAttribArray :: proc(index: int) ---
 	@(link_name="DrawArrays")
-	glDrawArrays               :: proc(mode: uint, first, count: int) ---
+	glDrawArrays               :: proc(mode: GLuint, first, count: int) ---
 	@(link_name="DrawElements")
-	glDrawElements             :: proc(mode: uint, count: int, type: uint, indices: rawptr) ---
+	glDrawElements             :: proc(mode: GLuint, count: int, type: GLuint, indices: rawptr) ---
 	
 	@(link_name="Enable")
-	glEnable                  :: proc(cap: uint) ---
+	glEnable                  :: proc(cap: GLuint) ---
 	@(link_name="EnableVertexAttribArray")
-	glEnableVertexAttribArray :: proc(index: uint) ---
+	glEnableVertexAttribArray :: proc(index: GLuint) ---
 	@(link_name="Finish")
 	glFinish                  :: proc() ---
 	@(link_name="Flush")
 	glFlush                   :: proc() ---
 	@(link_name="FramebufferRenderbuffer")
-	glFramebufferRenderbuffer :: proc(target, attachment, renderbufertarget: uint, renderbuffer: Renderbuffer) ---
+	glFramebufferRenderbuffer :: proc(target, attachment, renderbufertarget: GLuint, renderbuffer: Renderbuffer) ---
 	@(link_name="FramebufferTexture2D")
-	glFramebufferTexture2D    :: proc(target, attachment, textarget: uint, texture: Texture, level: int) ---
+	glFramebufferTexture2D    :: proc(target, attachment, textarget: GLuint, texture: Texture, level: int) ---
 	@(link_name="FrontFace")
-	glFrontFace               :: proc(mode: uint) ---
+	glFrontFace               :: proc(mode: GLuint) ---
 	
 	@(link_name="GenerateMipmap")
-	glGenerateMipmap :: proc(target: uint) ---
+	glGenerateMipmap :: proc(target: GLuint) ---
 	
 	@(link_name="GetAttribLocation")
 	glGetAttribLocation     :: proc(program: Program, name: string) -> int ---
 	@(link_name="GetUniformLocation")
 	glGetUniformLocation    :: proc(program: Program, name: string) -> int ---
 	@(link_name="GetVertexAttribOffset")
-	glGetVertexAttribOffset :: proc(index: int, pname: uint) -> uintptr ---
+	glGetVertexAttribOffset :: proc(index: int, pname: GLuint) -> GLuintptr ---
 	@(link_name="GetProgramParameter")
-	glGetProgramParameter   :: proc(program: Program, pname: uint) -> int ---
+	glGetProgramParameter   :: proc(program: Program, pname: GLuint) -> int ---
 	@(link_name="GetParameter")
-	glGetParameter          :: proc(pname: uint) -> int ---
+	glGetParameter          :: proc(pname: GLuint) -> int ---
 	@(link_name="GetParameter4i")
-	glGetParameter4i        :: proc(pname: uint, v0, v1, v2, v4: ^int) ---
+	glGetParameter4i        :: proc(pname: GLuint, v0, v1, v2, v4: ^int) ---
 
 	@(link_name="Hint")
-	glHint :: proc(target: uint, mode: uint) ---
+	glHint :: proc(target: GLuint, mode: GLuint) ---
 	
 	@(link_name="IsBuffer")
 	glIsBuffer       :: proc(buffer: Buffer) -> bool ---
 	@(link_name="IsEnabled")
-	glIsEnabled      :: proc(cap: uint) -> bool ---
+	glIsEnabled      :: proc(cap: GLuint) -> bool ---
 	@(link_name="IsFramebuffer")
 	glIsFramebuffer  :: proc(framebuffer: Framebuffer) -> bool ---
 	@(link_name="IsProgram")
@@ -192,14 +192,14 @@ foreign webgl {
 	@(link_name="LinkProgram")
 	glLinkProgram   :: proc(program: Program) ---
 	@(link_name="PixelStorei")
-	glPixelStorei   :: proc(pname: uint, param: int) ---
+	glPixelStorei   :: proc(pname: GLuint, param: int) ---
 	@(link_name="PolygonOffset")
 	glPolygonOffset :: proc(factor: GLfloat, units: GLfloat) ---
 	
 	@(link_name="ReadnPixels")
-	glReadnPixels         :: proc(x, y, width, height: int, format: uint, type: uint, bufSize: int, data: rawptr) ---
+	glReadnPixels         :: proc(x, y, width, height: int, format: GLuint, type: GLuint, bufSize: int, data: rawptr) ---
 	@(link_name="RenderbufferStorage")
-	glRenderbufferStorage :: proc(target: uint, internalformat: uint, width, height: int) ---
+	glRenderbufferStorage :: proc(target: GLuint, internalformat: GLuint, width, height: int) ---
 	@(link_name="SampleCoverage")
 	glSampleCoverage      :: proc(value: GLfloat, invert: bool) ---
 	@(link_name="Scissor")
@@ -208,27 +208,27 @@ foreign webgl {
 	glShaderSource        :: proc(shader: Shader, string: string) ---
 	
 	@(link_name="StencilFunc")
-	glStencilFunc         :: proc(func: uint, ref: int, mask: uint) ---
+	glStencilFunc         :: proc(func: GLuint, ref: int, mask: GLuint) ---
 	@(link_name="StencilFuncSeparate")
-	glStencilFuncSeparate :: proc(face, func: uint, ref: int, mask: uint) ---
+	glStencilFuncSeparate :: proc(face, func: GLuint, ref: int, mask: GLuint) ---
 	@(link_name="StencilMask")
-	glStencilMask         :: proc(mask: uint) ---
+	glStencilMask         :: proc(mask: GLuint) ---
 	@(link_name="StencilMaskSeparate")
-	glStencilMaskSeparate :: proc(face: uint, mask: uint) ---
+	glStencilMaskSeparate :: proc(face: GLuint, mask: GLuint) ---
 	@(link_name="StencilOp")
-	glStencilOp           :: proc(fail, zfail, zpass: uint) ---
+	glStencilOp           :: proc(fail, zfail, zpass: GLuint) ---
 	@(link_name="StencilOpSeparate")
-	glStencilOpSeparate   :: proc(face, fail, zfail, zpass: uint)	 ---
+	glStencilOpSeparate   :: proc(face, fail, zfail, zpass: GLuint)	 ---
 	
 	@(link_name="TexImage2D")
-	glTexImage2D    :: proc(target: uint, level: int, internalformat: int, width, height: int, border: int, format, type: uint, size: int, data: rawptr) ---
+	glTexImage2D    :: proc(target: GLuint, level: int, internalformat: int, width, height: int, border: int, format, type: GLuint, size: int, data: rawptr) ---
 	@(link_name="TexSubImage2D")
-	glTexSubImage2D :: proc(target: uint, level: int, xoffset, yoffset, width, height: int, format, type: uint, size: int, data: rawptr) ---
+	glTexSubImage2D :: proc(target: GLuint, level: int, xoffset, yoffset, width, height: int, format, type: GLuint, size: int, data: rawptr) ---
 	
 	@(link_name="TexParameterf")
-	glTexParameterf :: proc(target, pname: uint, param: GLfloat) ---
+	glTexParameterf :: proc(target, pname: GLuint, param: GLfloat) ---
 	@(link_name="TexParameteri")
-	glTexParameteri :: proc(target, pname: uint, param: int) ---
+	glTexParameteri :: proc(target, pname: GLuint, param: int) ---
 	
 	@(link_name="Uniform1f")
 	glUniform1f :: proc(location: int, v0: GLfloat) ---
@@ -262,7 +262,7 @@ foreign webgl {
 	@(link_name="VertexAttrib4f")
 	glVertexAttrib4f      :: proc(index: int, x, y, z, w: GLfloat) ---
 	@(link_name="VertexAttribPointer")
-	glVertexAttribPointer :: proc(index: uint, size: int, type: uint, normalized: bool, stride: int, ptr: uintptr) ---
+	glVertexAttribPointer :: proc(index: GLuint, size: int, type: GLuint, normalized: bool, stride: int, ptr: GLuintptr) ---
 	
 	@(link_name="Viewport")
 	glViewport :: proc(x, y, w, h: int) ---
@@ -273,9 +273,9 @@ foreign webgl {
 	@(link_name="UniformMatrix4fv")
 	glUniformMatrix4fv :: proc "contextless" (location: int, value: [^]GLfloat) ---
 	@(link_name="GetShaderiv")
-	glGetShaderiv :: proc "contextless" (shader: Shader, pname: uint, p: ^int) ---
+	glGetShaderiv :: proc "contextless" (shader: Shader, pname: GLuint, p: ^int) ---
 	@(link_name="GetProgramiv")
-	glGetProgramiv :: proc "contextless" (shader: Program, pname: uint, p: ^int) --- // TODO: just here to get log length for now.
+	glGetProgramiv :: proc "contextless" (shader: Program, pname: GLuint, p: ^int) --- // TODO: just here to get log length for now.
 	@(link_name="GetProgramInfoLog")
 	glGetProgramInfoLog :: proc "contextless" (program: Program, buf: []byte, length: ^int) ---
 	@(link_name="GetShaderInfoLog")
@@ -311,7 +311,7 @@ foreign webgl {
 // 	glUniformMatrix4fv(location, &value[0])
 // }
 
-// GetShaderiv :: proc "contextless" (shader: Shader, pname: uint) -> (p: int) {
+// GetShaderiv :: proc "contextless" (shader: Shader, pname: GLuint) -> (p: int) {
 // 	glGetShaderiv(shader, pname, &p)
 // 	return
 // }
@@ -322,28 +322,28 @@ foreign webgl {
 
 // WebGL2 Start //////////////////////////////////////////////////////////////////////////////////////////////
 
-// BufferDataSlice :: proc "contextless" (target: uint, slice: $S/[]$E, usage: uint) {
+// BufferDataSlice :: proc "contextless" (target: GLuint, slice: $S/[]$E, usage: GLuint) {
 // 	BufferData(target, len(slice)*size_of(E), raw_data(slice), usage)
 // }
-// BufferSubDataSlice :: proc "contextless" (target: uint, offset: uintptr, slice: $S/[]$E) {
+// BufferSubDataSlice :: proc "contextless" (target: GLuint, offset: GLuintptr, slice: $S/[]$E) {
 // 	glBufferSubData(target, offset, len(slice)*size_of(E), raw_data(slice))
 // }
 
-// CompressedTexImage2DSlice :: proc "contextless" (target: uint, level: int, internalformat: uint, width, height: int, border: int, slice: $S/[]$E) {
+// CompressedTexImage2DSlice :: proc "contextless" (target: GLuint, level: int, internalformat: GLuint, width, height: int, border: int, slice: $S/[]$E) {
 // 	glCompressedTexImage2DSlice(target, level, internalformat, width, height, border, len(slice)*size_of(E), raw_data(slice))
 // }
-// CompressedTexSubImage2DSlice :: proc "contextless" (target: uint, level: int, xoffset, yoffset, width, height: int, format: uint, slice: $S/[]$E) {
+// CompressedTexSubImage2DSlice :: proc "contextless" (target: GLuint, level: int, xoffset, yoffset, width, height: int, format: GLuint, slice: $S/[]$E) {
 // 	glCompressedTexSubImage2DSlice(target, level, level, xoffset, yoffset, width, height, format, len(slice)*size_of(E), raw_data(slice))
 // }
 
-// ReadPixelsSlice :: proc "contextless" (x, y, width, height: int, format: uint, type: uint, slice: $S/[]$E) {
+// ReadPixelsSlice :: proc "contextless" (x, y, width, height: int, format: GLuint, type: GLuint, slice: $S/[]$E) {
 // 	glReadnPixels(x, y, width, height, format, type, len(slice)*size_of(E), raw_data(slice))
 // }
 
-// TexImage2DSlice :: proc "contextless" (target: uint, level: int, internalformat: uint, width, height: int, border: int, format, type: uint, slice: $S/[]$E) {
+// TexImage2DSlice :: proc "contextless" (target: GLuint, level: int, internalformat: GLuint, width, height: int, border: int, format, type: GLuint, slice: $S/[]$E) {
 // 	glTexImage2D(target, level, internalformat, width, height, border, format, type, len(slice)*size_of(E), raw_data(slice))
 // }
-// TexSubImage2DSlice :: proc "contextless" (target: uint, level: int, xoffset, yoffset, width, height: int, format, type: uint, slice: $S/[]$E) {
+// TexSubImage2DSlice :: proc "contextless" (target: GLuint, level: int, xoffset, yoffset, width, height: int, format, type: GLuint, slice: $S/[]$E) {
 // 	glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, len(slice)*size_of(E), raw_data(slice))
 // }
 
@@ -357,39 +357,39 @@ foreign webgl {
 foreign webgl2 {
 	/* Buffer objects */
 	@(link_name="CopyBufferSubData")
-	glCopyBufferSubData :: proc(readTarget, writeTarget: uint, readOffset, writeOffset: int, size: int) ---	
+	glCopyBufferSubData :: proc(readTarget, writeTarget: GLuint, readOffset, writeOffset: int, size: int) ---	
 	@(link_name="GetBufferSubData")
-	glGetBufferSubData  :: proc(target: uint, srcByteOffset: int, dst_buffer: []byte, dstOffset: int = 0, length: int = 0) ---
+	glGetBufferSubData  :: proc(target: GLuint, srcByteOffset: int, dst_buffer: []byte, dstOffset: int = 0, length: int = 0) ---
 	
 	/* Framebuffer objects */
 	@(link_name="BlitFramebuffer")
-	glBlitFramebuffer          :: proc(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1: int, mask: uint, filter: uint) ---
+	glBlitFramebuffer          :: proc(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1: int, mask: GLuint, filter: GLuint) ---
 	@(link_name="FramebufferTextureLayer")
-	glFramebufferTextureLayer  :: proc(target: uint, attachment: uint, texture: Texture, level: int, layer: int) ---
+	glFramebufferTextureLayer  :: proc(target: GLuint, attachment: GLuint, texture: Texture, level: int, layer: int) ---
 	@(link_name="InvalidateFramebuffer")
-	glInvalidateFramebuffer    :: proc(target: uint, attachments: []uint) ---
+	glInvalidateFramebuffer    :: proc(target: GLuint, attachments: []GLuint) ---
 	@(link_name="InvalidateSubFramebuffer")
-	glInvalidateSubFramebuffer :: proc(target: uint, attachments: []uint, x, y, width, height: int) ---
+	glInvalidateSubFramebuffer :: proc(target: GLuint, attachments: []GLuint, x, y, width, height: int) ---
 	@(link_name="ReadBuffer")
-	glReadBuffer               :: proc(src: uint) ---
+	glReadBuffer               :: proc(src: GLuint) ---
 	
 	/* Renderbuffer objects */
 	@(link_name="RenderbufferStorageMultisample")
-	glRenderbufferStorageMultisample :: proc(target: uint, samples: int, internalformat: uint, width, height: int) ---
+	glRenderbufferStorageMultisample :: proc(target: GLuint, samples: int, internalformat: GLuint, width, height: int) ---
 	
 	/* Texture objects */
 	@(link_name="TexStorage3D")
-	glTexStorage3D            :: proc(target: uint, levels: int, internalformat: uint, width, height, depth: int) ---
+	glTexStorage3D            :: proc(target: GLuint, levels: int, internalformat: GLuint, width, height, depth: int) ---
 	@(link_name="TexImage3D")
-	glTexImage3D              :: proc(target: uint, level: int, internalformat: uint, width, height, depth: int, border: int, format, type: uint, size: int, data: rawptr) ---
+	glTexImage3D              :: proc(target: GLuint, level: int, internalformat: GLuint, width, height, depth: int, border: int, format, type: GLuint, size: int, data: rawptr) ---
 	@(link_name="TexSubImage3D")
-	glTexSubImage3D           :: proc(target: uint, level: int, xoffset, yoffset, width, height, depth: int, format, type: uint, size: int, data: rawptr) ---
+	glTexSubImage3D           :: proc(target: GLuint, level: int, xoffset, yoffset, width, height, depth: int, format, type: GLuint, size: int, data: rawptr) ---
 	@(link_name="CompressedTexImage3D")
-	glCompressedTexImage3D    :: proc(target: uint, level: int, internalformat: uint, width, height, depth: int, border: int, imageSize: int, data: rawptr) ---
+	glCompressedTexImage3D    :: proc(target: GLuint, level: int, internalformat: GLuint, width, height, depth: int, border: int, imageSize: int, data: rawptr) ---
 	@(link_name="CompressedTexSubImage3D")
-	glCompressedTexSubImage3D :: proc(target: uint, level: int, xoffset, yoffset: int, width, height, depth: int, format: uint, imageSize: int, data: rawptr) ---
+	glCompressedTexSubImage3D :: proc(target: GLuint, level: int, xoffset, yoffset: int, width, height, depth: int, format: GLuint, imageSize: int, data: rawptr) ---
 	@(link_name="CopyTexSubImage3D")
-	glCopyTexSubImage3D       :: proc(target: uint, level: int, xoffset, yoffset, zoffset: int, x, y, width, height: int) ---
+	glCopyTexSubImage3D       :: proc(target: GLuint, level: int, xoffset, yoffset, zoffset: int, x, y, width, height: int) ---
 	
 	/* Programs and shaders */
 	@(link_name="GetFragDataLocation")
@@ -397,43 +397,43 @@ foreign webgl2 {
 	
 	/* Uniforms */
 	@(link_name="Uniform1ui")
-	glUniform1ui :: proc(location: int, v0: uint) ---
+	glUniform1ui :: proc(location: int, v0: GLuint) ---
 	@(link_name="Uniform2ui")
-	glUniform2ui :: proc(location: int, v0: uint, v1: uint) ---
+	glUniform2ui :: proc(location: int, v0: GLuint, v1: GLuint) ---
 	@(link_name="Uniform3ui")
-	glUniform3ui :: proc(location: int, v0: uint, v1: uint, v2: uint) ---
+	glUniform3ui :: proc(location: int, v0: GLuint, v1: GLuint, v2: GLuint) ---
 	@(link_name="Uniform4ui")
-	glUniform4ui :: proc(location: int, v0: uint, v1: uint, v2: uint, v3: uint) ---
+	glUniform4ui :: proc(location: int, v0: GLuint, v1: GLuint, v2: GLuint, v3: GLuint) ---
 
 	/* Vertex attribs */
 	@(link_name="VertexAttribI4i")
 	glVertexAttribI4i      :: proc(index: int, x, y, z, w: int) ---
 	@(link_name="VertexAttribI4ui")
-	glVertexAttribI4ui     :: proc(index: int, x, y, z, w: uint) ---
+	glVertexAttribI4ui     :: proc(index: int, x, y, z, w: GLuint) ---
 	@(link_name="VertexAttribIPointer")
-	glVertexAttribIPointer :: proc(index: uint, size: int, type: uint, stride: int, offset: uintptr) ---
+	glVertexAttribIPointer :: proc(index: GLuint, size: int, type: GLuint, stride: int, offset: GLuintptr) ---
 	
 	/* Writing to the drawing buffer */
 	@(link_name="VertexAttribDivisor")
-	glVertexAttribDivisor   :: proc(index: uint, divisor: uint) ---
+	glVertexAttribDivisor   :: proc(index: GLuint, divisor: GLuint) ---
 	@(link_name="DrawArraysInstanced")
-	glDrawArraysInstanced   :: proc(mode: uint, first, count: int, instanceCount: int) ---
+	glDrawArraysInstanced   :: proc(mode: GLuint, first, count: int, instanceCount: int) ---
 	@(link_name="DrawElementsInstanced")
-	glDrawElementsInstanced :: proc(mode: uint, count: int, type: uint, offset: int, instanceCount: int) ---
+	glDrawElementsInstanced :: proc(mode: GLuint, count: int, type: GLuint, offset: int, instanceCount: int) ---
 	@(link_name="DrawRangeElements")
-	glDrawRangeElements     :: proc(mode: uint, start, end, count: int, type: uint, offset: int) ---
+	glDrawRangeElements     :: proc(mode: GLuint, start, end, count: int, type: GLuint, offset: int) ---
 	
 	/* Multiple Render Targets */
 	@(link_name="DrawBuffers")
-	glDrawBuffers    :: proc(buffers: []uint) ---
+	glDrawBuffers    :: proc(buffers: []GLuint) ---
 	@(link_name="ClearBufferfv")
-	glClearBufferfv  :: proc(buffer: uint, drawbuffer: int, values: []GLfloat) ---
+	glClearBufferfv  :: proc(buffer: GLuint, drawbuffer: int, values: []GLfloat) ---
 	@(link_name="ClearBufferiv")
-	glClearBufferiv  :: proc(buffer: uint, drawbuffer: int, values: []int) ---
+	glClearBufferiv  :: proc(buffer: GLuint, drawbuffer: int, values: []int) ---
 	@(link_name="ClearBufferuiv")
-	glClearBufferuiv :: proc(buffer: uint, drawbuffer: int, values: []uint) ---
+	glClearBufferuiv :: proc(buffer: GLuint, drawbuffer: int, values: []GLuint) ---
 	@(link_name="ClearBufferfi")
-	glClearBufferfi  :: proc(buffer: uint, drawbuffer: int, depth: GLfloat, stencil: int) ---
+	glClearBufferfi  :: proc(buffer: GLuint, drawbuffer: int, depth: GLfloat, stencil: int) ---
 	
 	@(link_name="CreateQuery")
 	glCreateQuery :: proc() -> Query ---
@@ -442,11 +442,11 @@ foreign webgl2 {
 	@(link_name="IsQuery")
 	glIsQuery     :: proc(query: Query) -> bool ---
 	@(link_name="BeginQuery")
-	glBeginQuery  :: proc(target: uint, query: Query) ---
+	glBeginQuery  :: proc(target: GLuint, query: Query) ---
 	@(link_name="EndQuery")
-	glEndQuery    :: proc(target: uint) ---
+	glEndQuery    :: proc(target: GLuint) ---
 	@(link_name="GetQuery")
-	glGetQuery    :: proc(target, pname: uint) ---
+	glGetQuery    :: proc(target, pname: GLuint) ---
 	
 	@(link_name="CreateSampler")
 	glCreateSampler     :: proc() -> Sampler ---
@@ -455,22 +455,22 @@ foreign webgl2 {
 	@(link_name="IsSampler")
 	glIsSampler         :: proc(sampler: Sampler) -> bool ---
 	@(link_name="BindSampler")
-	glBindSampler       :: proc(unit: uint, sampler: Sampler) ---
+	glBindSampler       :: proc(unit: GLuint, sampler: Sampler) ---
 	@(link_name="SamplerParameteri")
-	glSamplerParameteri :: proc(sampler: Sampler, pname: uint, param: int) ---
+	glSamplerParameteri :: proc(sampler: Sampler, pname: GLuint, param: int) ---
 	@(link_name="SamplerParameterf")
-	glSamplerParameterf :: proc(sampler: Sampler, pname: uint, param: GLfloat) ---
+	glSamplerParameterf :: proc(sampler: Sampler, pname: GLuint, param: GLfloat) ---
 	
 	@(link_name="FenceSync")
-	glFenceSync      :: proc(condition: uint, flags: uint) -> Sync ---
+	glFenceSync      :: proc(condition: GLuint, flags: GLuint) -> Sync ---
 	@(link_name="IsSync")
 	glIsSync         :: proc(sync: Sync) -> bool ---
 	@(link_name="DeleteSync")
 	glDeleteSync     :: proc(sync: Sync) ---
 	@(link_name="ClientWaitSync")
-	glClientWaitSync :: proc(sync: Sync, flags: uint, timeout: u64) ---
+	glClientWaitSync :: proc(sync: Sync, flags: GLuint, timeout: u64) ---
 	@(link_name="WaitSync")
-	glWaitSync       :: proc(sync: Sync, flags: uint, timeout: i64) ---
+	glWaitSync       :: proc(sync: Sync, flags: GLuint, timeout: i64) ---
 	
 	@(link_name="CreateTransformFeedback")
 	glCreateTransformFeedback   :: proc() -> TransformFeedback ---
@@ -479,26 +479,26 @@ foreign webgl2 {
 	@(link_name="IsTransformFeedback")
 	glIsTransformFeedback       :: proc(tf: TransformFeedback) -> bool ---
 	@(link_name="BindTransformFeedback")
-	glBindTransformFeedback     :: proc(target: uint, tf: TransformFeedback) ---
+	glBindTransformFeedback     :: proc(target: GLuint, tf: TransformFeedback) ---
 	@(link_name="BeginTransformFeedback")
-	glBeginTransformFeedback    :: proc(primitiveMode: uint) ---
+	glBeginTransformFeedback    :: proc(primitiveMode: GLuint) ---
 	@(link_name="EndTransformFeedback")
 	glEndTransformFeedback      :: proc() ---
 	@(link_name="TransformFeedbackVaryings")
-	glTransformFeedbackVaryings :: proc(program: Program, varyings: []string, bufferMode: uint) ---
+	glTransformFeedbackVaryings :: proc(program: Program, varyings: []string, bufferMode: GLuint) ---
 	@(link_name="PauseTransformFeedback")
 	glPauseTransformFeedback    :: proc() ---
 	@(link_name="ResumeTransformFeedback")
 	glResumeTransformFeedback   :: proc() ---
 	
 	@(link_name="BindBufferBase")
-	glBindBufferBase            :: proc(target: uint, index: uint, buffer: Buffer) ---
+	glBindBufferBase            :: proc(target: GLuint, index: GLuint, buffer: Buffer) ---
 	@(link_name="BindBufferRange")
-	glBindBufferRange           :: proc(target: uint, index: uint, buffer: Buffer, offset: int, size: int) ---
+	glBindBufferRange           :: proc(target: GLuint, index: GLuint, buffer: Buffer, offset: int, size: int) ---
 	@(link_name="GetUniformBlockIndex")
-	glGetUniformBlockIndex      :: proc(program: Program, uniformBlockName: string) -> uint ---
+	glGetUniformBlockIndex      :: proc(program: Program, uniformBlockName: string) -> GLuint ---
 	@(link_name="UniformBlockBinding")
-	glUniformBlockBinding       :: proc(program: Program, uniformBlockIndex: uint, uniformBlockBinding: uint) ---
+	glUniformBlockBinding       :: proc(program: Program, uniformBlockIndex: GLuint, uniformBlockBinding: GLuint) ---
 	
 	@(link_name="CreateVertexArray")
 	glCreateVertexArray :: proc() -> VertexArrayObject ---
@@ -532,7 +532,7 @@ foreign webgl2 {
 // }
 
 
-// Uniform1uiv :: proc "contextless" (location: int, v: uint) {
+// Uniform1uiv :: proc "contextless" (location: int, v: GLuint) {
 // 	glUniform1ui(location, v)
 // }
 // Uniform2uiv :: proc "contextless" (location: int, v: glm.uvec2) {
