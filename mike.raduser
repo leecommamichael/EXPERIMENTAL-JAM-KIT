@@ -11,6 +11,7 @@ window:
     {
       0.263728:
       {
+        selected
         watch: expression: "query:types"
         watch:
         {
@@ -34,11 +35,10 @@ window:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
-        watch: expression: "query:breakpoints"
+        watch: selected expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
-          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
@@ -79,9 +79,8 @@ window:
         }
       }
     }
-    0.578212:
+    0.412630:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
@@ -101,10 +100,10 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 97
-        cursor_column: 1
-        mark_line: 97
-        mark_column: 1
+        cursor_line: 77
+        cursor_column: 37
+        mark_line: 77
+        mark_column: 37
       }
       text:
       {
@@ -125,19 +124,19 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 567
+        cursor_line: 122
         cursor_column: 1
-        mark_line: 567
+        mark_line: 122
         mark_column: 1
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/applications (compilers)/odin/core/math/linalg/glsl/linalg_glsl.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/nord_gl/interface.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 486
+        cursor_line: 27
         cursor_column: 1
-        mark_line: 486
+        mark_line: 27
         mark_column: 1
       }
       text:
@@ -149,24 +148,34 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 98
+        cursor_line: 178
         cursor_column: 1
-        mark_line: 98
+        mark_line: 178
         mark_column: 1
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/input_windows.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 147
-        cursor_column: 39
-        mark_line: 147
-        mark_column: 39
+        cursor_line: 124
+        cursor_column: 22
+        mark_line: 124
+        mark_column: 22
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query: input: ""
+        cursor_line: 92
+        cursor_column: 1
+        mark_line: 92
+        mark_column: 1
       }
     }
-    0.132358:
+    0.297940:
     {
       text:
       {
@@ -319,4 +328,4 @@ keybindings:
   { log_marker m ctrl shift alt }
   { toggle_dev_menu d ctrl shift alt }
 }
-current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src/sugar"
+current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src"

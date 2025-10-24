@@ -377,13 +377,12 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	}
 	animate_physics(entity)
 
-	if .Hidden not_in entity.flags {
-		switch &variant in entity.variant {
-		case nil: // general-purpose entity
-		case Text_State:   //step_text(entity, immediate=false)
-		case Image_State:  step_image(entity, immediate=false)
-		case Sprite_State: step_sprite(entity, immediate=false)
-		}
+	switch &variant in entity.variant {
+	case nil: // general-purpose entity
+	case Text_State:   //step_text(entity, immediate=false)
+	case Image_State:  step_image(entity, immediate=false)
+	case Sprite_State: step_sprite(entity, immediate=false)
+	case Timed_Effect_State(rawptr): step_timed_effect(entity)
 	}
 
 	instance: ^Any_Instance = entity.instance
@@ -405,4 +404,54 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	}
 
 	return true
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Timed_Effect
+////////////////////////////////////////////////////////////////////////////////
+Timed_Effect_State :: struct ($T: typeid) {
+	data: ^T,
+	step: proc(data: T, percent: f32),
+	seconds_total: f64,
+	seconds_left: f64,
+	timeout: proc(T),
+	allocator: runtime.Allocator,
+}
+
+step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
+	it := &entity.variant.(Timed_Effect_State(rawptr))
+
+	it.seconds_left -= dt
+	percent := clamp(1 - cast(f32) (it.seconds_left/it.seconds_total), 0, 1)
+	it.step(it.data^, percent)
+
+	if it.seconds_left <= 0 {
+		if it.timeout != nil {
+			it.timeout(it.data)
+		}
+		free(it.data, it.allocator)
+		free_entity(entity)
+	}
+}
+
+timed_effect :: proc (
+	data: $T,
+	seconds_left: f64,
+	step: proc(data: T, percent: f32),
+	allocator := context.allocator
+) -> ^Timed_Effect_State(T) {
+	ent := make_entity()
+	data_copy := new(T, allocator)
+	data_copy^ = data
+	effect := Timed_Effect_State(T) {
+		data_copy,
+		step,
+		seconds_left,
+		seconds_left,
+		nil,
+		allocator,
+	}
+	ent.variant = transmute(Timed_Effect_State(rawptr))effect
+	ent.flags += {.Hidden}
+	return transmute(^Timed_Effect_State(T)) &ent.variant.(Timed_Effect_State(rawptr))
 }

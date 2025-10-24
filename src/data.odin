@@ -3,9 +3,7 @@ package main
 // Purpose: This file is a non-comprehensive overview of
 //          data which crosses layer-boundaries in the program.
 
-import sugar "sugar"
 import gl "nord_gl"
-import stbtt "vendor:stb/truetype"
 
 //////////////////////////////////////////////////////////////////////
 // Section: Framework + App Data
@@ -110,6 +108,7 @@ Entity :: struct {
 		Text_State,
 		Image_State,
 		Sprite_State,
+		Timed_Effect_State(rawptr),
 	},
 	basis:    Transform,
 	collider: Collider,

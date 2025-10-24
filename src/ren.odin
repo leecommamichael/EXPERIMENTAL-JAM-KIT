@@ -167,6 +167,7 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 
 ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 	if .Hidden in entity.flags { return }
+	if .Allocated not_in entity.flags { return }
 
 	ren_bind_or_reuse_draw_command(entity)
 	gl.DrawElements(

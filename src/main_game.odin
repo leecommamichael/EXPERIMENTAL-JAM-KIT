@@ -69,6 +69,21 @@ game_step :: proc () {
 		bg.basis.position = 32/2
 		// bg.position.z = near_draws - 10
 	}
+
+	@static flip: bool
+	if sugar.on_button_press(.A) {
+		te := timed_effect(&bg.position.x, 1.0, proc (x: ^f32, percent: f32) {
+			if flip {
+				x^ = cast(f32) lerp(f32(100), f32(00), percent)
+			} else {
+				x^ = cast(f32) lerp(f32(00), f32(100), percent)
+			}
+		})
+		te.timeout = proc (x: ^f32) {
+			flip = !flip
+		}
+	}
+
 	img.position.z = far_draws
 	cursor.position.xy = globals.mouse_position
 	tn1 := text("-1 hello", .pixel)
