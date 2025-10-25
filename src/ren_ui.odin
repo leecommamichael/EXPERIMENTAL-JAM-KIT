@@ -80,7 +80,7 @@ measure_entity :: proc (entity: ^Entity) -> Vec2 {
 			return entity.basis.scale.xy + entity.scale.xy
 		case Text_State:
 			return measure_text(entity^)
-		case Timed_Effect_State(rawptr): // not visual
+		case Timed_Effect_State(Empty_Struct): // not visual
 		}
 	case .Root: 
 		return measure_entity(entity.children[0])

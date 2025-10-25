@@ -12,6 +12,8 @@ import "core:math/linalg"
 is_subtype :: intrinsics.type_is_subtype_of
 is_array   :: intrinsics.type_is_array
 is_float   :: intrinsics.type_is_float
+type_of_pointee :: intrinsics.type_elem_type
+Empty_Struct :: struct {}
 
 array_cast :: linalg.array_cast
 clone_to_cstring :: strings.clone_to_cstring

@@ -108,7 +108,7 @@ Entity :: struct {
 		Text_State,
 		Image_State,
 		Sprite_State,
-		Timed_Effect_State(rawptr),
+		Timed_Effect_State(Empty_Struct),
 	},
 	basis:    Transform,
 	collider: Collider,

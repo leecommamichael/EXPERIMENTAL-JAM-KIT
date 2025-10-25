@@ -382,7 +382,7 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	case Text_State:   //step_text(entity, immediate=false)
 	case Image_State:  step_image(entity, immediate=false)
 	case Sprite_State: step_sprite(entity, immediate=false)
-	case Timed_Effect_State(rawptr): step_timed_effect(entity)
+	case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
 	}
 
 	instance: ^Any_Instance = entity.instance
@@ -409,26 +409,29 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 ////////////////////////////////////////////////////////////////////////////////
 // Timed_Effect
 ////////////////////////////////////////////////////////////////////////////////
+// this is an entity variant, so putting T here could inflate entities.
+// So some things are pointers that otherwise would not be.
 Timed_Effect_State :: struct ($T: typeid) {
 	data: ^T,
-	step: proc(data: T, percent: f32),
+	step: proc(data: ^T, percent: f32),
 	seconds_total: f64,
 	seconds_left: f64,
-	timeout: proc(T),
+	timeout: proc(^T),
 	allocator: runtime.Allocator,
 }
 
 step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
-	it := &entity.variant.(Timed_Effect_State(rawptr))
+	it := transmute(^Timed_Effect_State(Managed_Data)) &entity.variant.(Timed_Effect_State(Empty_Struct))
 
 	it.seconds_left -= dt
 	percent := clamp(1 - cast(f32) (it.seconds_left/it.seconds_total), 0, 1)
-	it.step(it.data^, percent)
+	it.step(it.data, percent)
 
 	if it.seconds_left <= 0 {
 		if it.timeout != nil {
 			it.timeout(it.data)
 		}
+		assert(it.data.sink != nil)
 		free(it.data, it.allocator)
 		free_entity(entity)
 	}
@@ -437,7 +440,7 @@ step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
 timed_effect :: proc (
 	data: $T,
 	seconds_left: f64,
-	step: proc(data: T, percent: f32),
+	step: proc(data: ^T, percent: f32),
 	allocator := context.allocator
 ) -> ^Timed_Effect_State(T) {
 	ent := make_entity()
@@ -451,7 +454,37 @@ timed_effect :: proc (
 		nil,
 		allocator,
 	}
-	ent.variant = transmute(Timed_Effect_State(rawptr))effect
+	ent.variant = transmute(Timed_Effect_State(Empty_Struct))effect
 	ent.flags += {.Hidden}
-	return transmute(^Timed_Effect_State(T)) &ent.variant.(Timed_Effect_State(rawptr))
+	return transmute(^Timed_Effect_State(T)) &ent.variant.(Timed_Effect_State(Empty_Struct))
+}
+
+Managed_Data :: struct {
+	sink: ^f32,
+	start: f32,
+	target: f32,
+}
+
+timed_lerp :: proc (
+	data: ^f32,
+	target: f32,
+	seconds_left: f64,
+	allocator := context.allocator
+) -> ^Timed_Effect_State(Managed_Data) {
+	ent := make_entity()
+	managed_data := new(Managed_Data, allocator)
+	managed_data^ = Managed_Data { sink=data, start=data^, target=target }
+	effect := Timed_Effect_State(Managed_Data) {
+		managed_data,
+		proc (it: ^Managed_Data, percent: f32) {
+			it.sink^ = cast(f32) lerp(it.start, it.target, percent)
+		},
+		seconds_left,
+		seconds_left,
+		nil,
+		allocator,
+	}
+	ent.variant = transmute(Timed_Effect_State(Empty_Struct))effect
+	ent.flags += {.Hidden}
+	return transmute(^Timed_Effect_State(Managed_Data)) &ent.variant.(Timed_Effect_State(Empty_Struct))
 }
