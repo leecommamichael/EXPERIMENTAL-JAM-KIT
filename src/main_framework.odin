@@ -421,7 +421,7 @@ Timed_Effect_State :: struct ($T: typeid) {
 }
 
 step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
-	it := transmute(^Timed_Effect_State(Managed_Data)) &entity.variant.(Timed_Effect_State(Empty_Struct))
+	it := &entity.variant.(Timed_Effect_State(Empty_Struct))
 
 	it.seconds_left -= dt
 	percent := clamp(1 - cast(f32) (it.seconds_left/it.seconds_total), 0, 1)
@@ -431,7 +431,6 @@ step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
 		if it.timeout != nil {
 			it.timeout(it.data)
 		}
-		assert(it.data.sink != nil)
 		free(it.data, it.allocator)
 		free_entity(entity)
 	}
@@ -465,12 +464,13 @@ Managed_Data :: struct {
 	target: f32,
 }
 
+Timed_Lerp :: Timed_Effect_State(Managed_Data)
 timed_lerp :: proc (
 	data: ^f32,
 	target: f32,
 	seconds_left: f64,
 	allocator := context.allocator
-) -> ^Timed_Effect_State(Managed_Data) {
+) -> ^Timed_Lerp {
 	ent := make_entity()
 	managed_data := new(Managed_Data, allocator)
 	managed_data^ = Managed_Data { sink=data, start=data^, target=target }

@@ -148,27 +148,6 @@ layout_subtree :: proc (root: ^Entity) {
 	}
 }
 
-//
-//
-// button_area
-// text_button  //
-// image_button // ninepatch or not
-//
-// Anything that has to wait on layout can't be as immediate. Right?
-// Well, no, layout just needs to be immediate.
-// The thing is, layout needs to be recomputed if the state changes.
-// And state is evaluated after game_step in (in fmwk_step) an attempt to let the user set properties after construction.
-// So the whole point is, arguments passed to the entity can't be the deciding factor.
-// This isn't a limitation of this API, though. 
-//
-// I cache entities between frames.
-// I don't want the user to be manually adding children to a UI container.
-// I want there to be some conditional which causes more or fewer things to be present.
-// At the end of the day, you're the one passing the array of children.
-//
-// So when to do layout?
-// I wouldn't even be against a flag which says immediate-or_not. I guess it doesn't matter.
-
 import "sugar"
 button :: proc (loc := #caller_location) -> ^Entity {
 	entity, is_new := do_entity(loc)

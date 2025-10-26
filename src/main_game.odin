@@ -71,10 +71,12 @@ game_step :: proc () {
 	}
 
 	@static flip: bool
-	if sugar.on_button_press(.A) {
+	@static tl: ^Timed_Lerp
+	if sugar.on_button_press(.A) && tl == nil {
 		target :f32= 0 if flip else 100
-		tl := timed_lerp(&bg.position.x, target, 1.0)
-		tl.timeout = proc (x: ^Managed_Data) {
+		tl = timed_lerp(&bg.position.x, target, 1.0)
+		tl.timeout = proc (_: ^Managed_Data) {
+			tl = nil
 			flip = !flip
 		}
 		// te := timed_effect(&bg.position.x, 1.0, proc (x: ^^f32, percent: f32) {
@@ -117,6 +119,7 @@ game_step :: proc () {
 	t1.position.z  = +1
 	t2.position.z  = +2
 }
+
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
 test_Step :: proc () {
