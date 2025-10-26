@@ -137,9 +137,9 @@ Transform :: struct {
 
 Collider :: struct {
 	shape: Collision_Shape,
-	size:  Vec3,
-	layer: bit_set[Collision_Layer; u32], // in
-	mask:  bit_set[Collision_Layer; u32], // touches
+	size:  Vec3, // use collider_size(entity) instead.
+	layer: bit_set[Collision_Layer; u32], // what it is defined to be.
+	mask:  bit_set[Collision_Layer; u32], // what it may contact.
 }
 
 Collision_Layer :: enum { Default }

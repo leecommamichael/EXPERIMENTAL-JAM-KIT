@@ -222,9 +222,9 @@ ren_draw :: proc (ren: ^Ren) {
 				case .None:
 				case .Point: fallthrough
 				case .Circle:
-					geom_append_circle(&mesh, 16, entity.position, entity.collider.size.x)
+					geom_append_circle(&mesh, 16, entity.position, entity.scale.x * collider_size(entity).x)
 				case .AABB:
-					geom_append_quad(&mesh, entity.position, entity.collider.size)
+					geom_append_quad(&mesh, entity.position, entity.scale * collider_size(entity))
 				}
 			}
 			ent := globals.entities[0]

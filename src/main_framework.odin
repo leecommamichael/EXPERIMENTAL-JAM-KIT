@@ -134,10 +134,10 @@ framework_step :: proc (dt: f64) {
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
-	TR1 := box1.position + box1.collider.size
-	BL1 := box1.position - box1.collider.size
-	TR2 := box2.position + box2.collider.size
-	BL2 := box2.position - box2.collider.size
+	TR1 := box1.position + collider_size(box1)
+	BL1 := box1.position - collider_size(box1)
+	TR2 := box2.position + collider_size(box2)
+	BL2 := box2.position - collider_size(box2)
 	return \
 	   (TR2.x <= TR1.x && BL1.x <= TR2.x  \
 	&&  TR2.y <= TR1.y && BL1.y <= TR2.y  \
@@ -154,8 +154,8 @@ hit_test_aabb_circle   :: proc (box, circle: ^Entity) -> bool {
 	return hit_test_aabb_aabb(box, circle)
 }
 hit_test_aabb_point    :: proc (box,p: ^Entity) -> bool {
-	TR := box.position + box.collider.size
-	BL := box.position - box.collider.size
+	TR := box.position + collider_size(box)
+	BL := box.position - collider_size(box)
 	point := p.position
 	return \
 	   point.x <= TR.x && BL.x <= point.x\
@@ -164,11 +164,11 @@ hit_test_aabb_point    :: proc (box,p: ^Entity) -> bool {
 }
 hit_test_circle_circle :: proc (circle1, circle2: ^Entity) -> bool {
 	dist := distance(circle1.position, circle2.position)
-	return dist <= (circle1.collider.size.x + circle2.collider.size.x)
+	return dist <= (collider_size(circle1).x + collider_size(circle2).x)
 }
 hit_test_circle_point  :: proc (circle, point: ^Entity) -> bool {
 	dist := distance(circle.position, point.position)
-	return dist <= circle.collider.size.x
+	return dist <= collider_size(circle).x
 }
 hit_test_rect_rect     :: proc (r1,r2: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_aabb     :: proc (r,bb: ^Entity) -> bool { panic("TODO") }
@@ -358,6 +358,12 @@ free_entity :: proc (entity: ^Entity) {
 	index, found := slice.linear_search(globals.entities[:], entity)
 	assert(found)
 	unordered_remove(&globals.entities, index)
+}
+
+// the basis size is the content size of the drawing.
+// the scale controls both collider and visual.
+collider_size :: proc (entity: ^Entity) -> Vec3 {
+	return entity.scale * entity.collider.size
 }
 
 // Prepare an object for rendering.

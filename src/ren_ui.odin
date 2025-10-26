@@ -157,7 +157,7 @@ button :: proc (loc := #caller_location) -> ^Entity {
 		}
 		entity.flags += {.Collider_Enabled}
 		entity.collider.shape = .Circle
-		entity.collider.size = 50
+		entity.collider.size = 44 / globals.canvas_stretch.x
 		// This gist is that the GPU always gets the transform and the shader uses it.
 		mesh := geom_make_quad(1, context.temp_allocator)
 		entity.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])

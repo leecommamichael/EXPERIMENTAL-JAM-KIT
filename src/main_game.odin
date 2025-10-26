@@ -17,30 +17,30 @@ far_draws: f32 = 90
 img: ^Entity
 spr: ^Entity
 cursor: ^Entity
-// debug_colliders: ^Entity
+debug_colliders: ^Entity
 
 game_init :: proc () {
 	globals.canvas_size_px = {384, 216}
-
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretching = .Integer_Aspect
 	globals.ren.framebuffer = make_framebuffer(array_cast(globals.canvas_size_px, int))
-	// log.infof("Made FB: %v", fb)
-	// debug_colliders = make_entity()
-	// debug_colliders.position.z = 1
-	// debug_colliders.flags += {.Is_3D }
-	// debug_colliders.draw_command = ren_make_basic_draw_cmd(
-	// 	globals.instance_buffer,
-	// 	cast(int) debug_colliders.id, {},{})
-	// debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
-	// globals.draw_colliders = true
+
+	debug_colliders = make_entity()
+	debug_colliders.position.z = 1
+	debug_colliders.flags += {.Is_3D }
+	debug_colliders.draw_command = ren_make_basic_draw_cmd(
+		globals.instance_buffer,
+		cast(int) debug_colliders.id, {},{})
+	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
+	globals.draw_colliders = true
 	cursor = sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
 	cursor.collider.shape = .Circle
-	cursor.collider.size = 20
+	cursor.collider.size = 16
 
 	img = make_image(`gameplayboard.aseprite`)
+	img.position.z = far_draws
 
 	// spr = sprite(`berserker.aseprite`)
 	// spr.position.xy = 42
@@ -52,9 +52,74 @@ game_init :: proc () {
 	// spr.position.z = far_draws
 
 }
+// lerp test
+// game_step :: proc () {
+// 	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
+// 	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
+// 	rect.position.z = near_draws
+// 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
+// 	rect.basis.scale.y = -1 // because textures are flipped...
+// 	rect.basis.position.xy = rect.scale.xy/2
 
-old_target: ^Entity
-// Mixed-scope between renderer and game entities.
+// 	bg, bg_new := image(`bg.ase`)
+// 	if bg_new {
+// 		bg.basis.scale = 32
+// 		bg.basis.position = 32/2
+// 		// bg.position.z = near_draws - 10
+// 	}
+
+// 	@static flip: bool
+// 	@static tl: ^Timed_Lerp
+// 	if sugar.on_button_press(.A) && tl == nil {
+// 		target :f32= 0 if flip else 100
+// 		tl = timed_lerp(&bg.position.x, target, 1.0)
+// 		tl.timeout = proc (_: ^Managed_Data) {
+// 			tl = nil
+// 			flip = !flip
+// 		}
+// 		// te := timed_effect(&bg.position.x, 1.0, proc (x: ^^f32, percent: f32) {
+// 		// 	if flip {
+// 		// 		x^^ = cast(f32) lerp(f32(100), f32(00), percent)
+// 		// 	} else {
+// 		// 		x^^ = cast(f32) lerp(f32(00), f32(100), percent)
+// 		// 	}
+// 		// })
+// 		// te.timeout = proc (x: ^^f32) {
+// 		// 	flip = !flip
+// 		// }
+// 	}
+
+// 	img.position.z = far_draws
+// 	cursor.position.xy = globals.mouse_position
+// 	tn1 := text("-1 hello", .pixel)
+// 	{
+// 		tn1.position.xy = 10
+// 		tn1.color.rgb = 1.0
+// 	}
+// 	t0 := text(" 0")
+// 	{
+// 		t0.position.xy = 20
+// 		t0.color.rgb = 0.8
+// 	}
+// 	t1 := text("+1")
+// 	{
+// 		t1.position.xy = 30
+// 		t1.color.rgb = 0.6
+// 	}
+// 	t2 := text("+2")
+// 	{
+// 		t2.position.xy = 40
+// 		t2.color.rgb = 0.4
+// 	}
+
+// 	tn1.position.z = -1
+// 	t0.position.z  = 0
+// 	t1.position.z  = +1
+// 	t2.position.z  = +2
+// }
+
+//////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
 game_step :: proc () {
 	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
 	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
@@ -62,80 +127,13 @@ game_step :: proc () {
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
-
-	bg, bg_new := image(`bg.ase`)
-	if bg_new {
-		bg.basis.scale = 32
-		bg.basis.position = 32/2
-		// bg.position.z = near_draws - 10
-	}
-
-	@static flip: bool
-	@static tl: ^Timed_Lerp
-	if sugar.on_button_press(.A) && tl == nil {
-		target :f32= 0 if flip else 100
-		tl = timed_lerp(&bg.position.x, target, 1.0)
-		tl.timeout = proc (_: ^Managed_Data) {
-			tl = nil
-			flip = !flip
-		}
-		// te := timed_effect(&bg.position.x, 1.0, proc (x: ^^f32, percent: f32) {
-		// 	if flip {
-		// 		x^^ = cast(f32) lerp(f32(100), f32(00), percent)
-		// 	} else {
-		// 		x^^ = cast(f32) lerp(f32(00), f32(100), percent)
-		// 	}
-		// })
-		// te.timeout = proc (x: ^^f32) {
-		// 	flip = !flip
-		// }
-	}
-
-	img.position.z = far_draws
-	cursor.position.xy = globals.mouse_position
-	tn1 := text("-1 hello", .pixel)
-	{
-		tn1.position.xy = 10
-		tn1.color.rgb = 1.0
-	}
-	t0 := text(" 0")
-	{
-		t0.position.xy = 20
-		t0.color.rgb = 0.8
-	}
-	t1 := text("+1")
-	{
-		t1.position.xy = 30
-		t1.color.rgb = 0.6
-	}
-	t2 := text("+2")
-	{
-		t2.position.xy = 40
-		t2.color.rgb = 0.4
-	}
-
-	tn1.position.z = -1
-	t0.position.z  = 0
-	t1.position.z  = +1
-	t2.position.z  = +2
-}
-
-//////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////
-test_Step :: proc () {
-	bg, is_new := image(`bg.png`)
-	if is_new {
-		// bg.basis.scale *= 1/1.5
-		// bg.basis.position *= 1/1.5
-	}
-	cursor.position.x = sugar.mouse_position.x
-	cursor.position.y = sugar.mouse_position.y
+	cursor.position.x = globals.mouse_position.x
+	cursor.position.y = globals.mouse_position.y
 	cursor.position.z = 0
 
 	btn := button()
-	btn.position.z = 0
-	btn.position.xy = {400,100}
-	btn.scale.xy = {100,100}
+	btn.position.xy = {128,100}
+	btn.basis.scale.xy = 44 / globals.canvas_stretch.x
 	btn.color.rgb = 0.2
 	if globals.button_focus == btn {
 			btn.color.rgb = {0.2, 0.8, 0.2} + 0.1
@@ -147,9 +145,8 @@ test_Step :: proc () {
 	}
 
 	next_btn := button()
-	next_btn.position.z = 0
-	next_btn.position.xy = {550,100}
-	next_btn.scale.xy = {100,100}
+	next_btn.position.xy = {32,100}
+	next_btn.basis.scale.xy = 44 / globals.canvas_stretch.x
 	next_btn.color.rgb = 0.2
 	if globals.button_focus == next_btn {
 			next_btn.color.rgb = {0.2, 0.8, 0.2} + 0.1
@@ -196,6 +193,7 @@ test_Step :: proc () {
 		}
 	}
 
+	img.position.z = far_draws
 	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		img.position.y -= 1
