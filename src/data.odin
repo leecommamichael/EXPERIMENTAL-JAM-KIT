@@ -58,10 +58,10 @@ Globals :: struct {
 	camera:          Camera3D,
 
 	gravity:    Vec3,
-	old_collisions: [dynamic]Collision,
-	collisions: [dynamic]Collision,
+	old_collisions:   [dynamic]Collision, // last frame/sample
+	collisions:       [dynamic]Collision,
 	enter_collisions: [dynamic]Collision,
-	exit_collisions: [dynamic]Collision,
+	exit_collisions:  [dynamic]Collision,
 	pointer_focus: ^Entity,
 	button_focus:  ^Entity,
 	collider_draw_commands: [Collision_Shape]Draw_Command,
@@ -156,7 +156,11 @@ Collision_Shape :: enum {
 }
 
 Collision :: struct {
-	ids:      [2]Entity_ID,
+	ids:   [2]Entity_ID,
+	// This field is not created by collision-detection.
+	// When game code queries for collisions relative to _some entity_,
+	// 	this is the _other_ entity in any collisions found.
+	other: ^Entity
 }
 
 //////////////////////////////////////////////////////////////////////

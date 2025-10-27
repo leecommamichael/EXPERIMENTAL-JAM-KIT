@@ -136,7 +136,7 @@ framework_step :: proc (dt: f64) {
 							old_collision = true
 						}
 					}
-					new_collision := Collision {{entity.id, other.id}}
+					new_collision := Collision {ids={entity.id, other.id}}
 					if !old_collision {
 						append(&globals.enter_collisions, new_collision)
 						// The collision is new in this sample, so it's an "enter" event.
@@ -144,7 +144,7 @@ framework_step :: proc (dt: f64) {
 					append(&globals.collisions, new_collision)
 				}
 			} // collider_loop
-		}
+		} // if has collider
 	} // reverse entity loop
 
 	// Now all collisions are gathered, and we can compare them with old_collisions.
@@ -158,8 +158,9 @@ framework_step :: proc (dt: f64) {
 		}
 		if !still_colliding {
 			append(&globals.exit_collisions, oc)
+			// An old collision is not present in this sample. It's an "exit" event.
 		}
-	}
+	} // for old_collisions
 
 ////////////////////////////////////////////////////////////////////////////////
 // THIS SORT DEFINES THE DEPTH BUFFER.
@@ -174,8 +175,36 @@ framework_step :: proc (dt: f64) {
 	sugar.swap_buffers()
 }
 
-collider_entered :: proc (e1, e2: ^Entity) -> bool {
-	for it in globals.enter_collisions {
+////////////////////////////////////////////////////////////////////////////////
+// Collision Detection
+////////////////////////////////////////////////////////////////////////////////
+
+they_touch :: proc (e1, e2: ^Entity) -> bool {
+	return find_collision_involving_entities(globals.collisions[:], e1, e2)
+}
+
+they_started_touching :: proc (e1, e2: ^Entity) -> bool {
+	return find_collision_involving_entities(globals.enter_collisions[:], e1, e2)
+}
+
+they_stopped_touching :: proc (e1, e2: ^Entity) -> bool {
+	return find_collision_involving_entities(globals.exit_collisions[:], e1, e2)
+}
+
+entity_collisions :: proc (entity: ^Entity) -> []Collision {
+	return find_collisions_involving_entity(globals.collisions[:], entity)
+}
+
+enter_events :: proc (entity: ^Entity) -> []Collision {
+	return find_collisions_involving_entity(globals.enter_collisions[:], entity)
+}
+
+exit_events :: proc (entity: ^Entity) -> []Collision {
+	return find_collisions_involving_entity(globals.exit_collisions[:], entity)
+}
+
+find_collision_involving_entities :: proc (array: []Collision, e1, e2: ^Entity) -> bool {
+	for it in array {
 		if it.ids[0] == e1.id && it.ids[1] == e2.id \
 		|| it.ids[1] == e1.id && it.ids[0] == e2.id {
 			return true
@@ -184,14 +213,23 @@ collider_entered :: proc (e1, e2: ^Entity) -> bool {
 	return false
 }
 
-collider_exited :: proc (e1, e2: ^Entity) -> bool {
-	for it in globals.exit_collisions {
-		if it.ids[0] == e1.id && it.ids[1] == e2.id \
-		|| it.ids[1] == e1.id && it.ids[0] == e2.id {
-			return true
+find_collisions_involving_entity :: proc (
+	array: []Collision,
+	entity: ^Entity,
+	allocator := context.temp_allocator
+) -> []Collision {
+	result := make([dynamic]Collision, allocator)
+	for it in array {
+		it := it // copy
+		if it.ids[0] == entity.id {
+			it.other = entity_with_id(it.ids[1])
+			append(&result, it)
+		} else if it.ids[1] == entity.id {
+			it.other = entity_with_id(it.ids[0])
+			append(&result, it)
 		}
 	}
-	return false
+	return result[:]
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
@@ -391,15 +429,13 @@ entity_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
 	return hash
 }
 
-get_temp_entity :: proc () -> ^Entity {
-	for &mem, i in globals._entity_storage {
-		if .Allocated not_in mem.flags {
-			init_entity_memory(&mem, cast(Entity_ID) i)
-			entity := &mem
-			return entity
-		}
+entity_with_id :: proc (id: Entity_ID) -> ^Entity {
+	it := &globals._entity_storage[id]
+	if .Allocated not_in it.flags {
+		return nil // It was freed.
 	}
-	panic("Out of entities.")
+
+	return it
 }
 
 make_entity :: proc () -> ^Entity {

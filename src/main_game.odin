@@ -144,10 +144,13 @@ game_step :: proc () {
 			btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
-	if collider_entered(cursor, btn) {
+	for c in entity_collisions(cursor) {
+
+	}
+	if they_started_touching(cursor, btn) {
 		log.infof("Cursor entered button")
 	}
-	if collider_exited(cursor, btn) {
+	if they_stopped_touching(cursor, btn) {
 		log.infof("Cursor exited button")
 	}
 

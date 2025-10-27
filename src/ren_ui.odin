@@ -163,7 +163,7 @@ button :: proc (loc := #caller_location) -> ^Entity {
 		entity.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	}
 
-	if entity_contains_entity(cursor, entity) {
+	if they_touch(cursor, entity) {
 		entity.ui.state += {.Hovered}
 		if sugar.is_key_pressed(.Left_Mouse) {
 			entity.ui.state += {.Pressed}
