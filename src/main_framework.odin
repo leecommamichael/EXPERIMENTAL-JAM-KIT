@@ -16,8 +16,10 @@ import "sugar"
 
 framework_init :: proc () {
 	init_gl_constants :: proc () {
-		assert(gl.glGetIntegerv != nil, "GL not loaded.")
-	  assert(gl.glGetInteger64v != nil)
+		when ODIN_OS != .JS {
+			assert(gl.glGetIntegerv != nil, "GL not loaded.")
+		  assert(gl.glGetInteger64v != nil)
+		}
 		globals.gl_standard.UNIFORM_BUFFER_OFFSET_ALIGNMENT = gl.GetIntegerv(.UNIFORM_BUFFER_OFFSET_ALIGNMENT)
 		globals.gl_standard.MAX_UNIFORM_BLOCK_SIZE          = gl.GetInteger64v(.MAX_UNIFORM_BLOCK_SIZE)
 		globals.gl_standard.MAX_TEXTURE_SIZE                = gl.GetInteger64v(.MAX_TEXTURE_SIZE)

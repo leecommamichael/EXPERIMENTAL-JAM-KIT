@@ -14,7 +14,7 @@ load_shaders_source :: proc(vs_sources, fs_sources: string) -> (program: Program
 
 	compile_status: int
 	CompileShader(vs)
-	GetShaderiv(vs, cast(uint) Shader_Parameter_Name.COMPILE_STATUS, &compile_status)
+	GetShaderiv(vs, cast(u32) Shader_Parameter_Name.COMPILE_STATUS, &compile_status)
 	if compile_status == 0 {
 		err := GetShaderInfoLog(vs)
 		fmt.eprintln("Vertex shader did not compile successfully", err)
@@ -23,7 +23,7 @@ load_shaders_source :: proc(vs_sources, fs_sources: string) -> (program: Program
 	}
 
 	CompileShader(fs)
-	GetShaderiv(fs, cast(uint) Shader_Parameter_Name.COMPILE_STATUS, &compile_status)
+	GetShaderiv(fs, cast(u32) Shader_Parameter_Name.COMPILE_STATUS, &compile_status)
 	if compile_status == 0 {
 		err := GetShaderInfoLog(fs)
 		fmt.eprintln("Fragment shader did not compile successfully", err)

@@ -1,10 +1,5 @@
 package audio
 
-import "core:c"
-import "core:log"
-import "core:slice"
-import "core:sys/windows"
-
 System :: struct {
 	// xaudio: ^xa2.IXAudio2,
 	// mastering_voice: ^xa2.IXAudio2MasteringVoice,

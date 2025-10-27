@@ -747,7 +747,7 @@ glGetFragDataIndex:            proc "c" (program: GLuint, name: cstring) -> int
 glGenSamplers:                 proc "c" (count: int, samplers: [^]GLuint)
 glDeleteSamplers:              proc "c" (count: int, samplers: [^]GLuint)
 glIsSampler:                   proc "c" (sampler: GLuint) -> bool
-glBindSampler:                 proc "c" (unit: GLuint, sampler: GLuint)
+glBindSampler:                 proc "c" (unit: GLuint, sampler: Sampler)
 glSamplerParameteri:           proc "c" (sampler: GLuint, pname: GLuint, param: int)
 glSamplerParameteriv:          proc "c" (sampler: GLuint, pname: GLuint, param: ^int)
 glSamplerParameterf:           proc "c" (sampler: GLuint, pname: GLuint, param: GLfloat)

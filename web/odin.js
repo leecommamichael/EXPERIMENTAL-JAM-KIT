@@ -938,6 +938,10 @@ class WebGLInterface {
 			},
 
 			/* Framebuffer objects */
+			CheckFramebufferStatus: (target) => {
+				this.assertWebGL2();
+				return this.ctx.checkFramebufferStatus(target);
+			},
 			BlitFramebuffer: (srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter) => {
 				this.assertWebGL2();
 				this.ctx.blitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);

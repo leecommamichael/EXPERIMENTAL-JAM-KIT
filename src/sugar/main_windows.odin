@@ -9,7 +9,6 @@ platform_calls_step :: false
 Window :: windows.HWND
 g_window: Window
 g_window_resized: bool // set in wndproc, unset in message queue reader
-g_scale_factor_changed: bool
 
 // Just pasting this here for reference on which Windows-native features can be added.
 ////////////////////////////////////////////////////////////////////// 

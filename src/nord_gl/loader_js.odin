@@ -67,7 +67,7 @@ foreign webgl {
 	@(link_name="BufferData")
 	glBufferData    :: proc(target: GLuint, size: int, data: rawptr, usage: GLuint) ---
 	@(link_name="BufferSubData")
-	glBufferSubData :: proc(target: GLuint, offset: GLuintptr, size: int, data: rawptr) ---
+	glBufferSubData :: proc(target: GLuint, offset: GLintptr, size: int, data: rawptr) ---
 
 	@(link_name="Clear")
 	glClear         :: proc(bits: GLuint) ---
@@ -161,7 +161,7 @@ foreign webgl {
 	@(link_name="GetUniformLocation")
 	glGetUniformLocation    :: proc(program: Program, name: string) -> int ---
 	@(link_name="GetVertexAttribOffset")
-	glGetVertexAttribOffset :: proc(index: int, pname: GLuint) -> GLuintptr ---
+	glGetVertexAttribOffset :: proc(index: int, pname: GLuint) -> GLintptr ---
 	@(link_name="GetProgramParameter")
 	glGetProgramParameter   :: proc(program: Program, pname: GLuint) -> int ---
 	@(link_name="GetParameter")
@@ -262,7 +262,7 @@ foreign webgl {
 	@(link_name="VertexAttrib4f")
 	glVertexAttrib4f      :: proc(index: int, x, y, z, w: GLfloat) ---
 	@(link_name="VertexAttribPointer")
-	glVertexAttribPointer :: proc(index: GLuint, size: int, type: GLuint, normalized: bool, stride: int, ptr: GLuintptr) ---
+	glVertexAttribPointer :: proc(index: GLuint, size: int, type: GLuint, normalized: bool, stride: int, ptr: GLintptr) ---
 	
 	@(link_name="Viewport")
 	glViewport :: proc(x, y, w, h: int) ---
@@ -325,7 +325,7 @@ foreign webgl {
 // BufferDataSlice :: proc "contextless" (target: GLuint, slice: $S/[]$E, usage: GLuint) {
 // 	BufferData(target, len(slice)*size_of(E), raw_data(slice), usage)
 // }
-// BufferSubDataSlice :: proc "contextless" (target: GLuint, offset: GLuintptr, slice: $S/[]$E) {
+// BufferSubDataSlice :: proc "contextless" (target: GLuint, offset: GLintptr, slice: $S/[]$E) {
 // 	glBufferSubData(target, offset, len(slice)*size_of(E), raw_data(slice))
 // }
 
@@ -362,6 +362,8 @@ foreign webgl2 {
 	glGetBufferSubData  :: proc(target: GLuint, srcByteOffset: int, dst_buffer: []byte, dstOffset: int = 0, length: int = 0) ---
 	
 	/* Framebuffer objects */
+	@(link_name="CheckFramebufferStatus")
+	glCheckFramebufferStatus   :: proc(target: Framebuffer_Target) -> GLenum ---
 	@(link_name="BlitFramebuffer")
 	glBlitFramebuffer          :: proc(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1: int, mask: GLuint, filter: GLuint) ---
 	@(link_name="FramebufferTextureLayer")
@@ -411,7 +413,7 @@ foreign webgl2 {
 	@(link_name="VertexAttribI4ui")
 	glVertexAttribI4ui     :: proc(index: int, x, y, z, w: GLuint) ---
 	@(link_name="VertexAttribIPointer")
-	glVertexAttribIPointer :: proc(index: GLuint, size: int, type: GLuint, stride: int, offset: GLuintptr) ---
+	glVertexAttribIPointer :: proc(index: GLuint, size: int, type: GLuint, stride: int, offset: GLintptr) ---
 	
 	/* Writing to the drawing buffer */
 	@(link_name="VertexAttribDivisor")

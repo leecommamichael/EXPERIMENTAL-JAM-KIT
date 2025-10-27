@@ -486,33 +486,6 @@ GetUniformLocation :: proc (p: Program, _name: string, allocator := context.allo
 
 
 
-TexImage2D :: proc {
-	make_texture_2D,
-	TexImage2D_verbatim
-}
-
-make_texture_2D :: proc (
-	target: Texture_2D_Target,
-	internalformat: Internal_Color_Format,
-	width, height: int,
-	data: []u8,
-	lod: int = 0,
-	_loc := #caller_location
-) -> ( err: Error = .NO_ERROR ) {
-	info := Internal_Format_Infos[internalformat]
-	TexImage2D_verbatim(
-		target = target,
-		level  = lod,
-		internalformat = cast(int) info.gl_name,
-		width = width, 
-		height = height,
-		format = cast(GLenum) info.format,
-		type = cast(GLenum) info.type,
-		data = data
-	)
-	when NGL_VALIDATE { return validate(_loc) } else { return }
-}
-
 TexImage2D_verbatim :: proc (
 	target: Texture_2D_Target,
 	level: int,
@@ -570,77 +543,6 @@ BindTexture :: proc (binding: Texture_Target, tex: Texture) {
 
 
 
-// Swizzling not present in WebGL
-Set_Texture_Base_Level   :: proc (target: Texture_Parameter_Target, param: GLuint) {
-	glTexParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
-}
-Set_Texture_Max_Level    :: proc (target: Texture_Parameter_Target, param: GLuint) {
-	glTexParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
-}
-Set_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
-	glTexParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
-}
-Set_Texture_Max_LOD      :: proc (target: Texture_Parameter_Target, param: f32) {
-	glTexParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
-}
-Set_Texture_Mag_Filter   :: proc (target: Texture_Parameter_Target, param: Texture_Mag_Filter) {
-	glTexParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
-}
-Set_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target, param: Texture_Min_Filter) {
-	glTexParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
-}
-Set_Texture_Compare_Func :: proc (target: Texture_Parameter_Target, param: Compare_Func) {
-	glTexParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
-}
-Set_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target, param: Texture_Compare_Mode) {
-	glTexParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
-}
-Set_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
-	glTexParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
-}
-Set_Texture_Wrap_T       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
-	glTexParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
-}
-Set_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target, param: Texture_Wrap_Mode) {
-	glTexParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
-}
-
-Set_Sampler_Base_Level   :: proc (target: Sampler, param: GLuint) {
-	glSamplerParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
-}
-Set_Sampler_Max_Level    :: proc (target: Sampler, param: GLuint) {
-	glSamplerParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
-}
-Set_Sampler_Min_LOD      :: proc (target: Sampler, param: f32) {
-	glSamplerParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
-}
-Set_Sampler_Max_LOD      :: proc (target: Sampler, param: f32) {
-	glSamplerParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
-}
-Set_Sampler_Mag_Filter   :: proc (target: Sampler, param: Texture_Mag_Filter) {
-	glSamplerParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
-}
-Set_Sampler_Min_Filter   :: proc (target: Sampler, param: Texture_Min_Filter) {
-	glSamplerParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
-}
-Set_Sampler_Compare_Func :: proc (target: Sampler, param: Compare_Func) {
-	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
-}
-Set_Sampler_Compare_Mode :: proc (target: Sampler, param: Texture_Compare_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
-}
-Set_Sampler_Wrap_S       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
-}
-Set_Sampler_Wrap_T       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
-}
-Set_Sampler_Wrap_R       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
-}
-
-
-
 CreateFramebuffer :: proc () -> (out: Framebuffer) {
 	glGenFramebuffers(1, cast(^GLuint)&out)
 	return
@@ -687,6 +589,15 @@ GenSamplers :: proc (
 	glGenSamplers(len, cast(^GLuint) out)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
+
+BindSampler :: proc (unit: GLuint, sampler: Sampler) {
+	glBindSampler(unit, sampler)
+}
+
+CheckFramebufferStatus :: proc (target: Framebuffer_Target) -> GLenum {
+	return glCheckFramebufferStatus(auto_cast target)
+}
+
 //////////////////////////////////////////////////////////////////////
 // Platform-Specific Stuff Below
 //////////////////////////////////////////////////////////////////////
@@ -712,7 +623,7 @@ Viewport :: proc (x: int, y: int, width: int, height: int) {
 	glViewport(x, y, width, height)
 }
 
-GetError :: proc () -> GLenum {
-	return glGetError()
+GetError :: proc () -> Error {
+	return cast(Error)glGetError()
 }
 

@@ -97,17 +97,17 @@ ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
 	if font_atlas_sampler != -1 {
 		gl.glUniform1i(font_atlas_sampler, cast(int) Texture_Unit.Font)
-		assert(gl.glGetError() == gl.NO_ERROR)
+		assert(gl.GetError() == .NO_ERROR)
 	}
 	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
 	if texture_atlas_sampler != -1 {
 		gl.glUniform1i(texture_atlas_sampler, cast(int) Texture_Unit.Texture)
-		assert(gl.glGetError() == gl.NO_ERROR)
+		assert(gl.GetError() == .NO_ERROR)
 	}
 	fb_sampler := gl.GetUniformLocation(program, "framebuffer_color")
 	if fb_sampler != -1 {
 		gl.glUniform1i(fb_sampler, cast(int) Texture_Unit.Framebuffer_Texture)
-		assert(gl.glGetError() == gl.NO_ERROR)
+		assert(gl.GetError() == .NO_ERROR)
 	}
 	// Link Uniform Block
 	//   TODO: apparently this is global and only needs to happen once
@@ -281,7 +281,7 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.FramebufferTexture2D(.FRAMEBUFFER, .COLOR_ATTACHMENT0, .TEXTURE_2D, color_tex, level=0)
 	gl.FramebufferTexture2D(.FRAMEBUFFER, .DEPTH_STENCIL_ATTACHMENT, .TEXTURE_2D, depth_tex, level=0)
-	val := gl.glCheckFramebufferStatus(gl.FRAMEBUFFER)
+	val := gl.CheckFramebufferStatus(.FRAMEBUFFER)
 assert(val == gl.FRAMEBUFFER_COMPLETE)
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
@@ -290,9 +290,9 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 
 	gl.glActiveTexture(gl.TEXTURE0 + cast(u32) Texture_Unit.Framebuffer_Texture)
 	gl.BindTexture(.TEXTURE_2D, color_tex)
-	gl.glBindSampler(1, cast(u32) globals.ren.nearest_sampler)
-	gl.glBindSampler(2, cast(u32) globals.ren.nearest_sampler)
-	gl.glBindSampler(3, cast(u32) globals.ren.nearest_sampler)
+	gl.BindSampler(1, globals.ren.nearest_sampler)
+	gl.BindSampler(2, globals.ren.nearest_sampler)
+	gl.BindSampler(3, globals.ren.nearest_sampler)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.glActiveTexture(gl.TEXTURE0)
 	return fb

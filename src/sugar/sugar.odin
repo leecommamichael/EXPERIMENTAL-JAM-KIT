@@ -16,6 +16,7 @@ Feedback :: enum {
 	Window_Scale_Factor_Changed,
 }
 
+g_scale_factor_changed: bool
 prev_scale_factor: f32
 scale_factor: f32 // physical px per logical px
 set_scale_factor :: proc "contextless" (f: f32) {
