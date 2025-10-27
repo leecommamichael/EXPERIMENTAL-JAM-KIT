@@ -38,7 +38,7 @@ GLYPH_COUNT :: 95 // characters from beginning of ASCII table
 
 ASSET_DIR :: "../assets/"
 CACHE_DIR :: "../cache/"
-USE_BINARY_ASSET_CACHE :: ODIN_DEBUG && ODIN_OS != .JS
+USE_BINARY_ASSET_CACHE :: ODIN_DEBUG// && ODIN_OS != .JS
 BW_META_NAME    :: "font_atlas_metadata"
 BW_ATLAS_NAME   :: "font_atlas"
 RGBA_META_NAME  :: "texture_atlas_metadata"
@@ -71,7 +71,28 @@ cache_files: []runtime.Load_Directory_File
 
 // Rebuilds cache if necessary
 asset_init :: proc () {
-	when USE_BINARY_ASSET_CACHE {
+	cache_files = #load_directory(CACHE_DIR)
+	// It's a debug build on a desktop and we're going to try to re-use the cache.
+	for file in cache_files {
+		target: ^[]u8
+		switch file.name {
+		case BW_META_NAME:
+			target = &font_atlas_metadata_bytes
+		case BW_ATLAS_NAME:
+			target = &font_atlas_bytes
+		case RGBA_META_NAME:
+			target = &texture_atlas_metadata
+		case RGBA_ATLAS_NAME:
+			target = &texture_atlas_bytes
+		case AUDIO_META_NAME:
+			target = &audio_metadata_bytes
+		}
+		if target != nil {
+			target^ = file.data
+		}
+	}
+
+	when USE_BINARY_ASSET_CACHE && ODIN_OS != .JS {
 		desktop_load_binary_asset_cache()
 	} else {
 		// If this is false, it's a release and we're using compressed assets.

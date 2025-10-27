@@ -2,7 +2,7 @@
 // https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage
 function kv5_create_module(mem) {
 	return {
-		kv5_store: (key, value) {
+		kv5_store: (key, value) => {
 			try {
 				const key_str = mem.loadString(key)
 				const val_str = mem.loadString(value)
@@ -17,7 +17,7 @@ function kv5_create_module(mem) {
 			}
 		},
 
-		kv5_measure: (key) {
+		kv5_measure: (key) => {
 			try {
 				const key_str = mem.loadString(key)
 				const value_utf16 = localStorage.getItem(key_str)
@@ -29,7 +29,7 @@ function kv5_create_module(mem) {
 			}
 		},
 
-		kv5_load: (key, out_value, out_len) {
+		kv5_load: (key, out_value, out_len) => {
 			try {
 				const key_str = mem.loadString(key)
 				if (out_len) {
@@ -51,7 +51,7 @@ function kv5_create_module(mem) {
 			}
 		},
 
-		kv5_delete: (key) {
+		kv5_delete: (key) => {
 			try {
 				const key_str = mem.loadString(key)
 				mem.removeItem(key_str)

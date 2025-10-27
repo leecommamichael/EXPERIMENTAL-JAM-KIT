@@ -39,7 +39,7 @@ create_window :: proc (
 	  }
 	  assert(ctx, "WebGL2 unsupported.")
 	}
-	// ok := js.add_resize_observer(canvas_id, on_canvas_resize)
+	// ok := js.add_resize_observer(canvas_id, canvas_resize_callback)
 	// assert(ok, "failed to add resize observer")
 	js.add_event_listener(canvas_id, .Pointer_Move, user_data = nil, callback = js_on_canvas_event)
 	js.add_event_listener(canvas_id, .Pointer_Up,   user_data = nil, callback = js_on_canvas_event)
@@ -71,8 +71,8 @@ set_cursor_visible :: proc (show: bool) {
 }
 
 @export
-canvas_resize_callback :: proc (w,h: f64) {
-	log.infof("resized: %v,%v", w, h)
+canvas_resize_callback :: proc "c" (w,h: f64) {
+	// log.infof("resized: %v,%v", w, h)
 	js_should_resize = true
 	pixels_per_css_pixel := js.device_pixel_ratio()
 	wpx := cast(int) (pixels_per_css_pixel * w)
@@ -175,6 +175,7 @@ on_key_up :: proc (event: js.Event) {
 
 on_pointer_move :: proc (event: js.Event) {
 	mouse_position = linalg.array_cast(event.mouse.offset, f32)
+	mouse_position.y = cast(f32)viewport_size.y - mouse_position.y
 	// Deltas are zeroed each input frame.
 	mouse_delta += linalg.array_cast(event.mouse.movement, f32)
 }

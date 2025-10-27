@@ -21,7 +21,7 @@ main :: proc() {
 	ok := sugar.create_window(
 		[4]int{
 			display.top_left.x,
-			display.top_left.y, 0,0} + {2,44,0,0} + (4*{0,0,384,216}),
+			display.top_left.y, 0,0} + {2,44,0,0} + (3*{0,0,384,216}),
 		"Tonic",
 		use_gl = true
 	)
@@ -83,6 +83,7 @@ import "core:math/linalg"
 import "core:math/linalg/glsl"
 window_resized :: proc () {
 	viewport_size := array_cast(sugar.viewport_size,f32)
+	log.infof("iviewport = %v", viewport_size)
 	////////////////////////////////////////////////////////////////////////////
 	// decide how the viewport will be sized. affects render-target size.
 	switch globals.canvas_scaling {
@@ -114,6 +115,8 @@ window_resized :: proc () {
 	                              globals.canvas_stretch
 	////////////////////////////////////////////////////////////////////////////
 	log.infof("viewport = %v", viewport_size)
+	log.infof("stretch = %v", globals.canvas_stretch)
+	log.infof("scale = %v", globals.canvas_scale)
   gl.Viewport(0,0, sugar.viewport_size.x, sugar.viewport_size.y)
 	aspect_ratio := viewport_size.x / viewport_size.y
 

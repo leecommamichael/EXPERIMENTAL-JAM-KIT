@@ -68,11 +68,11 @@ class WasmMemoryInterface {
 		return array;
 	}
 	loadU8Array(addr, len) {
-		let array = new U8Array(this.memory.buffer, addr, len);
+		let array = new Uint8Array(this.memory.buffer, addr, len);
 		return array;
 	}
 	loadI8Array(addr, len) {
-		let array = new I8Array(this.memory.buffer, addr, len);
+		let array = new Int8Array(this.memory.buffer, addr, len);
 		return array;
 	}
 
@@ -2085,36 +2085,36 @@ function odinSetupDefaultImports(wasmMemoryInterface, consoleElement, memory) {
 				element.releasePointerCapture(pointer_device)
 			},
 
-			// add_resize_observer: (id_ptr, id_len, callback) => {
-			// 	let id = wasmMemoryInterface.loadString(id_ptr, id_len);
-			// 	let element = getElement(id);
-			// 	if (element == undefined) {
-			// 		return false;
-			// 	}
-			// 	let key = listener_key(id, name, data, callback, !!use_capture);
-			// 	if (wasmMemoryInterface.listenerMap.has(key)) {
-			// 		return false;
-			// 	}
+			add_resize_observer: (id_ptr, id_len, callback) => {
+				let id = wasmMemoryInterface.loadString(id_ptr, id_len);
+				let element = getElement(id);
+				if (element == undefined) {
+					return false;
+				}
+				let key = listener_key(id, name, null, callback, false);
+				if (wasmMemoryInterface.listenerMap.has(key)) {
+					return false;
+				}
 
-			// 	let listener = (e) => {
-			// 		let event_data = {};
-			// 		event_data.id_ptr = id_ptr;
-			// 		event_data.id_len = id_len;
-			// 		event_data.event = e;
-			// 		event_data.name_code = name_code;
+				let listener = (e) => {
+					let event_data = {};
+					event_data.id_ptr = id_ptr;
+					event_data.id_len = id_len;
+					event_data.event = e;
+					event_data.name_code = name_code;
 
-			// 		onEventReceived(event_data, data, callback);
-			// 	};
-			// 	wasmMemoryInterface.listenerMap.set(key, listener);
+					onEventReceived(event_data, data, callback);
+				};
+				wasmMemoryInterface.listenerMap.set(key, listener);
 
-			// 	new ResizeObserver((entries, observer) => {
-			// 		const size = entries[0].contentBoxSize
-			// 		// depends on the Element's CSS style "writing-mode" property.
-			// 		// This reports (horizontal, vertical) CSS-pixels. (not device pixels)
-			// 		callback(size.blockSize, size.inlineSize)
-			// 	}).observe(element)
-			// 	return true
-			// }
+				new ResizeObserver((entries, observer) => {
+					const size = entries[0].contentBoxSize
+					// depends on the Element's CSS style "writing-mode" property.
+					// This reports (horizontal, vertical) CSS-pixels. (not device pixels)
+					callback(size.blockSize, size.inlineSize)
+				}).observe(element)
+				return true
+			}
 		},
 
 		"webgl": webglContext.getWebGL1Interface(),
@@ -2194,7 +2194,8 @@ async function runWasm(wasmPath, consoleElement, extraForeignImports, wasmMemory
 		// depends on the Element's CSS style "writing-mode" property.
 		// This reports (horizontal, vertical) CSS-pixels. (not device pixels)
 		console.log(entries)
-		exports.canvas_resize_callback(size.inlineSize, size.blockSize, odin_ctx)
+		const scale = window.devicePixelRatio // TODO send that in the callback too?
+		exports.canvas_resize_callback(size.inlineSize/scale, size.blockSize/scale, odin_ctx)
 	}).observe(document.getElementById("the_canvas"))
 
 

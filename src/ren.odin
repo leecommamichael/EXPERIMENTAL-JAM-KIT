@@ -327,7 +327,7 @@ init_cmd_with_basic_vertex_attributes :: proc (
 	instance_index: int,
 	allocator := context.allocator,
 ) {
-	cmd.render_target = 1
+	cmd.render_target = globals.ren.framebuffer
 	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
 	attributes: []Attribute_Binding = {
 		{

@@ -41,27 +41,6 @@ audio_cache_exists :: proc () -> bool {
 }
 
 desktop_load_binary_asset_cache :: proc () {
-	cache_files = #load_directory(CACHE_DIR)
-	// It's a debug build on a desktop and we're going to try to re-use the cache.
-	for file in cache_files {
-		target: ^[]u8
-		switch file.name {
-		case BW_META_NAME:
-			target = &font_atlas_metadata_bytes
-		case BW_ATLAS_NAME:
-			target = &font_atlas_bytes
-		case RGBA_META_NAME:
-			target = &texture_atlas_metadata
-		case RGBA_ATLAS_NAME:
-			target = &texture_atlas_bytes
-		case AUDIO_META_NAME:
-			target = &audio_metadata_bytes
-		}
-		if target != nil {
-			target^ = file.data
-		}
-	}
-
 	if !font_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
 		bundle_fonts(USE_BINARY_ASSET_CACHE)

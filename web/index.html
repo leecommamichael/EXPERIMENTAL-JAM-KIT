@@ -4,8 +4,8 @@
 </head>
 <body style="background-color: antiquewhite;">
 	<canvas id="the_canvas"
-		width="640"
-		height="480"
+		width="1152"
+		height="648"
 		></canvas>
 	<pre id="the_output"
 		style="background-color: white;"
@@ -13,7 +13,7 @@
 		height="200"
 		></pre>
 	<script defer type="text/javascript">
-		const wasmMemoryInterface = new WasmMemoryInterface();
+		const wasmMemoryInterface = new odin.WasmMemoryInterface();
 		const foreignImports = {
 			"kv5": kv5_create_module(wasmMemoryInterface),
 		}
