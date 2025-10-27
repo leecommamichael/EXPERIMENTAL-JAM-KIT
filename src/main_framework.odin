@@ -42,8 +42,17 @@ framework_init :: proc () {
 	entities := make([]^Entity, max(Entity_ID))
 	globals.entities = alias_slice_as_empty_dynamic(entities)
 
+	old_collisions := make([]Collision, MAX_COLLISIONS_PER_FRAME)
+	globals.old_collisions = alias_slice_as_empty_dynamic(old_collisions)
+
 	collisions := make([]Collision, MAX_COLLISIONS_PER_FRAME)
 	globals.collisions = alias_slice_as_empty_dynamic(collisions)
+
+	enters := make([]Collision, MAX_COLLISIONS_PER_FRAME)
+	globals.enter_collisions = alias_slice_as_empty_dynamic(enters)
+
+	exits := make([]Collision, MAX_COLLISIONS_PER_FRAME)
+	globals.exit_collisions = alias_slice_as_empty_dynamic(exits)
 
 	globals.ren = ren_make()
 
@@ -82,6 +91,10 @@ framework_step :: proc (dt: f64) {
 	game_step()
 ////////////////////////////////////////////////////////////////////////////////
 
+	clear(&globals.exit_collisions)
+	clear(&globals.enter_collisions)
+	clear(&globals.old_collisions)
+	append(&globals.old_collisions, ..globals.collisions[:])
 	clear(&globals.collisions)
 	#reverse for &entity in globals.entities {
 		if .Immediate_Mode in entity.flags \
@@ -110,15 +123,43 @@ framework_step :: proc (dt: f64) {
 				for pair in globals.collisions {
 					if pair.ids[0] == entity.id && pair.ids[1] == other.id \
 					|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
-						continue
+						continue // INTENT: Already in list. Why bother? IDK.
 					}
 				}
+
 				if entity_contains_entity(entity, other) {
-					append(&globals.collisions, Collision {{entity.id, other.id}})
+					old_collision: bool
+					for oc in globals.old_collisions {
+						if oc.ids[0] == entity.id && oc.ids[1] == other.id \
+						|| oc.ids[1] == entity.id && oc.ids[0] == other.id {
+							// this collision existed last frame. Dwelling overlap.
+							old_collision = true
+						}
+					}
+					new_collision := Collision {{entity.id, other.id}}
+					if !old_collision {
+						append(&globals.enter_collisions, new_collision)
+						// The collision is new in this sample, so it's an "enter" event.
+					}
+					append(&globals.collisions, new_collision)
 				}
 			} // collider_loop
 		}
 	} // reverse entity loop
+
+	// Now all collisions are gathered, and we can compare them with old_collisions.
+	for oc in globals.old_collisions {
+		still_colliding: bool
+		for cc in globals.collisions {
+			if oc.ids[0] == cc.ids[0] && oc.ids[1] == cc.ids[1] \
+			|| oc.ids[0] == cc.ids[1] && oc.ids[1] == cc.ids[0] {
+				still_colliding = true
+			}
+		}
+		if !still_colliding {
+			append(&globals.exit_collisions, oc)
+		}
+	}
 
 ////////////////////////////////////////////////////////////////////////////////
 // THIS SORT DEFINES THE DEPTH BUFFER.
@@ -131,6 +172,26 @@ framework_step :: proc (dt: f64) {
   })
 	ren_draw(globals.ren)
 	sugar.swap_buffers()
+}
+
+collider_entered :: proc (e1, e2: ^Entity) -> bool {
+	for it in globals.enter_collisions {
+		if it.ids[0] == e1.id && it.ids[1] == e2.id \
+		|| it.ids[1] == e1.id && it.ids[0] == e2.id {
+			return true
+		}
+	}
+	return false
+}
+
+collider_exited :: proc (e1, e2: ^Entity) -> bool {
+	for it in globals.exit_collisions {
+		if it.ids[0] == e1.id && it.ids[1] == e2.id \
+		|| it.ids[1] == e1.id && it.ids[0] == e2.id {
+			return true
+		}
+	}
+	return false
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {

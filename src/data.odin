@@ -58,7 +58,10 @@ Globals :: struct {
 	camera:          Camera3D,
 
 	gravity:    Vec3,
+	old_collisions: [dynamic]Collision,
 	collisions: [dynamic]Collision,
+	enter_collisions: [dynamic]Collision,
+	exit_collisions: [dynamic]Collision,
 	pointer_focus: ^Entity,
 	button_focus:  ^Entity,
 	collider_draw_commands: [Collision_Shape]Draw_Command,

@@ -50,8 +50,8 @@ game_init :: proc () {
 	// spr_state := &spr.variant.(Sprite_State)
 	// spr_state.repetitions = 10
 	// spr.position.z = far_draws
-
 }
+
 // lerp test
 // game_step :: proc () {
 // 	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
@@ -142,6 +142,13 @@ game_step :: proc () {
 			btn.color.rgb = {0.8, 0.2, 0.2} - 0.1
 	} else if .Hovered in btn.ui.state {
 			btn.color.rgb = {0.8, 0.2, 0.2}
+	}
+
+	if collider_entered(cursor, btn) {
+		log.infof("Cursor entered button")
+	}
+	if collider_exited(cursor, btn) {
+		log.infof("Cursor exited button")
 	}
 
 	next_btn := button()
