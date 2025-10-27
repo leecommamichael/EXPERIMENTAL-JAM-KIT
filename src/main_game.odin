@@ -25,14 +25,14 @@ game_init :: proc () {
 	globals.canvas_stretching = .Integer_Aspect
 	globals.ren.framebuffer = make_framebuffer(array_cast(globals.canvas_size_px, int))
 
-	debug_colliders = make_entity()
-	debug_colliders.position.z = 1
-	debug_colliders.flags += {.Is_3D }
-	debug_colliders.draw_command = ren_make_basic_draw_cmd(
-		globals.instance_buffer,
-		cast(int) debug_colliders.id, {},{})
-	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
-	globals.draw_colliders = true
+	// debug_colliders = make_entity()
+	// debug_colliders.position.z = 1
+	// debug_colliders.flags += {.Is_3D }
+	// debug_colliders.draw_command = ren_make_basic_draw_cmd(
+	// 	globals.instance_buffer,
+	// 	cast(int) debug_colliders.id, {},{})
+	// debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
+	// globals.draw_colliders = true
 	cursor = sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled}
@@ -144,8 +144,8 @@ game_step :: proc () {
 			btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
-	for c in entity_collisions(cursor) {
-
+	for c, n in entity_collisions(cursor) {
+		//
 	}
 	if they_started_touching(cursor, btn) {
 		log.infof("Cursor entered button")

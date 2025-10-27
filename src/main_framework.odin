@@ -123,7 +123,7 @@ framework_step :: proc (dt: f64) {
 				for pair in globals.collisions {
 					if pair.ids[0] == entity.id && pair.ids[1] == other.id \
 					|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
-						continue // INTENT: Already in list. Why bother? IDK.
+						continue collider_loop // INTENT: Already in list. Don't duplicate.
 					}
 				}
 
