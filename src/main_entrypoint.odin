@@ -75,8 +75,6 @@ step :: proc (dt: f64) -> bool {
 	return true
 }
 
-// TODO: Read various data from Globals such that the game
-//       can program the camera simply by setting parameters.
 import gl "nord_gl"
 import "core:math"
 import "core:math/linalg"
