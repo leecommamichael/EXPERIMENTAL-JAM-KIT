@@ -19,7 +19,7 @@ game_init :: proc () {
 	globals.canvas_size_px = {384, 216}
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretching = .Integer_Aspect
-	globals.ren.framebuffer = make_framebuffer(array_cast(globals.canvas_size_px, int))
+	globals.ren.canvas_framebuffer = make_framebuffer(array_cast(globals.canvas_size_px, int))
 
 	// debug_colliders = make_entity()
 	// debug_colliders.position.z = 1
@@ -202,7 +202,7 @@ game_step :: proc ()  {
 	if sugar.on_button_press(.Start) {
 	}
 	cursor.position.z = next_z()
-	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
+	rect := framebuffer_quad(from = globals.ren.canvas_framebuffer, to = 0)
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2

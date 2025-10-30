@@ -80,7 +80,7 @@ ren_init :: proc (ren: ^Ren) {
 FRAME_UNIFORM_INDEX :: 0
 INSTANCE_UNIFORM_INDEX :: 1
 
-Texture_Unit :: enum int {
+Texture_Unit :: enum {
 	Swap = 0,
 	Font = 1,
 	Texture = 2,
@@ -181,7 +181,7 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 ren_clear :: proc () {
 	gl.BindFramebuffer(.FRAMEBUFFER, 0)
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
-	gl.BindFramebuffer(.FRAMEBUFFER, globals.ren.framebuffer)
+	gl.BindFramebuffer(.FRAMEBUFFER, globals.ren.canvas_framebuffer)
 	gl.Clear({.COLOR_BUFFER_BIT, .DEPTH_BUFFER_BIT, .STENCIL_BUFFER_BIT})
 	gl.BindFramebuffer(.FRAMEBUFFER, globals.ren.prev_cmd.render_target)
 }
@@ -335,7 +335,7 @@ init_cmd_with_basic_vertex_attributes :: proc (
 	instance_index: int,
 	allocator := context.allocator,
 ) {
-	cmd.render_target = globals.ren.framebuffer
+	cmd.render_target = globals.ren.canvas_framebuffer
 	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
 	attributes: []Attribute_Binding = {
 		{

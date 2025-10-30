@@ -170,7 +170,7 @@ Collision :: struct {
 //////////////////////////////////////////////////////////////////////
 
 Ren :: struct {
-	framebuffer: gl.Framebuffer,
+	canvas_framebuffer: gl.Framebuffer,
 	prev_cmd:    Draw_Command,
 	frame_UBO:   gl.Buffer,
 	programs:    [Game_Shader]gl.Program, // constant
