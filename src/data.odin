@@ -36,7 +36,6 @@ Globals :: struct {
 	// Text Rendering
 	glyph_staging:    [MAX_GLYPHS_PER_FRAME]Any_Instance,
 	glyph_buffer:     gl.Buffer,
-	glpyh_offset:     int,
 
 	canvas_size_px:      [2]f32,
 	canvas_scale:        [2]f32,
@@ -49,7 +48,7 @@ Globals :: struct {
 	// Render+Entity Integration /////////////////////////////////////////////////
 	// How much each pixel stretched while fitting to the window AFTER framebuffer scaling.
 	// Measures the # of fragments covered by each input pixel.
-	// See `Pixel_Scaling`
+	// See `Canvas_Scaling`
 	uniforms:                Uniforms,
 	perspective_projection:  Mat4,
 	perspective_view:        Mat4,
@@ -59,13 +58,13 @@ Globals :: struct {
 	ui_view:                 Mat4,
 	camera:                  Camera,
 
-	gravity:    Vec3,
 	old_collisions:   [dynamic]Collision, // last frame/sample
 	collisions:       [dynamic]Collision,
 	enter_collisions: [dynamic]Collision,
 	exit_collisions:  [dynamic]Collision,
 	pointer_focus: ^Entity,
 	button_focus:  ^Entity,
+	z_cursor: f32,
 	collider_draw_commands: [Collision_Shape]Draw_Command,
 	unit_circle_mesh: Geom_Mesh2,
 	unit_quad_mesh:   Geom_Mesh2,

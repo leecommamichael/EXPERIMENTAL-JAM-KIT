@@ -30,6 +30,7 @@ ui_element :: proc (child: ^Entity, loc := #caller_location) -> ^Entity {
 	// 	type = .Root
 	// }
 	// entity.flags += { .Hidden }
+	child.position.z = next_z()
 	layout_subtree(child)
 	return child
 }
@@ -111,6 +112,7 @@ measure_entity :: proc (entity: ^Entity) -> Vec2 {
 // Finalizes focus tree.
 layout_subtree :: proc (root: ^Entity) {
 	ui_element := root.ui
+	z := next_z()
 	// size := measure_entity(root)
 	switch ui_element.type {
 	case .None: // TODO: position and size the entity.variant
@@ -124,6 +126,7 @@ layout_subtree :: proc (root: ^Entity) {
 		main_axis_offset: f32 = root.position.x
 		max_cross_axis_size: f32
 		for child in root.children {
+			child.position.z = z
 			child.position.x = main_axis_offset
 			child.position.y = root.position.y
 			child_size := measure_entity(child)
@@ -136,6 +139,7 @@ layout_subtree :: proc (root: ^Entity) {
 		main_axis_offset: f32 = root.position.y
 		max_cross_axis_size: f32
 		#reverse for child in root.children {
+			child.position.z = z
 			child.position.y = main_axis_offset
 			child.position.x = root.position.x
 			child_size := measure_entity(child)
@@ -144,7 +148,8 @@ layout_subtree :: proc (root: ^Entity) {
 		}
 		root.scale.x = main_axis_offset
 		root.scale.y = max_cross_axis_size
-	case .Box: break
+	case .Box:
+		root.position.z = z
 	}
 }
 
@@ -162,6 +167,7 @@ button :: proc (loc := #caller_location) -> ^Entity {
 		mesh := geom_make_quad(1, context.temp_allocator)
 		entity.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	}
+	entity.position.z = next_z()
 
 	if they_touch(cursor, entity) {
 		entity.ui.state += {.Hovered}

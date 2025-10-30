@@ -37,6 +37,8 @@ framework_init :: proc () {
 	globals.orthographic_view = 1
 	globals.ui_view = 1
 
+	reset_z_cursor()
+
 	game_entities := make([]^Entity, max(Entity_ID))
 	globals.entities_3D = alias_slice_as_empty_dynamic(game_entities)
 
@@ -99,6 +101,7 @@ framework_step :: proc (dt: f64) {
 ////////////////////////////////////////////////////////////////////////////////
 	game_step()
 ////////////////////////////////////////////////////////////////////////////////
+	reset_z_cursor()
 	build_camera()
 
 	clear(&globals.exit_collisions)
@@ -173,16 +176,26 @@ framework_step :: proc (dt: f64) {
 	} // for old_collisions
 
 ////////////////////////////////////////////////////////////////////////////////
-// THIS SORT DEFINES THE DEPTH BUFFER.
+// THIS SORT DEFINES THE DEPTH BUFFER.       (TODO: It's also an unstable sort.)
 ////////////////////////////////////////////////////////////////////////////////
   slice.sort_by(globals.entities_3D[:], proc (i,j: ^Entity) -> bool {
     return i.distance_from_camera > j.distance_from_camera
   })
   slice.sort_by(globals.entities_2D[:], proc (i,j: ^Entity) -> bool {
-    return i.distance_from_camera > j.distance_from_camera
+    return i.position.z > j.position.z
   })
 	ren_draw(globals.ren)
 	sugar.swap_buffers()
+}
+
+next_z :: proc () -> f32 {
+	z := globals.z_cursor
+	globals.z_cursor += 1
+	return z
+}
+
+reset_z_cursor :: proc () {
+	globals.z_cursor = MIN_Z + 1
 }
 
 ////////////////////////////////////////////////////////////////////////////////

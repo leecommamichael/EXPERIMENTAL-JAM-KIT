@@ -33,6 +33,7 @@ image :: proc (filename: string, loc := #caller_location) -> (^Entity, bool) {
 		// TODO: Come up with comprehensive state diffing.
 		set_image(entity, filename)
 	}
+	entity.position.z = next_z()
 	return entity, is_new
 }
 

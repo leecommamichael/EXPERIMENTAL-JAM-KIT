@@ -8,6 +8,7 @@ rect :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 		globals.unit_quad_mesh.vertices[:],
 		globals.unit_quad_mesh.indices[:])
 	}
+	entity.position.z = next_z()
 	return entity, is_new
 }
 
@@ -22,6 +23,7 @@ framebuffer_quad :: proc (from: gl.Framebuffer, to: gl.Framebuffer, _loc := #cal
 		entity.draw_command.program = globals.ren.programs[.Framebuffer_Texture]
 		entity.draw_command.render_target = to
 	}
+	entity.position.z = next_z()
 	return entity, is_new
 }
 

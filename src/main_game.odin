@@ -11,10 +11,6 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
-near_draws: f32 = -90
-far_draws: f32 = 90
-
-img: ^Entity
 spr: ^Entity
 cursor: ^Entity
 debug_colliders: ^Entity
@@ -39,8 +35,6 @@ game_init :: proc () {
 	cursor.collider.shape = .Circle
 	cursor.collider.size = 16
 
-	img = make_image(`gameplayboard.aseprite`)
-	img.position.z = far_draws
 
 	// spr = sprite(`berserker.aseprite`)
 	// spr.position.xy = 42
@@ -49,14 +43,11 @@ game_init :: proc () {
 	// spr.flags += {.Collider_Enabled}
 	// spr_state := &spr.variant.(Sprite_State)
 	// spr_state.repetitions = 10
-	// spr.position.z = far_draws
 }
 
 // lerp test
 // game_step :: proc () {
-// 	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
 // 	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
-// 	rect.position.z = near_draws
 // 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 // 	rect.basis.scale.y = -1 // because textures are flipped...
 // 	rect.basis.position.xy = rect.scale.xy/2
@@ -65,7 +56,6 @@ game_init :: proc () {
 // 	if bg_new {
 // 		bg.basis.scale = 32
 // 		bg.basis.position = 32/2
-// 		// bg.position.z = near_draws - 10
 // 	}
 
 // 	@static flip: bool
@@ -89,7 +79,6 @@ game_init :: proc () {
 // 		// }
 // 	}
 
-// 	img.position.z = far_draws
 // 	cursor.position.xy = globals.mouse_position
 // 	tn1 := text("-1 hello", .pixel)
 // 	{
@@ -120,12 +109,10 @@ game_init :: proc () {
 
 //////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////
-game_step :: proc () {
-	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
-
+game_step :: proc ()  {
+	img := make_image(`gameplayboard.aseprite`)
 	cursor.position.x = globals.mouse_position.x
 	cursor.position.y = globals.mouse_position.y
-	cursor.position.z = 0 // affects collision
 
 	btn := button()
 	btn.position.xy = {128,100}
@@ -166,8 +153,9 @@ game_step :: proc () {
 
 	ro := ui_element(
 		row(
-			text("rThis"),
-			text("isRow"),
+			text("1"),
+			text("2"),
+			text("3"),
 		)
 	)
 	ro.position.xy = {32,32}
@@ -200,7 +188,6 @@ game_step :: proc () {
 		}
 	}
 
-	img.position.z = far_draws
 	globals.perspective_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
 		globals.camera.offset.xy += 1
@@ -214,8 +201,8 @@ game_step :: proc () {
 	}
 	if sugar.on_button_press(.Start) {
 	}
+	cursor.position.z = next_z()
 	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
-	rect.position.z = near_draws
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2

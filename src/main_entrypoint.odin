@@ -118,6 +118,10 @@ window_resized :: proc () {
   build_camera()
 }
 
+// YES, I KNOW. These are opposite the near/far args in matrix procs.
+MAX_Z  :: 10000 // furthest.
+MIN_Z  :: -10000 // nearest.
+
 build_camera :: proc () {
 	viewport_size := array_cast(sugar.viewport_size,f32)
 	aspect_ratio := viewport_size.x / viewport_size.y
@@ -134,8 +138,8 @@ build_camera :: proc () {
 		right  = viewport_size.x,
 		top    = viewport_size.y,
 		bottom = 0,
-		near   = 100,
-		far    = -100
+		near   = MAX_Z,
+		far    = MIN_Z
 	)
 
 	offset := globals.camera.offset
@@ -145,8 +149,8 @@ build_camera :: proc () {
 		right  = viewport_size.x,
 		top    = viewport_size.y,
 		bottom = 0,
-		near   = 100,
-		far    = -100
+		near   = MAX_Z,
+		far    = MIN_Z // the parameter label says "far" but I'm inverting it.
 	)
 	globals.orthographic_view = linalg.matrix4_translate_f32({offset.x, offset.y, 0})\
 	                          * linalg.matrix4_scale_f32({zoom, zoom, 1})

@@ -52,6 +52,7 @@ text :: proc (
 	if is_new || message != entity.variant.(Text_State).text {
 		set_text(entity)
 	}
+	entity.position.z = next_z()
 	return entity
 }
 
