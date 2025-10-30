@@ -31,8 +31,10 @@ framework_init :: proc () {
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretch = 1
 	globals.canvas_stretching = .Integer_Aspect
+	globals.camera.zoom = 1.0
 
-	globals.game_view = 1
+	globals.perspective_view = 1
+	globals.orthographic_view = 1
 	globals.ui_view = 1
 
 	game_entities := make([]^Entity, max(Entity_ID))
@@ -67,7 +69,12 @@ framework_init :: proc () {
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
 	ren_clear()
-	globals.mouse_position = sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch
+	
+	// position of mouse in design coordinates world.
+	globals.ui_mouse_position = (sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch) 
+	// position of mouse in world coordinates. (same thing if no offset.)
+	globals.mouse_position = (sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch) 
+	// globals.mouse_position += globals.camera.offset.xy
 	globals.dt = dt
 	globals.uniforms.tau_time += f32(dt)
 	overflow := linalg.TAU - globals.uniforms.tau_time
@@ -92,6 +99,7 @@ framework_step :: proc (dt: f64) {
 ////////////////////////////////////////////////////////////////////////////////
 	game_step()
 ////////////////////////////////////////////////////////////////////////////////
+	build_camera()
 
 	clear(&globals.exit_collisions)
 	clear(&globals.enter_collisions)

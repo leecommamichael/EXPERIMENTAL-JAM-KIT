@@ -11,7 +11,10 @@ import "core:log"
 // e.g. cursor_in_world, cursor_direction := cursor_direction_in_world()
 cursor_direction_in_world :: proc () -> (Vec3, Vec3) {
 	ndc := pixel_to_ndc(sugar.mouse_position)
-	return camera_clip_coord_direction(&globals.game_camera, &globals.game_view, ndc)
+	return camera_clip_coord_direction(
+		&globals.perspective_projection,
+		&globals.perspective_view,
+		ndc)
 }
 
 // Pixel origin is top-left and y is flipped.

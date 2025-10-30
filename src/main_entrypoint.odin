@@ -81,7 +81,6 @@ import "core:math/linalg"
 import "core:math/linalg/glsl"
 window_resized :: proc () {
 	viewport_size := array_cast(sugar.viewport_size,f32)
-	log.infof("iviewport = %v", viewport_size)
 	////////////////////////////////////////////////////////////////////////////
 	// decide how the viewport will be sized. affects render-target size.
 	switch globals.canvas_scaling {
@@ -116,16 +115,21 @@ window_resized :: proc () {
 	log.infof("stretch = %v", globals.canvas_stretch)
 	log.infof("scale = %v", globals.canvas_scale)
   gl.Viewport(0,0, sugar.viewport_size.x, sugar.viewport_size.y)
+  build_camera()
+}
+
+build_camera :: proc () {
+	viewport_size := array_cast(sugar.viewport_size,f32)
 	aspect_ratio := viewport_size.x / viewport_size.y
 
-	globals.game_camera = linalg.matrix4_perspective_f32(
+	globals.perspective_projection = linalg.matrix4_perspective_f32(
 		fovy   = linalg.to_radians(f32(90.0)),
 		aspect = aspect_ratio,
 		near   = .1,
 		far    = 1000,
 		flip_z_axis = false
 	)
-	globals.ui_orthographic = glsl.mat4Ortho3d(
+	globals.ui_projection = glsl.mat4Ortho3d(
 		left   = 0,
 		right  = viewport_size.x,
 		top    = viewport_size.y,
@@ -133,4 +137,17 @@ window_resized :: proc () {
 		near   = 100,
 		far    = -100
 	)
+
+	offset := globals.camera.offset
+	zoom := globals.camera.zoom
+	globals.orthographic_projection = glsl.mat4Ortho3d(
+		left   = 0,
+		right  = viewport_size.x,
+		top    = viewport_size.y,
+		bottom = 0,
+		near   = 100,
+		far    = -100
+	)
+	globals.orthographic_view = linalg.matrix4_translate_f32({offset.x, offset.y, 0})\
+	                          * linalg.matrix4_scale_f32({zoom, zoom, 1})
 }

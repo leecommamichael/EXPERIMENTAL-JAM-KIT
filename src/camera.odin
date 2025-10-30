@@ -13,14 +13,16 @@ RIGHT4: Vec4 : {1, 0, 0, 0}
 UP4:    Vec4 : {0, 1, 0, 0}
 FRONT4: Vec4 : {0, 0,-1, 0}
 
-Camera3D :: struct {
+Camera :: struct {
   position:  Vec3,
   right_rad: f32,
   up_rad:    f32,
+  offset:    Vec3,
+  zoom:      f32,
 }
 
 // Controls a camera with the mouse and keyboard.
-tick_mouse_camera :: proc(camera: ^Camera3D, dt: f32) -> Mat4 {
+tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
   input: sugar.Input_Frame = sugar.input
   move_vel :: 6
   look_vel :: 0.33

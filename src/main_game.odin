@@ -35,7 +35,7 @@ game_init :: proc () {
 	// globals.draw_colliders = true
 	cursor = sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
-	cursor.flags += {.Collider_Enabled}
+	cursor.flags += {.Collider_Enabled,}
 	cursor.collider.shape = .Circle
 	cursor.collider.size = 16
 
@@ -122,14 +122,10 @@ game_init :: proc () {
 //////////////////////////////////////////////////////////////////////
 game_step :: proc () {
 	globals.camera.position.z = -99999// position so cam isn't at 0 so near/far are different distance from camera
-	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
-	rect.position.z = near_draws
-	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
-	rect.basis.scale.y = -1 // because textures are flipped...
-	rect.basis.position.xy = rect.scale.xy/2
+
 	cursor.position.x = globals.mouse_position.x
 	cursor.position.y = globals.mouse_position.y
-	cursor.position.z = 0
+	cursor.position.z = 0 // affects collision
 
 	btn := button()
 	btn.position.xy = {128,100}
@@ -141,7 +137,8 @@ game_step :: proc () {
 	if .Pressed in btn.ui.state {
 			btn.color.rgb = {0.8, 0.2, 0.2} - 0.1
 	} else if .Hovered in btn.ui.state {
-			btn.color.rgb = {0.8, 0.2, 0.2}
+
+		btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
 	for c, n in entity_collisions(cursor) {
@@ -204,24 +201,23 @@ game_step :: proc () {
 	}
 
 	img.position.z = far_draws
-	globals.game_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
+	globals.perspective_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
 	if sugar.is_button_pressed(.A) {
-		img.position.y -= 1
-		spr.position.y -= 1
+		globals.camera.offset.xy += 1
 	}
 	if sugar.is_button_pressed(.B) {
-		img.position.x += 1
-		spr.position.x += 1
+		globals.camera.offset.x = 100
 	}
 	if sugar.is_button_pressed(.X) {
-		img.position.x -= 1
-		spr.position.x -= 1
 	}
 	if sugar.is_button_pressed(.Y) {
-		img.position.y += 1
-		spr.position.y += 1
 	}
 	if sugar.on_button_press(.Start) {
-		spr.scale.y *=  -1
 	}
+	rect := framebuffer_quad(from = globals.ren.framebuffer, to = 0)
+	rect.position.z = near_draws
+	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
+	rect.basis.scale.y = -1 // because textures are flipped...
+	rect.basis.position.xy = rect.scale.xy/2
+	rect.flags += {.Is_UI}
 }

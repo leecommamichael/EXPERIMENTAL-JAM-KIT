@@ -45,17 +45,19 @@ Globals :: struct {
 	canvas_stretching:   Canvas_Scaling,
 	framebuffer_size_px: [2]f32, // canvas_size_px * canvas_scale * canvas_stretch
 	mouse_position:      [2]f32, // in the canvas.
+	ui_mouse_position:   [2]f32, // in the canvas.
 	// Render+Entity Integration /////////////////////////////////////////////////
 	// How much each pixel stretched while fitting to the window AFTER framebuffer scaling.
 	// Measures the # of fragments covered by each input pixel.
 	// See `Pixel_Scaling`
-	uniforms:        Uniforms,
-	game_camera:     Mat4,
-	ui_orthographic: Mat4,
-	game_view:       Mat4,
-	ui_view:         Mat4,
-	// TODO: make this var an interface to modify the above
-	camera:          Camera3D,
+	uniforms:                Uniforms,
+	perspective_projection:  Mat4,
+	perspective_view:        Mat4,
+	orthographic_projection: Mat4,
+	orthographic_view:       Mat4,
+	ui_projection:           Mat4,
+	ui_view:                 Mat4,
+	camera:                  Camera,
 
 	gravity:    Vec3,
 	old_collisions:   [dynamic]Collision, // last frame/sample
@@ -130,6 +132,7 @@ Entity_Flag :: enum {
 	Is_3D,
 	Hidden,
 	Collider_Enabled,
+	Is_UI,
 }
 
 Transform :: struct {

@@ -190,21 +190,30 @@ ren_draw :: proc (ren: ^Ren) {
 	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
 	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
 
-	globals.uniforms.projection = globals.game_camera
-	globals.uniforms.view = globals.game_view
+	globals.uniforms.projection = globals.perspective_projection
+	globals.uniforms.view = globals.perspective_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-
 	for entity in globals.entities_3D {
 		ren_draw_entity(ren, entity)
 	}
 
 	// TODO: Just use a different shader for 2D things. Don't have to copy this.
-	globals.uniforms.projection = globals.ui_orthographic
+	globals.uniforms.projection = globals.orthographic_projection
+	globals.uniforms.view = globals.orthographic_view
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
+	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
+	for entity in globals.entities_2D {
+		if .Is_UI in entity.flags { continue }
+		ren_draw_entity(ren, entity)
+	}
+
+	globals.uniforms.projection = globals.ui_projection
 	globals.uniforms.view = globals.ui_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
 	for entity in globals.entities_2D {
+		if .Is_UI not_in entity.flags { continue }
 		ren_draw_entity(ren, entity)
 	}
 
