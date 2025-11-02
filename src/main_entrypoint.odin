@@ -95,6 +95,11 @@ window_resized :: proc () {
 	}
 	////////////////////////////////////////////////////////////////////////////
 	scaled_canvas_px := globals.canvas_scale * globals.canvas_size_px
+	casted := array_cast(scaled_canvas_px, int)
+	if globals.ren.canvas.size_px != casted {
+		log.infof("canvas resized from %v to %v", globals.ren.canvas.size_px, casted)
+		set_canvas_size(casted)
+	}
 	unused_px := viewport_size - scaled_canvas_px 
 	// decide how the viewport will be stretched after sizing.
 	switch globals.canvas_stretching {
@@ -116,6 +121,10 @@ window_resized :: proc () {
 	log.infof("scale = %v", globals.canvas_scale)
   gl.Viewport(0,0, sugar.viewport_size.x, sugar.viewport_size.y)
   build_camera()
+}
+
+set_canvas_size :: proc (size_px: [2]int, _loc := #caller_location) {
+	make_or_resize_render_target(&globals.ren.canvas, size_px, _loc)
 }
 
 // YES, I KNOW. These are opposite the near/far args in matrix procs.

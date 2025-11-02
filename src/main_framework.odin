@@ -61,11 +61,11 @@ framework_init :: proc () {
 	globals.exit_collisions = alias_slice_as_empty_dynamic(exits)
 
 	globals.ren = ren_make()
-
-
 	ren_init(globals.ren)
 	log.info("---------------------------------------- framework initialized.")
 	game_init()
+	assert(globals.canvas_size_px != 0)
+	set_canvas_size(array_cast(globals.canvas_size_px, int))
 }
 
 // Mixed-scope between renderer and game entities.
@@ -100,6 +100,12 @@ framework_step :: proc (dt: f64) {
 	}
 ////////////////////////////////////////////////////////////////////////////////
 	game_step()
+
+	rect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)
+	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
+	rect.basis.scale.y = -1 // because textures are flipped...
+	rect.basis.position.xy = rect.scale.xy/2
+	rect.flags += {.Is_UI}
 ////////////////////////////////////////////////////////////////////////////////
 	reset_z_cursor()
 	build_camera()

@@ -170,7 +170,7 @@ Collision :: struct {
 //////////////////////////////////////////////////////////////////////
 
 Ren :: struct {
-	canvas_framebuffer: gl.Framebuffer,
+	canvas:      Render_Target,
 	prev_cmd:    Draw_Command,
 	frame_UBO:   gl.Buffer,
 	programs:    [Game_Shader]gl.Program, // constant
@@ -222,6 +222,13 @@ Draw_Command :: struct {
 	cull_mode:     Cull_Mode, // default none
 }
 #assert(size_of(Draw_Command) < 256, "Be mindful of this increasing.")
+
+Render_Target :: struct {
+	fbo:           gl.Framebuffer,
+	color:         gl.Texture,
+	depth_stencil: gl.Texture,
+	size_px:       [2]int
+}
 
 GPU_Texture :: struct {
 	target:         gl.Texture_Target,

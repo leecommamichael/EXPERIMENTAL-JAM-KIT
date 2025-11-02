@@ -64,9 +64,10 @@ window:
       }
       0.274248:
       {
-        watch: selected expression: "query:call_stack"
+        watch: expression: "query:call_stack"
         disasm:
         {
+          selected
           expression: ""
           query: input: ""
         }
@@ -86,14 +87,13 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 104
+        cursor_line: 31
         cursor_column: 1
-        mark_line: 104
+        mark_line: 31
         mark_column: 1
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -101,10 +101,10 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 476
-        cursor_column: 39
-        mark_line: 476
-        mark_column: 39
+        cursor_line: 68
+        cursor_column: 1
+        mark_line: 68
+        mark_column: 1
       }
       text:
       {
@@ -125,9 +125,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 122
+        cursor_line: 539
         cursor_column: 1
-        mark_line: 122
+        mark_line: 539
         mark_column: 1
       }
       text:
@@ -142,6 +142,7 @@ window:
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -149,9 +150,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 178
+        cursor_line: 314
         cursor_column: 1
-        mark_line: 178
+        mark_line: 314
         mark_column: 1
       }
       text:
@@ -201,7 +202,7 @@ window:
     }
   }
   split_x
-  pos: 2112 368
+  pos: 1601 190
   monitor: "\\\\.\\DISPLAY2"
   hint_ui_text: 1
   smooth_code_text: 0
