@@ -116,16 +116,19 @@ log_time("render_font")
 		cousine :: "Cousine"
 		inter :: "Inter"
 		fs_pixel :: "fs_pixel_sans_unicode"
+		bold_pixels :: "BoldPixels"
 
-		inter_usages: []Font_Usage : { .caption, .body, . body_large, .header }
-		cousine_usages: []Font_Usage : { .mono }
+		inter_usages:    []Font_Usage : { .caption, .body, . body_large, .header }
+		cousine_usages:  []Font_Usage : { .mono }
 		fs_pixel_usages: []Font_Usage : { .pixel }
+		bold_pixels_usages: []Font_Usage : { .bold_pixel }
 
 		usages: []Font_Usage
 		switch font_name {
-		case inter:    usages = inter_usages
-		case cousine:  usages = cousine_usages
-		case fs_pixel: usages = fs_pixel_usages
+		case inter:       usages = inter_usages
+		case cousine:     usages = cousine_usages
+		case fs_pixel:    usages = fs_pixel_usages
+		case bold_pixels: usages = bold_pixels_usages
 		case:
 			log.infof("FYI: Unrecognized Font (not loaded) %v", font_file.name)
 			continue
@@ -136,7 +139,8 @@ log_time("render_font")
 			.body_large  = 18 * 1.5,
 			.header      = 24 * 1.5,
 			.mono        = 14 * 1.5,
-			.pixel       = 16,
+			.bold_pixel  = 16, // unscaled (to be used with integer scaling)
+			.pixel       = 16, // unscaled (to be used with integer scaling)
 		}
 
 		//////////////////////////////////////////////////////////////////////	

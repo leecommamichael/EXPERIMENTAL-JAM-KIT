@@ -159,26 +159,23 @@ game_step :: proc ()  {
 	// ro.position.xy = {32,32}
 	elem := ui_element(
 		column(
-			text("Quick nymph bugs vex fjord waltz.", .pixel),
-			text("Quicknymphbugsvexfjordwaltz.", .pixel),
-			text("Quicknymphbugsvexfjordwaltz.", .pixel),
-			text("Quicknymphbugsvexfjordwaltz.", .pixel),
-			text("Quicknymphbugsvexfjordwaltz.", .pixel),
-			text("Quicknymphbugsvexfjordwaltz.", .pixel),
+			text("Quick nymph bugs vex fjord waltz.",),
+			text("Quicknymph bugs vex fjord waltz.", ),
+			text("Quick nymphbugs vex fjord waltz.", ),
+			text("ą, ć, ę, ł, ń, ó, ś, ź, ż", ),
+			text("Quick nymph bugs vex fjordwaltz.", .bold_pixel),
+			text("Quicknymphbugs vex fjord waltz.",  .bold_pixel),
+			text("Quick nymphbugsvex fjord waltz.",  .bold_pixel),
+			text("ą, ć, ę, ł, ń, ó, ś, ź, ż",  .bold_pixel),
 		)
 	)
-	@static did: bool
-	if !did {
-		did = true
-		for c,n in elem.children {
-			log.infof("child %d, position %v", n, c.position.xy)
-		}
+	
+	r, is_new := rect() 
+	if is_new {
+		r.color = {0,0,0,1}
+		r.scale = elem.scale
+		r.basis.position.xy = r.scale.xy/2
 	}
-
-	r := rect()
-	r.color = {0,0,0,1}
-	r.scale = elem.scale
-	r.position.xy = r.scale.xy/2
 
 	if sugar.on_button_press(.Select) {
 		globals.draw_colliders = !globals.draw_colliders
@@ -207,8 +204,10 @@ game_step :: proc ()  {
 		globals.camera.offset.x = 100
 	}
 	if sugar.is_button_pressed(.X) {
+		elem.position.x += 0.1
 	}
 	if sugar.is_button_pressed(.Y) {
+		elem.position.y -= 0.1
 	}
 	if sugar.on_button_press(.Start) {
 	}

@@ -33,7 +33,7 @@ Audio_Asset :: struct {
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
 MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
-FONT_COUNT :: len(Font_Variant) * len(Font_Usage) - 3 // pixel fonts have 1 variant
+FONT_COUNT :: len(Font_Variant) * len(Font_Usage) - (2*3) // pixel fonts have 1 variant
 GLYPH_COUNT :: 0x058F - 32 // ascii thru Armenian (stops at Hebrew because it's RTL)
 
 ASSET_DIR :: "../assets/"

@@ -22,10 +22,13 @@ Text_State :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
+Default_Font_Usage :: Font_Usage.pixel
+Default_Font_Variant :: Font_Variant.regular
+
 make_text :: proc (
 	message: string,
-	usage:   Font_Usage   = .body,
-	variant: Font_Variant = .regular,
+	usage := Default_Font_Usage,
+	variant := Default_Font_Variant,
 ) -> ^Entity {
 	entity: ^Entity = make_entity()
 	entity.variant = Text_State {
@@ -39,8 +42,8 @@ make_text :: proc (
 
 text :: proc (
 	message:  string,
-	usage:    Font_Usage   = .body,
-	variant:  Font_Variant = .regular,
+	usage := Default_Font_Usage,
+	variant := Default_Font_Variant,
 	loc := #caller_location,
 ) -> ^Entity {
 	entity, is_new := do_entity(loc)
@@ -63,6 +66,7 @@ Font_Usage :: enum {
 	header,     // 20px, sans
 	mono,       // 12px, mono
 	pixel,      // 16px, mono
+	bold_pixel, // 16px, mono
 }
 
 Font_Variant :: enum {
@@ -73,11 +77,9 @@ Font_Variant :: enum {
 }
 
 Font :: struct {
-	bundled:    bool,
 	name:       string,
 	height_px:  f32,
 	scale:      f32,
-	is_monospace: bool, // else proportional
 	// stb related data
 	data: []stbtt.packedchar,
   // Scaled metrics
@@ -86,6 +88,8 @@ Font :: struct {
   descent:           f32,
   line_height:       f32,
   line_gap:          f32,
+  // state for asset bundler
+	bundled:    bool,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -112,6 +116,16 @@ set_text :: proc (entity: ^Entity) {
 			&text_cursor.y,
 			&quad,
 			false)
+
+		if byte == ' ' {
+			// TODO: only do this for pixel fonts
+			quad.x0 = ceil(quad.x0)
+			quad.x1 = ceil(quad.x1)
+			quad.y0 = ceil(quad.y0)
+			quad.y1 = ceil(quad.y1)
+			text_cursor.x = ceil(text_cursor.x)
+			text_cursor.y = ceil(text_cursor.y)
+		}
 
 		gnum := glyph_index+1
 		verts[(4*gnum)-4] = { position = {quad.x0,-quad.y0, 0,}, texcoord = {quad.s0,quad.t0} } // TL
@@ -149,6 +163,16 @@ measure_text :: proc (entity: Entity) -> Vec2 {
 			&text_cursor.y,
 			&quad,
 			false)
+
+		if byte == ' ' {
+			// TODO: only do this for pixel fonts
+			quad.x0 = ceil(quad.x0)
+			quad.x1 = ceil(quad.x1)
+			quad.y0 = ceil(quad.y0)
+			quad.y1 = ceil(quad.y1)
+			text_cursor.x = ceil(text_cursor.x)
+			text_cursor.y = ceil(text_cursor.y)
+		}
 	}
 	size.x = text_cursor.x + quad.x0 - quad.x1
 	size.y = variant.font.line_height

@@ -113,6 +113,7 @@ is_real_array :: proc "contextless" (x: $A/[$N]$T) -> bool where is_float(T) {
 ////////////////////////////////////////////////////////////////////////////////
 distance :: linalg.distance
 trunc :: glsl.trunc
+ceil :: glsl.ceil
 vec_min :: linalg.min
 vec_max :: linalg.max
 lerp :: math.lerp
