@@ -33,8 +33,8 @@ Audio_Asset :: struct {
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
 MAX_ATLAS_BYTES :: MAX_ATLAS_PIXELS * MAX_ATLAS_PIXELS // 268 MB
-FONT_COUNT :: len(Font_Variant) * len(Font_Usage) - 3
-GLYPH_COUNT :: 95 // characters from beginning of ASCII table
+FONT_COUNT :: len(Font_Variant) * len(Font_Usage) - 3 // pixel fonts have 1 variant
+GLYPH_COUNT :: 0x058F - 32 // ascii thru Armenian (stops at Hebrew because it's RTL)
 
 ASSET_DIR :: "../assets/"
 CACHE_DIR :: "../cache/"
@@ -113,9 +113,9 @@ asset_init :: proc () {
 }
 
 Serialized_Atlas_Font :: struct {
-	usage:       Font_Usage,
-	variant:     Font_Variant,
-	packed_char: []stbtt.packedchar,
+	usage:   Font_Usage,
+	variant: Font_Variant,
+	font:    Font,
 }
 
 Serialized_Texture_Atlas_Entries :: struct {
@@ -186,7 +186,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 	}
 	assert(unmarshal_error2 == nil)
 	for font in serialized_fonts {
-		globals.fonts[font.usage][font.variant].data = font.packed_char
+		globals.fonts[font.usage][font.variant] = font.font
 	}
 	log_time("READ ATLAS METADATA")
 }
@@ -209,6 +209,50 @@ load_bundled_fonts :: proc (result: ^image.Image, use_binary: bool) {
 		}
 		result^ = img^
 	}
+}
+
+load_ttf :: proc (
+	name: string,
+	file_bytes: []u8,
+	out_font: ^Font
+) -> (ok: bool, info: stbtt.fontinfo) {
+	out_font.name = name
+	if name in globals.assets.font_infos {
+		return true, globals.assets.font_infos[name]
+	} else { // It's not cached yet.
+		globals.assets.font_infos[name] = {}
+		ok = cast(bool) stbtt.InitFont(
+			&globals.assets.font_infos[name],
+			raw_data(file_bytes),
+			offset = 0)
+		if ok {
+			return true, globals.assets.font_infos[name]
+		} else {
+			delete_key(&globals.assets.font_infos, name)
+		}
+	}
+	return false, {}
+}
+
+set_font_height :: proc (font: ^Font, new_height_px: f32) {
+	fontinfo, already_cached := globals.assets.font_infos[font.name]
+	assert(already_cached)
+	font.height_px = new_height_px
+  scale: f32 = stbtt.ScaleForPixelHeight(&fontinfo, new_height_px);
+  font.scale = scale
+
+  // Get the font's line height
+  ascent, descent, line_gap: i32
+  stbtt.GetFontVMetrics(&fontinfo, &ascent, &descent, &line_gap);
+  font.ascent   = cast(f32)ascent  * scale;
+  font.descent  = cast(f32)descent * scale;
+  font.line_gap = cast(f32)line_gap * scale;
+  font.line_height = font.ascent - font.descent + font.line_gap;
+
+  // Get the monospace character width
+  _lsb, monospace_advance: i32
+  stbtt.GetCodepointHMetrics(&fontinfo, ' ', &monospace_advance, &_lsb);
+  font.monospace_advance = cast(f32)monospace_advance * scale;
 }
 
 load_bundled_textures :: proc (result: ^image.Image, use_binary: bool) {

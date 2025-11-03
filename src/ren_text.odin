@@ -75,12 +75,10 @@ Font_Variant :: enum {
 Font :: struct {
 	bundled:    bool,
 	name:       string,
-	file_bytes: []u8,
 	height_px:  f32,
 	scale:      f32,
 	is_monospace: bool, // else proportional
 	// stb related data
-	info: stbtt.fontinfo,
 	data: []stbtt.packedchar,
   // Scaled metrics
   monospace_advance: f32,
@@ -151,9 +149,8 @@ measure_text :: proc (entity: Entity) -> Vec2 {
 			&text_cursor.y,
 			&quad,
 			false)
-		height := (quad.y0 - quad.y1) * -1
-		if height > size.y { size.y = height }
 	}
 	size.x = text_cursor.x + quad.x0 - quad.x1
+	size.y = variant.font.line_height
 	return size
 }

@@ -146,8 +146,8 @@ layout_subtree :: proc (root: ^Entity) {
 			main_axis_offset = child.position.y + child_size.y
 			if child_size.x > max_cross_axis_size { max_cross_axis_size = child_size.x }
 		}
-		root.scale.x = main_axis_offset
-		root.scale.y = max_cross_axis_size
+		root.scale.y = main_axis_offset
+		root.scale.x = max_cross_axis_size
 	case .Box:
 		root.position.z = z
 	}

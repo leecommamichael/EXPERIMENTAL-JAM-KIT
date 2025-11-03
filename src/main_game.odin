@@ -149,23 +149,36 @@ game_step :: proc ()  {
 			next_btn.color.rgb = {0.8, 0.2, 0.2}
 	}
 
-	ro := ui_element(
-		row(
-			text("1"),
-			text("2"),
-			text("3"),
-		)
-	)
-	ro.position.xy = {32,32}
+	// ro := ui_element(
+	// 	row(
+	// 		text("1"),
+	// 		text("2"),
+	// 		text("3"),
+	// 	)
+	// )
+	// ro.position.xy = {32,32}
 	elem := ui_element(
 		column(
-			text("This"),
-			text("is"),
-			text("a"),
-			text("_"),
-			text("column")
+			text("Quick nymph bugs vex fjord waltz.", .pixel),
+			text("Quicknymphbugsvexfjordwaltz.", .pixel),
+			text("Quicknymphbugsvexfjordwaltz.", .pixel),
+			text("Quicknymphbugsvexfjordwaltz.", .pixel),
+			text("Quicknymphbugsvexfjordwaltz.", .pixel),
+			text("Quicknymphbugsvexfjordwaltz.", .pixel),
 		)
 	)
+	@static did: bool
+	if !did {
+		did = true
+		for c,n in elem.children {
+			log.infof("child %d, position %v", n, c.position.xy)
+		}
+	}
+
+	r := rect()
+	r.color = {0,0,0,1}
+	r.scale = elem.scale
+	r.position.xy = r.scale.xy/2
 
 	if sugar.on_button_press(.Select) {
 		globals.draw_colliders = !globals.draw_colliders

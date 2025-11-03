@@ -78,8 +78,9 @@ log_time("render_font")
 	// To defer rendering until all rects from all fonts are packed.
 	Pack_Range :: struct {
 		rects: []stbrp.Rect,
-		range: stbtt.pack_range,
 		font:  ^Font,
+		range: stbtt.pack_range,
+		info:  stbtt.fontinfo,
 	}
 	atlas_size: [2]int
 	pack_ctx: stbtt.pack_context
@@ -114,17 +115,17 @@ log_time("render_font")
 		// Defining fonts for usages /////////////////////////////////////////	
 		cousine :: "Cousine"
 		inter :: "Inter"
-		m3x6 :: "m3x6"
+		fs_pixel :: "fs_pixel_sans_unicode"
 
 		inter_usages: []Font_Usage : { .caption, .body, . body_large, .header }
 		cousine_usages: []Font_Usage : { .mono }
-		m3x6_usages: []Font_Usage : { .pixel }
+		fs_pixel_usages: []Font_Usage : { .pixel }
 
 		usages: []Font_Usage
 		switch font_name {
-		case inter:   usages = inter_usages
-		case cousine: usages = cousine_usages
-		case m3x6:    usages = m3x6_usages
+		case inter:    usages = inter_usages
+		case cousine:  usages = cousine_usages
+		case fs_pixel: usages = fs_pixel_usages
 		case:
 			log.infof("FYI: Unrecognized Font (not loaded) %v", font_file.name)
 			continue
@@ -156,44 +157,13 @@ log_time("render_font")
 		for usage in usages {
 			height_px := height_px_for_usage[usage]
 			font: ^Font = &globals.fonts[usage][variant]
-			load_ttf :: proc (name: string, file_bytes: []byte, out_font: ^Font) -> (ok: bool) {
-				out_font.name = name
-				out_font.file_bytes = file_bytes
-				if name in globals.assets.font_infos {
-					out_font.info = globals.assets.font_infos[name]
-					return true
-				} else { // It's not cached yet.
-					ok = cast(bool) stbtt.InitFont(&out_font.info, raw_data(file_bytes), offset = 0)
-					if ok {
-						globals.assets.font_infos[name] = out_font.info
-					}
-				}
-				return
-			}
-			ok := load_ttf(font_file.name, font_file.data, font)
+			
+			ok, fontinfo := load_ttf(font_file.name, font_file.data, font)
 			if !ok {
 				log.errorf("Font parsing failed. %v", font_file.name)
 				continue
 			} // else continue to add font to atlas
 			log.infof("font: %v %v %v", font.name, usage, variant)
-			set_font_height :: proc (font: ^Font, new_height_px: f32) {
-				font.height_px = new_height_px
-			  scale: f32 = stbtt.ScaleForPixelHeight(&font.info, new_height_px);
-			  font.scale = scale
-
-			  // Get the font's line height
-			  ascent, descent, line_gap: f32;
-			  stbtt.GetFontVMetrics(&font.info, cast(^c.int)&ascent, cast(^c.int)&descent, cast(^c.int)&line_gap);
-			  font.ascent   = ascent  * scale;
-			  font.descent  = descent * scale;
-			  font.line_gap = line_gap * scale;
-			  font.line_height = font.ascent - font.descent + font.line_gap;
-
-			  // Get the monospace character width
-			  _lsb, monospace_advance: f32;
-			  stbtt.GetCodepointHMetrics(&font.info, ' ', cast(^c.int)&monospace_advance, cast(^c.int)&_lsb);
-			  font.monospace_advance = monospace_advance * scale;
-			}
 			set_font_height(font, height_px)
 			font.data = make([]stbtt.packedchar, GLYPH_COUNT)
 			range := stbtt.pack_range {
@@ -204,11 +174,12 @@ log_time("render_font")
 			}
 			rects_so_far := total_rects
 			range_rects := rects[rects_so_far:rects_so_far+GLYPH_COUNT]
-			num_rects := stbtt.PackFontRangesGatherRects(&pack_ctx, &font.info, &range, 1, raw_data(range_rects))
+			num_rects := stbtt.PackFontRangesGatherRects(&pack_ctx, &fontinfo, &range, 1, raw_data(range_rects))
 			pack_ranges[font_index] = Pack_Range {
 				range_rects,
-				range,
 				font,
+				range,
+				fontinfo,
 			}
 			total_rects += num_rects
 			font_index += 1
@@ -224,7 +195,7 @@ log_time("render_font")
 	for &pack_range in pack_ranges {
 		ok := cast(bool) stbtt.PackFontRangesRenderIntoRects(
 			&pack_ctx,
-			&pack_range.font.info,
+			&pack_range.info,
 			&pack_range.range, 1,
 			raw_data(pack_range.rects))
 		if !ok {
@@ -277,7 +248,7 @@ log_time("write_font")
 			serialized_font: Serialized_Atlas_Font = {
 				usage = usage,
 				variant = variant,
-				packed_char = font.data,
+				font = font,
 			}
 			serialized_fonts[i] = serialized_font
 			i += 1

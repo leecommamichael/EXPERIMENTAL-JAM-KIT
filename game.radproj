@@ -1,11 +1,16 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/asset_bundle.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
+recent_file: path: "src/main_entrypoint.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/entry_windows.odin"
+recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/exe_common.inl"
+recent_file: path: "src/asset_bundle_desktop.odin"
+recent_file: path: "src/main_framework.odin"
+recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/nord_gl/impl_desktop.odin"
-recent_file: path: "src/main_framework.odin"
-recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "src/nord_gl/interface.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
 recent_file: path: "../../applications (compilers)/odin/core/math/linalg/general.odin"
 recent_file: path: "src/main_game.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
@@ -17,8 +22,6 @@ recent_file: path: "../../applications (compilers)/odin/core/math/math.odin"
 recent_file: path: "src/sugar/main_windows.odin"
 recent_file: path: "src/sugar/sugar.odin"
 recent_file: path: "src/geom.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
-recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "src/ren_image.odin"
 recent_file: path: "../../applications (compilers)/odin/core/thread/thread.odin"
 recent_file: path: "../../applications (compilers)/odin/core/image/qoi/qoi.odin"
@@ -26,7 +29,6 @@ recent_file: path: "src/audio/main_windows.odin"
 recent_file: path: "src/windows/windows.odin"
 recent_file: path: "src/ren_text.odin"
 recent_file: path: "src/ren_sprite.odin"
-recent_file: path: "../../applications (compilers)/odin/base/runtime/entry_windows.odin"
 recent_file: path: "../../applications (compilers)/odin/core/fmt/fmt.odin"
 recent_file: path: "../../applications (compilers)/odin/core/encoding/cbor/coding.odin"
 recent_file: path: "../../applications (compilers)/odin/core/io/io.odin"
@@ -63,21 +65,6 @@ type_view:
 }
 breakpoint:
 {
-  source_location: "src/main_entrypoint.odin:31:1"
-  hit_count: 1
-}
-breakpoint:
-{
-  source_location: "src/main_framework.odin:68:1"
-  hit_count: 1
-}
-breakpoint:
-{
-  source_location: "src/ren.odin:311:1"
+  source_location: "src/asset_bundle_desktop.odin:193:1"
   hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/ren.odin:308:1"
-  hit_count: 1
 }
