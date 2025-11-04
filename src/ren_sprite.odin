@@ -50,7 +50,34 @@ Sprite_Asset :: struct {
 //////////////////////////////////////////////////////////////////////
 
 sprite :: proc (filename: string) -> ^Entity {
-	entity: ^Entity = make_entity()
+	entity, is_new := do_entity()
+	if is_new {
+		init_sprite(entity)
+		set_sprite(entity, filename)
+	} else if filename != entity.variant.(Sprite_State).asset.filename {
+		set_sprite(entity, filename)
+	}
+	entity.position.z = next_z()
+	return entity
+}
+
+//////////////////////////////////////////////////////////////////////
+// Retained Interface
+//////////////////////////////////////////////////////////////////////
+
+make_sprite :: proc (filename: string) -> ^Entity {
+	entity := make_entity()
+	init_sprite(entity)
+	set_sprite(entity, filename)
+	return entity
+}
+
+init_sprite :: proc (entity: ^Entity) {
+	mesh: Geom_Mesh2 = geom_make_quad(1, context.temp_allocator)
+	entity.draw_command = sprite_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
+}
+
+set_sprite :: proc (entity: ^Entity, filename: string) {
 	asset := &globals.assets.sprites[filename]
 	sprite_state := Sprite_State {
 		asset = asset
@@ -70,9 +97,6 @@ sprite :: proc (filename: string) -> ^Entity {
 		}
 	}
 	entity.variant = sprite_state
-	mesh: Geom_Mesh2 = geom_make_quad(1, context.temp_allocator)
-	entity.draw_command = sprite_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
-	return entity
 }
 
 /**/	Sprite_Event :: enum {
