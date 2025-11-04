@@ -12,6 +12,7 @@ import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
 cursor: ^Entity
+
 //////////////////////////////////////////////////////////////////////
 // HiDPI 2D Examples
 //////////////////////////////////////////////////////////////////////
@@ -19,6 +20,7 @@ game_init :: proc () {
 	globals.canvas_size_px = {384, 216}
 	globals.canvas_scaling = .Fill_Window
 	globals.canvas_stretching = .Fixed
+	// globals.canvas_stretch = 1
 }
 game_step :: proc () {
 	cursor = sprite(`berserker.aseprite`)
@@ -28,6 +30,16 @@ game_step :: proc () {
 	cursor.collider.size = 16
 	cursor.position.x = globals.mouse_position.x
 	cursor.position.y = globals.mouse_position.y
+
+	elem := ui_element(
+		column(
+			text("Quick nymph bugs vex fjord waltz.",),
+			text("Quicknymph bugs vex fjord waltz.", ),
+			text("Quick nymphbugs vex fjord waltz.", ),
+			text("ą, ć, ę, ł, ń, ó, ś, ź, ż", ),
+		)
+	)
+	elem.position.xy = 12
 }
 /*
 //////////////////////////////////////////////////////////////////////
