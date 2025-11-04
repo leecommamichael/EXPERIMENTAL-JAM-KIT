@@ -73,9 +73,9 @@ framework_step :: proc (dt: f64) {
 	ren_clear()
 	
 	// position of mouse in design coordinates world.
-	globals.ui_mouse_position = (sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch) 
+	globals.ui_mouse_position = (sugar.mouse_position / globals.canvas_stretch) 
 	// position of mouse in world coordinates. (same thing if no offset.)
-	globals.mouse_position = (sugar.mouse_position / globals.canvas_scale / globals.canvas_stretch) 
+	globals.mouse_position = (sugar.mouse_position / globals.canvas_stretch) 
 	// globals.mouse_position += globals.camera.offset.xy
 	globals.dt = dt
 	globals.uniforms.tau_time += f32(dt)

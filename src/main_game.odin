@@ -11,8 +11,29 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
-spr: ^Entity
 cursor: ^Entity
+//////////////////////////////////////////////////////////////////////
+// HiDPI 2D Examples
+//////////////////////////////////////////////////////////////////////
+game_init :: proc () {
+	globals.canvas_size_px = {384, 216}
+	globals.canvas_scaling = .Fill_Window
+	globals.canvas_stretching = .Fixed
+}
+game_step :: proc () {
+	cursor = sprite(`berserker.aseprite`)
+	cursor.basis.position = 0
+	cursor.flags += {.Collider_Enabled,}
+	cursor.collider.shape = .Circle
+	cursor.collider.size = 16
+	cursor.position.x = globals.mouse_position.x
+	cursor.position.y = globals.mouse_position.y
+}
+/*
+//////////////////////////////////////////////////////////////////////
+// PIXEL EXAMPLES
+//////////////////////////////////////////////////////////////////////
+spr: ^Entity
 debug_colliders: ^Entity
 
 game_init :: proc () {
@@ -28,7 +49,7 @@ game_init :: proc () {
 	// 	cast(int) debug_colliders.id, {},{})
 	// debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
 	// globals.draw_colliders = true
-	cursor = sprite(`berserker.aseprite`)
+	cursor = make_sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
 	cursor.flags += {.Collider_Enabled,}
 	cursor.collider.shape = .Circle
@@ -213,3 +234,4 @@ game_step :: proc ()  {
 	}
 	cursor.position.z = next_z()
 }
+// */

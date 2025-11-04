@@ -52,7 +52,7 @@ step :: proc (dt: f64) -> bool {
 	}
 	globals.avg_fps = f64(frame_number) / time.duration_seconds(time.tick_since(start_time))
 	if frame_number % 300 == 0 {
-		log.infof("[FPS] %v", globals.avg_fps)
+		// log.infof("[FPS] %v", globals.avg_fps)
 	}
 	frame_number += 1
 	events := sugar.poll_events() // begins input frame.
