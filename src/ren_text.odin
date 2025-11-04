@@ -108,7 +108,8 @@ set_text :: proc (entity: ^Entity) {
 	for byte, glyph_index in variant.text {
 		chardata_index := i32(byte - 32)
 		quad: stbtt.aligned_quad
-		stbtt.GetPackedQuad(raw_data(variant.font.data),
+		stbtt.GetPackedQuad(
+			raw_data(variant.font.data),
 			cast(i32) atlas_size.x,
 			cast(i32) atlas_size.y,
 			chardata_index,
@@ -146,16 +147,16 @@ set_text :: proc (entity: ^Entity) {
 
 // text cursor is at the baseline, so it's not useful.
 // gotta measure distance between y1 and y0
-measure_text :: proc (entity: Entity) -> Vec2 {
+measure_text :: proc (entity: Entity) -> (out: Vec2) {
 	variant := entity.variant.(Text_State)
   atlas_size: [2]int = globals.assets.font_atlas.size_px
 
-  size: Vec2
 	text_cursor: Vec2
 	quad: stbtt.aligned_quad
 	for byte, glyph_index in variant.text {
 		chardata_index := i32(byte - 32)
-		stbtt.GetPackedQuad(raw_data(variant.font.data),
+		stbtt.GetPackedQuad(
+			raw_data(variant.font.data),
 			cast(i32) atlas_size.x,
 			cast(i32) atlas_size.y,
 			chardata_index,
@@ -174,7 +175,7 @@ measure_text :: proc (entity: Entity) -> Vec2 {
 			text_cursor.y = ceil(text_cursor.y)
 		}
 	}
-	size.x = text_cursor.x + quad.x0 - quad.x1
-	size.y = variant.font.line_height
-	return size
+	out.x = text_cursor.x + quad.x0 - quad.x1
+	out.y = variant.font.line_height
+	return
 }

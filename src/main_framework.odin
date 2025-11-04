@@ -590,13 +590,13 @@ timed_effect :: proc (
 	return transmute(^Timed_Effect_State(T)) &ent.variant.(Timed_Effect_State(Empty_Struct))
 }
 
-Managed_Data :: struct {
+Lerp :: struct {
 	sink: ^f32,
 	start: f32,
 	target: f32,
 }
 
-Timed_Lerp :: Timed_Effect_State(Managed_Data)
+Timed_Lerp :: Timed_Effect_State(Lerp)
 timed_lerp :: proc (
 	data: ^f32,
 	target: f32,
@@ -604,11 +604,11 @@ timed_lerp :: proc (
 	allocator := context.allocator
 ) -> ^Timed_Lerp {
 	ent := make_entity()
-	managed_data := new(Managed_Data, allocator)
-	managed_data^ = Managed_Data { sink=data, start=data^, target=target }
-	effect := Timed_Effect_State(Managed_Data) {
+	managed_data := new(Lerp, allocator)
+	managed_data^ = Lerp { sink=data, start=data^, target=target }
+	effect := Timed_Effect_State(Lerp) {
 		managed_data,
-		proc (it: ^Managed_Data, percent: f32) {
+		proc (it: ^Lerp, percent: f32) {
 			it.sink^ = cast(f32) lerp(it.start, it.target, percent)
 		},
 		seconds_left,
@@ -618,5 +618,5 @@ timed_lerp :: proc (
 	}
 	ent.variant = transmute(Timed_Effect_State(Empty_Struct))effect
 	ent.flags += {.Hidden}
-	return transmute(^Timed_Effect_State(Managed_Data)) &ent.variant.(Timed_Effect_State(Empty_Struct))
+	return transmute(^Timed_Effect_State(Lerp)) &ent.variant.(Timed_Effect_State(Empty_Struct))
 }
