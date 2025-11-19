@@ -13,7 +13,7 @@ game_init :: proc () {
 	globals.draw_colliders = true
 	globals.canvas_size_px = {960, 720}
 	globals.canvas_scaling = .Smooth_Aspect
-	globals.canvas_stretching = .Smooth_Aspect
+	globals.canvas_stretching = .Fixed
 
 	cursor = make_sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
@@ -24,6 +24,15 @@ game_init :: proc () {
 }
 
 game_step :: proc () {
+	bg, new_bg := rect()
+	if new_bg {
+		bg.basis.position.xy = globals.framebuffer_size_px / 2
+		bg.basis.scale.xy = globals.framebuffer_size_px - 16
+		bg.color = {0.1, 0.1, 0.1, 0.51}
+	}
+		bg.basis.position.xy = globals.framebuffer_size_px / 2
+		bg.basis.scale.xy = globals.framebuffer_size_px - 16
+		
 	ball, new_ball := circle()
 	if new_ball {
 		ball.basis.position = 0

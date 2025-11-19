@@ -85,7 +85,8 @@ window_resized :: proc () {
 	// decide how the viewport will be sized. affects render-target size.
 	switch globals.canvas_scaling {
 	case .Smooth_Aspect:
-		globals.canvas_scale = vec_min(viewport_size) / vec_max(globals.canvas_size_px)
+		ratios := viewport_size/globals.canvas_size_px
+		globals.canvas_scale = vec_min(ratios)
 	case .Fill_Window:
 		globals.canvas_scale = viewport_size / globals.canvas_size_px
 	case .Integer_Aspect:
