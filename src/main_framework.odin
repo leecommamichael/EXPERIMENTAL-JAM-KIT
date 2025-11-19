@@ -63,6 +63,14 @@ framework_init :: proc () {
 	globals.ren = ren_make()
 	ren_init(globals.ren)
 	log.info("---------------------------------------- framework initialized.")
+	debug_colliders := make_entity()
+	debug_colliders.position.z = 1
+	debug_colliders.flags += {.Is_3D}
+	debug_colliders.draw_command = ren_make_basic_draw_cmd(
+		globals.instance_buffer,
+		cast(int) debug_colliders.id, {},{})
+	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
+	globals.collider_visualization = debug_colliders
 	game_init()
 	assert(globals.canvas_size_px != 0)
 	set_canvas_size(array_cast(globals.canvas_size_px, int))

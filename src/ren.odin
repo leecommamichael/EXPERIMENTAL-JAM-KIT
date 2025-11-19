@@ -231,14 +231,18 @@ ren_draw :: proc (ren: ^Ren) {
 				case .None:
 				case .Point: fallthrough
 				case .Circle:
-					geom_append_circle(&mesh, 16, entity.position, entity.scale.x * collider_size(entity).x)
+					geom_append_circle(&mesh, 16, entity.position, entity.collider.size.x/2)
 				case .AABB:
-					geom_append_quad(&mesh, entity.position, entity.scale * collider_size(entity))
+					geom_append_quad(&mesh, entity.position, entity.collider.size)
 				}
 			}
-			ent := globals.entities[0]
+			ent := globals.collider_visualization
 			ent.flags -= {.Is_3D}
-			ent.draw_command = ren_make_basic_draw_cmd(globals.instance_buffer, 0, mesh.vertices[:], mesh.indices[:])
+			ent.draw_command = ren_make_basic_draw_cmd(
+				globals.instance_buffer,
+				cast(int) ent.id,
+				mesh.vertices[:],
+				mesh.indices[:])
 			ren_draw_entity(globals.ren, ent)
 		}
 		ren_draw_colliders(context.temp_allocator)

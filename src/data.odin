@@ -62,6 +62,7 @@ Globals :: struct {
 	collisions:       [dynamic]Collision,
 	enter_collisions: [dynamic]Collision,
 	exit_collisions:  [dynamic]Collision,
+	collider_visualization: ^Entity,
 	pointer_focus: ^Entity,
 	button_focus:  ^Entity,
 	z_cursor: f32,

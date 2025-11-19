@@ -1,5 +1,17 @@
 package main
 
+circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
+	entity, is_new := do_entity(_loc)
+	if is_new {
+		entity.draw_command = ren_make_basic_draw_cmd(
+		globals.instance_buffer, cast(int) entity.id,
+		globals.unit_circle_mesh.vertices[:],
+		globals.unit_circle_mesh.indices[:])
+	}
+	entity.position.z = next_z()
+	return entity, is_new
+}
+
 rect :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(_loc)
 	if is_new {
