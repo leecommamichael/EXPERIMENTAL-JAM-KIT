@@ -111,9 +111,16 @@ is_real_array :: proc "contextless" (x: $A/[$N]$T) -> bool where is_float(T) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+reflect :: linalg.reflect // (incident, normal) -> reflection
+length :: linalg.length
 distance :: linalg.distance
+normalize :: linalg.normalize
 trunc :: glsl.trunc
 ceil :: glsl.ceil
 vec_min :: linalg.min
 vec_max :: linalg.max
 lerp :: math.lerp
+atan2 :: math.atan2
+sign :: math.sign
+PI :: math.PI
+abs :: math.abs

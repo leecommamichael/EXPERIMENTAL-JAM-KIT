@@ -13,7 +13,8 @@ RIGHT4: Vec4 : {1, 0, 0, 0}
 UP4:    Vec4 : {0, 1, 0, 0}
 FRONT4: Vec4 : {0, 0,-1, 0}
 //
-DOWN:    Vec3 : {0, -1, 0} // rotation on this is Yaw   (j-hat, Y, Yaw)
+LEFT:    Vec3 : {-1, 0, 0}
+DOWN:    Vec3 : {0, -1, 0}
 
 Camera :: struct {
   position:  Vec3,

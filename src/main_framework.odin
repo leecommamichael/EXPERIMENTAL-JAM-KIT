@@ -207,12 +207,12 @@ framework_step :: proc (dt: f64) {
 
 next_z :: proc () -> f32 {
 	z := globals.z_cursor
-	globals.z_cursor += 0.1
+	globals.z_cursor += 1.0
 	return z
 }
 
 reset_z_cursor :: proc () {
-	globals.z_cursor = MIN_Z + 1
+	globals.z_cursor = MIN_Z + 1.0
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,8 +273,6 @@ find_collisions_involving_entity :: proc (
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
-	log.infof("%v, %v", box1.position, box2.position)
-	log.infof("%v, %v", collider_size(box1), collider_size(box2))
 	TR1 := box1.position + collider_size(box1)
 	BL1 := box1.position - collider_size(box1)
 	TR2 := box2.position + collider_size(box2)
