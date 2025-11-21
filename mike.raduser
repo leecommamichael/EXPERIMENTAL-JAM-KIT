@@ -4,7 +4,7 @@ recent_project: path: "game.radproj"
 recent_project: path: game
 window:
 {
-  size: 2798 1708
+  size: 3030 1527
   panels:
   {
     0.326665:
@@ -34,22 +34,18 @@ window:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
-        watch: selected expression: "query:breakpoints"
+        watch: expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
+          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
-          watch: "clip.seconds"
-          watch: "globals.assets"
-          watch: "cmd.attributes"
           normal: 0.218506 0.531494 0.250000
-          watch: "sugar.scale_factor"
-          watch: size_px
-          watch: size_px
-          watch: scale_factor
-          watch: viewport_size
+          watch: "entity.collider"
+          watch: "other.collider"
+          watch: "circle1.position"
         }
       }
       0.123260: text:
@@ -64,7 +60,6 @@ window:
       }
       0.274248:
       {
-        selected
         watch: selected expression: "query:call_stack"
         disasm:
         {
@@ -81,6 +76,7 @@ window:
     }
     0.441552:
     {
+      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
@@ -93,6 +89,7 @@ window:
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -100,10 +97,10 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 67
-        cursor_column: 37
-        mark_line: 67
-        mark_column: 37
+        cursor_line: 307
+        cursor_column: 2
+        mark_line: 307
+        mark_column: 2
       }
       text:
       {
@@ -131,17 +128,6 @@ window:
       }
       text:
       {
-        selected
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/asset_bundle.odin\".data"
-        auto: 1
-        query: input: ""
-        cursor_line: 188
-        cursor_column: 1
-        mark_line: 188
-        mark_column: 1
-      }
-      text:
-      {
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -149,51 +135,17 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 291
-        cursor_column: 32
-        mark_line: 291
-        mark_column: 32
-      }
-      text:
-      {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/input_windows.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
-        query: input: ""
-        cursor_line: 124
-        cursor_column: 22
-        mark_line: 124
-        mark_column: 22
-      }
-      text:
-      {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
-        query: input: ""
-        cursor_line: 92
+        cursor_line: 274
         cursor_column: 1
-        mark_line: 92
-        mark_column: 1
-      }
-      text:
-      {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/asset_bundle_desktop.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
-        query:
-        {
-          input: ""
-          cmd: search
-        }
-        cursor_line: 193
-        cursor_column: 1
-        mark_line: 193
+        mark_line: 274
         mark_column: 1
       }
     }
     0.231779
   }
   split_x
-  pos: 1601 190
-  monitor: "\\\\.\\DISPLAY2"
+  pos: 2325 280
+  monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0
   hint_code_text: 1

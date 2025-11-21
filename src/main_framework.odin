@@ -71,6 +71,9 @@ framework_init :: proc () {
 		cast(int) debug_colliders.id, {},{})
 	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.5)
 	globals.collider_visualization = debug_colliders
+	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.linear_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.linear_sampler)
 	game_init()
 	assert(globals.canvas_size_px != 0)
 	set_canvas_size(array_cast(globals.canvas_size_px, int))
@@ -204,7 +207,7 @@ framework_step :: proc (dt: f64) {
 
 next_z :: proc () -> f32 {
 	z := globals.z_cursor
-	globals.z_cursor += 1
+	globals.z_cursor += 0.1
 	return z
 }
 
@@ -270,6 +273,8 @@ find_collisions_involving_entity :: proc (
 }
 
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
+	log.infof("%v, %v", box1.position, box2.position)
+	log.infof("%v, %v", collider_size(box1), collider_size(box2))
 	TR1 := box1.position + collider_size(box1)
 	BL1 := box1.position - collider_size(box1)
 	TR2 := box2.position + collider_size(box2)
@@ -399,14 +404,6 @@ entity_contains_entity :: proc (entity, other: ^Entity) -> bool {
 			collision_detected = hit_test_aabb_circle(entity, other)
 		case .None:
 		}
-	// case .Rect:////////////////////
-	// 	switch other.collider.shape {
-	// 	case .Point:  // Rect:P
-	// 	case .AABB:   // Rect:AABB
-	// 	// case .Rect:   // Rect:Rect
-	// 	case .Circle: // Rect:Circle
-	// 	case .None: continue
-	// 	}
 	case .Circle:////////////////// entity is Circle
 		switch other.collider.shape {
 		case .Point:
@@ -494,10 +491,9 @@ free_entity :: proc (entity: ^Entity) {
 	unordered_remove(&globals.entities, index)
 }
 
-// the basis size is the content size of the drawing.
-// the scale controls both collider and visual.
+// Entity.scale controls both collider and mesh. A half-size.
 collider_size :: proc (entity: ^Entity) -> Vec3 {
-	return entity.scale * entity.collider.size
+	return entity.scale * entity.collider.size/2
 }
 
 // Prepare an object for rendering.

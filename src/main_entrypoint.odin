@@ -105,7 +105,9 @@ window_resized :: proc () {
 	// decide how the viewport will be stretched after sizing.
 	switch globals.canvas_stretching {
 	case .Smooth_Aspect:
-		globals.canvas_stretch = vec_min(viewport_size) / vec_max(scaled_canvas_px)
+		ratios := viewport_size/globals.canvas_size_px
+		globals.canvas_stretch = vec_min(ratios)
+		// globals.canvas_stretch = vec_min(viewport_size) / vec_max(scaled_canvas_px)
 	case .Fill_Window:
 		globals.canvas_stretch = 1.0 + unused_px / viewport_size
 	case .Integer_Aspect:

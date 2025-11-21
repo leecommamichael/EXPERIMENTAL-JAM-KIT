@@ -159,14 +159,14 @@ geom_write_quad :: proc (
   size: Vec3 = 1,
 ) {
   p := size * 0.5
-  TL := position + Vec3{ -p.x, p.y, p.z, }
-  TR := position + Vec3{  p.x, p.y, p.z, }
-  BL := position + Vec3{ -p.x,-p.y, p.z, }
-  BR := position + Vec3{  p.x,-p.y, p.z, }
-  vertices[0] = Ren_Vertex_Base {{ TL.x, TL.y, 0 }, {0,0}, {}}
-  vertices[1] = Ren_Vertex_Base {{ TR.x, TR.y, 0 }, {1,0}, {}}
-  vertices[2] = Ren_Vertex_Base {{ BL.x, BL.y, 0 }, {0,1}, {}}
-  vertices[3] = Ren_Vertex_Base {{ BR.x, BR.y, 0 }, {1,1}, {}}
+  TL := position + Vec3{ -p.x, p.y, 0, }
+  TR := position + Vec3{  p.x, p.y, 0, }
+  BL := position + Vec3{ -p.x,-p.y, 0, }
+  BR := position + Vec3{  p.x,-p.y, 0, }
+  vertices[0] = Ren_Vertex_Base {TL, {0,0}, {}}
+  vertices[1] = Ren_Vertex_Base {TR, {1,0}, {}}
+  vertices[2] = Ren_Vertex_Base {BL, {0,1}, {}}
+  vertices[3] = Ren_Vertex_Base {BR, {1,1}, {}}
   indices[0] = start_of_mesh + 0 /*TL*/
   indices[1] = start_of_mesh + 2 /*BL*/
   indices[2] = start_of_mesh + 1 /*TR*/
@@ -178,16 +178,18 @@ geom_write_quad :: proc (
 geom_append_quad :: proc (
   mesh: ^Geom_Mesh2,
   position: Vec3,
-  size: Vec3 = 1,
+  size: Vec3,
 ) -> runtime.Allocator_Error {
   num_verts := len(mesh.vertices)
-  num_indices := len(mesh.vertices)
+  num_indices := len(mesh.indices)
   resize(&mesh.vertices, num_verts+4) or_return
   resize(&mesh.indices, num_indices+6) or_return
   geom_write_quad(
     mesh.vertices[num_verts:][:4],
     mesh.indices[num_indices:][:6],
-    u32(num_verts))
+    u32(num_verts),
+    position,
+    size)
   return nil
 }
 
@@ -282,7 +284,7 @@ geom_append_circle :: proc (
 ) -> runtime.Allocator_Error {
   num_verts := len(mesh.vertices)
   resize(&mesh.vertices, num_verts+sides+1) or_return
-  geom_write_circle(mesh.vertices[num_verts:], sides, position, radius)
+  geom_write_circle(mesh.vertices[num_verts:][:sides+1], sides, position, radius)
 
   geom_make_circle_indices(&mesh.indices, u32(num_verts), u32(sides))
   return nil

@@ -276,6 +276,7 @@ resize_render_target :: proc (
 make_or_resize_render_target :: proc (rt: ^Render_Target, size_px: [2]int, _loc := #caller_location) {
 	rt.size_px = size_px
 	gl.glActiveTexture(gl.TEXTURE0)
+
 	if rt.color == 0 {
 		_, rt.color = gl.CreateTexture()
 assert(rt.color != 0)
@@ -330,9 +331,6 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 
 	gl.glActiveTexture(gl.TEXTURE0 + cast(u32) Texture_Unit.Framebuffer_Texture)
 	gl.BindTexture(.TEXTURE_2D, rt.color)
-	gl.BindSampler(1, globals.ren.nearest_sampler)
-	gl.BindSampler(2, globals.ren.nearest_sampler)
-	gl.BindSampler(3, globals.ren.nearest_sampler)
 assert(gl.Error.NO_ERROR == gl.validate(_loc))
 	gl.glActiveTexture(gl.TEXTURE0)
 }

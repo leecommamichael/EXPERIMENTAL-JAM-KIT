@@ -148,7 +148,13 @@ Collider :: struct {
 	mask:  bit_set[Collision_Layer; u32], // what it may contact.
 }
 
-Collision_Layer :: enum { Default }
+Collision_Layer :: enum {
+	Default,
+	Terrain,
+	Ball,
+	Board,
+	Wheel,
+}
 
 Collision_Shape :: enum {
 	None,

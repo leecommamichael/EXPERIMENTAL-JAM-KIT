@@ -1,12 +1,12 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/main_framework.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
 recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/entry_windows.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/exe_common.inl"
 recent_file: path: "src/asset_bundle_desktop.odin"
-recent_file: path: "src/main_framework.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/nord_gl/impl_desktop.odin"
@@ -67,4 +67,14 @@ breakpoint:
 {
   source_location: "src/asset_bundle_desktop.odin:193:1"
   hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main_framework.odin:161:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main_framework.odin:413:1"
+  hit_count: 1
 }
