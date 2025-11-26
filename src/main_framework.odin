@@ -504,10 +504,10 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 		assert(false) // freed objects shouldn't make it here.
 	}
 	animate_physics :: proc (entity: ^Entity) {
-		entity.position += entity.velocity
+		entity.velocity += f32(globals.dt) * entity.acceleration
+		entity.position += f32(globals.dt) * entity.velocity
+		entity.angular_velocity += entity.angular_acceleration
 		entity.rotation += entity.angular_velocity
-		entity.velocity += entity.acceleration
-		entity.angular_velocity += entity.acceleration
 	}
 	animate_physics(entity)
 

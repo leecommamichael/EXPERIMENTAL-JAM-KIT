@@ -7,7 +7,8 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
-gravity: Vec3 = DOWN * 9.8
+pixels_per_meter: f32 = 880.0 // Such that 50mm skateboard wheel is 44px.
+gravity: Vec3 = DOWN * 9.8 * pixels_per_meter
 cursor: ^Entity
 
 game_init :: proc () {
@@ -20,13 +21,19 @@ game_init :: proc () {
 	cursor.basis.position = 0
 	cursor.basis.scale = 44
 	cursor.flags += {.Collider_Enabled,}
-	cursor.collider.shape = .Circle
+	cursor.collider.shape = .AABB
+	cursor.collider.layer += {.Terrain}
 	cursor.collider.size = 44
 	cursor.scale = 1
 	cursor.position.z = next_z()
 }
 
 game_step :: proc () {
+	// 	log.infof("dt %f", globals.dt)
+	// if globals.dt > 1.0/60 {
+	// 	@static miss_count := 0
+	// 	miss_count += 1
+	// }
 	if sugar.on_key_press(.Space) {
 		globals.collider_visualization.flags ~= {.Hidden}
 	}
@@ -49,7 +56,6 @@ game_step :: proc () {
 		ball.collider.size = ball.basis.scale
 		ball.collider.shape = .Circle
 		ball.flags += {.Collider_Enabled,}
-		ball.velocity = gravity
 	}
 
 	ball_step(ball)
@@ -63,10 +69,7 @@ Ball_State :: enum {
 ball_state: Ball_State = .Air
 ball_step :: proc (ball: ^Entity) {
 	// Do ballistic motion with terrain.
-	ball.velocity += f32(globals.dt) * gravity
-
-	// ball_dir := normalize(ball.velocity)
-	// ball_vel := length(ball.velocity)
+	ball.acceleration = gravity
 	new_velocity: Vec3 = ball.velocity
 	for collision in entity_collisions(ball) {
 		if .Terrain in collision.other.collider.layer {
@@ -91,11 +94,11 @@ ball_step :: proc (ball: ^Entity) {
 			case 2: snapped_vector = LEFT;
 			case 3: snapped_vector = DOWN;
 			}
+			// Deflect the object using the integrated vector.
+			// There is a force-threshold which determines roll vs bounce.
+			ball.acceleration = gravity
 			new_velocity += 1.6* reflect(ball.velocity, snapped_vector)
 		}
 		ball.velocity = new_velocity
 	}
-	// Deflect the object using the integrated vector.
-	// There is a force-threshold which determines roll vs bounce.
-
 }
