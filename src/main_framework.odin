@@ -429,7 +429,7 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.scale = 1
 	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
-	entity.color.rgb = 0.9
+	entity.color = 1
 	entity.time_scale = 1
 	entity.collider = {}
 	entity.collider.layer = { .Default }

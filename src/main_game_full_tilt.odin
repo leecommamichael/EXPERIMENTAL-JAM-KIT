@@ -21,7 +21,7 @@ game_init :: proc () {
 	cursor.basis.position = 0
 	cursor.basis.scale = 44
 	cursor.flags += {.Collider_Enabled,}
-	cursor.collider.shape = .AABB
+	cursor.collider.shape = .Circle
 	cursor.collider.layer += {.Terrain}
 	cursor.collider.size = 44
 	cursor.scale = 1
@@ -30,7 +30,7 @@ game_init :: proc () {
 
 game_step :: proc () {
 	if sugar.on_key_press(.Space) {
-		globals.collider_visualization.flags ~= {.Hidden}
+		globals.draw_colliders = !globals.draw_colliders
 	}
 	cursor.position.xy = globals.mouse_position
 
@@ -56,6 +56,12 @@ game_step :: proc () {
 	}
 
 	ball_step(ball)
+
+	if they_touch(cursor, floor) {
+		cursor.color = {1,0,0, 0.5}
+	} else {
+		cursor.color = {0.0, 0.0, 0.0, 0.0}
+	}
 }
 
 Ball_State :: enum {
@@ -69,19 +75,28 @@ ball_step :: proc (ball: ^Entity) {
 	ball.acceleration = gravity
 	new_velocity: Vec3 = ball.velocity
 	for collision in entity_collisions(ball) {
-		if .Terrain in collision.other.collider.layer {
-			terrain := collision.other
-			// Integrate all collisions into a resulting vector.
-			if terrain.collider.shape != .AABB { log.infof("NOT YET SUPPORTED"); continue }
-			terrain_to_ball := ball.position - terrain.position
-			spherical_normal := normalize(terrain_to_ball)
-			snapped_vector := nearest_direction_xy(spherical_normal)
-			// Deflect the object using the integrated vector.
-			// There is a force-threshold which determines roll vs bounce.
-			ball.acceleration = gravity
-			BOUNCINESS :: 2.0
-			new_velocity += BOUNCINESS * reflect(ball.velocity, snapped_vector)
+		if .Terrain not_in collision.other.collider.layer { continue }
+
+		terrain := collision.other
+		terrain_to_ball := ball.position - terrain.position
+		normal := normalize(terrain_to_ball)
+
+		// Integrate all collisions into a resulting vector.
+		switch terrain.collider.shape {
+		case .None: continue
+		case .Point: continue
+		case .AABB:
+			normal = nearest_direction_xy(normal)
+		case .Circle:
 		}
+		// Deflect the object using the integrated vector.
+		// There is a force-threshold which determines roll vs bounce.
+		ENERGY_LOSS :: 0.15
+		reflected_velocity := (1 - ENERGY_LOSS) * reflect(ball.velocity, normal)
+		new_velocity = reflected_velocity
+		// log.infof("reflection normal %v", normal)
 	}
+	// if it's touching floor, and the resulting vector is weaker than gravity, follow surface.
+	// neutralize that force, but stay open to others.
 	ball.velocity = new_velocity
 }

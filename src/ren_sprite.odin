@@ -258,6 +258,9 @@ sprite_fragment_shader_source :: fragment_preamble +
 
 	void main() {
 		vec4 tex_color = texture(texture_atlas, uv);
-		outColor = tex_color;
+		vec3 modulated = mix(tex_color.rgb, io_color.rgb, io_color.a);
+		outColor.rgb = mix(tex_color.rgb, modulated, tex_color.a);
+		outColor.a = float(tex_color.a);
+		// outColor = tex_color;
 	}
 `
