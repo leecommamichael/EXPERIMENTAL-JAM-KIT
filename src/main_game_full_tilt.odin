@@ -29,18 +29,14 @@ game_init :: proc () {
 }
 
 game_step :: proc () {
-	// 	log.infof("dt %f", globals.dt)
-	// if globals.dt > 1.0/60 {
-	// 	@static miss_count := 0
-	// 	miss_count += 1
-	// }
 	if sugar.on_key_press(.Space) {
 		globals.collider_visualization.flags ~= {.Hidden}
 	}
 	cursor.position.xy = globals.mouse_position
 
 	floor, new_floor := rect(); if new_floor {
-		floor.color = {0.1, 0.1, 0.1, 0.5}
+		floor.name = "Floor"
+		floor.color = {0.1, 0.1, 0.1, 0.3}
 		floor.basis.scale = 100
 		floor.position.xy = 100
 		floor.collider.size = floor.basis.scale
@@ -50,7 +46,8 @@ game_step :: proc () {
 	}
 
 	ball, new_ball := circle(); if new_ball {
-		ball.color = {0.3, 0.3, 0.3, 0.5}
+		ball.name = "Ball"
+		ball.color = {0.3, 0.3, 0.3, 0.3}
 		ball.basis.scale = 44
 		ball.position.xy = {100, 400}
 		ball.collider.size = ball.basis.scale
@@ -76,29 +73,15 @@ ball_step :: proc (ball: ^Entity) {
 			terrain := collision.other
 			// Integrate all collisions into a resulting vector.
 			if terrain.collider.shape != .AABB { log.infof("NOT YET SUPPORTED"); continue }
-			// 1. Find the normal.
-			spherical_normal := normalize(ball.position - terrain.position)
-			// 2. Inspect the xy aspects and snap them to Up,Down,Left,Right
-			theta_xy := atan2(spherical_normal.y, spherical_normal.x) // -PI to PI
-			to_right := abs( 0    - theta_xy)
-			to_up    := abs( PI/2 - theta_xy)
-			to_left  := abs( PI   - theta_xy)
-			to_down  := abs(-PI/2 - theta_xy)
-			directions := [4]f32{to_right, to_up, to_left, to_down}
-			nearest_direction :f32= vec_min(directions)
-			direction_index, found := find(directions[:], nearest_direction); assert(found)
-			snapped_vector: Vec3 // NOTICE: truncation to 2D from 3D
-			switch direction_index {
-			case 0: snapped_vector = RIGHT;
-			case 1: snapped_vector = UP;
-			case 2: snapped_vector = LEFT;
-			case 3: snapped_vector = DOWN;
-			}
+			terrain_to_ball := ball.position - terrain.position
+			spherical_normal := normalize(terrain_to_ball)
+			snapped_vector := nearest_direction_xy(spherical_normal)
 			// Deflect the object using the integrated vector.
 			// There is a force-threshold which determines roll vs bounce.
 			ball.acceleration = gravity
-			new_velocity += 1.6* reflect(ball.velocity, snapped_vector)
+			BOUNCINESS :: 2.0
+			new_velocity += BOUNCINESS * reflect(ball.velocity, snapped_vector)
 		}
-		ball.velocity = new_velocity
 	}
+	ball.velocity = new_velocity
 }

@@ -64,8 +64,8 @@ framework_init :: proc () {
 	ren_init(globals.ren)
 	log.info("---------------------------------------- framework initialized.")
 	debug_colliders := make_entity()
-	debug_colliders.position.z = 1
-	debug_colliders.flags += {.Is_3D}
+	debug_colliders.name = "Collider Visualization"
+	debug_colliders.flags += {.Hidden}
 	debug_colliders.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer,
 		cast(int) debug_colliders.id, {},{})
@@ -117,6 +117,7 @@ framework_step :: proc (dt: f64) {
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
 	rect.flags += {.Is_UI}
+	rect.name = "Canvas Rect"
 ////////////////////////////////////////////////////////////////////////////////
 	reset_z_cursor()
 	build_camera()

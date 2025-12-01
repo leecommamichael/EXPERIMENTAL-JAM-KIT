@@ -5,6 +5,7 @@ import "core:math/linalg"
 import "core:math/linalg/glsl"
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+// Types and their idioms.
 Vec2 :: [2]f32
 Vec3 :: [3]f32
 Vec4 :: [4]f32
@@ -111,6 +112,7 @@ is_real_array :: proc "contextless" (x: $A/[$N]$T) -> bool where is_float(T) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+// Operations.
 reflect :: linalg.reflect // (incident, normal) -> reflection
 length :: linalg.length
 distance :: linalg.distance
@@ -124,3 +126,23 @@ atan2 :: math.atan2
 sign :: math.sign
 PI :: math.PI
 abs :: math.abs
+
+// Snaps input to nearest of: Left, Right, Up, Down
+nearest_direction_xy :: proc(vec: Vec3) -> Vec3 {
+	theta_xy := atan2(vec.y, vec.x) // -PI to PI
+	to_right := abs( 0    - theta_xy)
+	to_up    := abs( PI/2 - theta_xy)
+	to_left  := abs( PI   - theta_xy)
+	to_down  := abs(-PI/2 - theta_xy)
+	directions := [4]f32{to_right, to_up, to_left, to_down}
+	nearest_direction :f32= vec_min(directions)
+	direction_index, found := find(directions[:], nearest_direction); assert(found)
+	snapped_vector: Vec3 // NOTICE: truncation to 2D from 3D
+	switch direction_index {
+	case 0: snapped_vector = RIGHT;
+	case 1: snapped_vector = UP;
+	case 2: snapped_vector = LEFT;
+	case 3: snapped_vector = DOWN;
+	}
+	return snapped_vector
+}

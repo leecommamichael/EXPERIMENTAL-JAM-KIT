@@ -52,9 +52,9 @@ ren_make :: proc () -> ^Ren {
 ren_init :: proc (ren: ^Ren) {
 	set_canvas_size([2]int{2,2}) // arbitrary non-zero number creates the canvas.
 	gl.FrontFace(.CCW)
-	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
+	gl.ClearColor(0.0, 0.0, 0.0, 0.0)
 	// gl.glClearDepth(0) // Makes black screen.
-	// gl.DepthRangef(0,1) // Do
+	// gl.DepthRangef(0,1)
 	gl.glDepthMask(true)
 	gl.Enable(.DEPTH_TEST)
 	gl.glDepthFunc(gl.LESS) // TODO: Why need LEQUAL? Depth buffer must be wrong.
@@ -166,10 +166,9 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 	}
 }
 
-ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
-	if .Hidden in entity.flags { return }
-	if .Allocated not_in entity.flags { return }
 
+ren_force_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
+	gl.glDepthMask(entity.color.a == 1)
 	ren_bind_or_reuse_draw_command(entity)
 	gl.DrawElements(
 		ren_mode_to_primitive(entity.draw_command.mode),
@@ -177,6 +176,12 @@ ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 		type   = .UNSIGNED_INT,
 		indices = cast(uintptr) 0,
 	)
+}
+
+ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
+	if .Hidden in entity.flags { return }
+	if .Allocated not_in entity.flags { return }
+	ren_force_draw_entity(ren, entity)
 }
 
 ren_clear :: proc () {
@@ -208,15 +213,6 @@ ren_draw :: proc (ren: ^Ren) {
 		ren_draw_entity(ren, entity)
 	}
 
-	globals.uniforms.projection = globals.ui_projection
-	globals.uniforms.view = globals.ui_view
-	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
-	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-	for entity in globals.entities_2D {
-		if .Is_UI not_in entity.flags { continue }
-		ren_draw_entity(ren, entity)
-	}
-
 	if globals.draw_colliders {
 		ren_draw_colliders :: proc (allocator: runtime.Allocator) {
 			mesh := Geom_Mesh2 {
@@ -237,15 +233,23 @@ ren_draw :: proc (ren: ^Ren) {
 				}
 			}
 			ent := globals.collider_visualization
-			ent.flags -= {.Is_3D}
 			ent.draw_command = ren_make_basic_draw_cmd(
 				globals.instance_buffer,
 				cast(int) ent.id,
 				mesh.vertices[:],
 				mesh.indices[:])
-			ren_draw_entity(globals.ren, ent)
+			ren_force_draw_entity(globals.ren, ent)
 		}
 		ren_draw_colliders(context.temp_allocator)
+	}
+
+	globals.uniforms.projection = globals.ui_projection
+	globals.uniforms.view = globals.ui_view
+	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
+	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
+	for entity in globals.entities_2D {
+		if .Is_UI not_in entity.flags { continue }
+		ren_draw_entity(ren, entity)
 	}
 }
 
@@ -342,20 +346,20 @@ assert(gl.Error.NO_ERROR == gl.validate(_loc))
 // 1. Store the attribute bindings so it's easier to overwrite them.
 // 2. That doesn't help me diff. Just wanna set attrs 4,5,6
 // What's the ideal API?
-set_basic_draw_command_instance :: proc (cmd: ^Draw_Command, entity: Entity) {
-	entity_offset := uintptr(size_of(Any_Instance) * cast(int) entity.id)
-	cmd.attributes[3].offset = entity_offset + offset_of(Any_Instance, model_transform)
-	cmd.attributes[4].offset = entity_offset + offset_of(Any_Instance, uv_transform)
-	cmd.attributes[5].offset = entity_offset + offset_of(Any_Instance, color)
-	ensure(!(cmd.attributes[1].location == 0 && cmd.attributes[1].location == 0))
-	gl.BindVertexArray(cmd.VAO)
-	set_VAO_attribute(cmd.VAO, cmd.attributes[3])
-	set_VAO_attribute(cmd.VAO, cmd.attributes[4])
-	set_VAO_attribute(cmd.VAO, cmd.attributes[5])
-	gl.BindBuffer(.ARRAY_BUFFER, 0)
-	gl.BindVertexArray(0)
-	// set_VAO_attributes(cmd.VAO, cmd.attributes)
-}
+// set_basic_draw_command_instance :: proc (cmd: ^Draw_Command, entity: Entity) {
+// 	entity_offset := uintptr(size_of(Any_Instance) * cast(int) entity.id)
+// 	cmd.attributes[3].offset = entity_offset + offset_of(Any_Instance, model_transform)
+// 	cmd.attributes[4].offset = entity_offset + offset_of(Any_Instance, uv_transform)
+// 	cmd.attributes[5].offset = entity_offset + offset_of(Any_Instance, color)
+// 	ensure(!(cmd.attributes[1].location == 0 && cmd.attributes[1].location == 0))
+// 	gl.BindVertexArray(cmd.VAO)
+// 	set_VAO_attribute(cmd.VAO, cmd.attributes[3])
+// 	set_VAO_attribute(cmd.VAO, cmd.attributes[4])
+// 	set_VAO_attribute(cmd.VAO, cmd.attributes[5])
+// 	gl.BindBuffer(.ARRAY_BUFFER, 0)
+// 	gl.BindVertexArray(0)
+// 	// set_VAO_attributes(cmd.VAO, cmd.attributes)
+// }
 
 init_cmd_with_basic_vertex_attributes :: proc (
 	cmd: ^Draw_Command,
@@ -894,13 +898,6 @@ text_fragment_shader_source :: fragment_preamble + `
 	in vec2 uv;
 
 	out vec4 outColor;
-
-	vec4 pma_blend(vec4 new, vec4 old) {
-		vec4 result;
-		result.rgb = new.rgb + old.rgb * (1.0-new.a);
-		result.a   = new.a   + old.a   * (1.0-new.a);
-		return result;
-	}
 
 	void main() {
 		vec4 glyph_alpha = texture(font_atlas, uv);

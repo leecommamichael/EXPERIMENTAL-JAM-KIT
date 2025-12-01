@@ -100,6 +100,7 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
+	name:           string,
 	immediate_hash: u64,
 	id:             Entity_ID,  // index in storage.
 	flags:          bit_set[Entity_Flag; u64],
