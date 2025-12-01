@@ -168,7 +168,7 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 
 
 ren_force_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
-	gl.glDepthMask(entity.color.a == 1)
+	gl.glDepthMask(.Is_3D in entity.flags)
 	ren_bind_or_reuse_draw_command(entity)
 	gl.DrawElements(
 		ren_mode_to_primitive(entity.draw_command.mode),
