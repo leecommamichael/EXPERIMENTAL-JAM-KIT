@@ -273,25 +273,31 @@ find_collisions_involving_entity :: proc (
 	return result[:]
 }
 
+point_in_aabb :: proc (point: Vec3, aabb: ^Entity) -> bool {
+	half_size := collider_size(aabb)
+	TR := aabb.position + half_size
+	BL := aabb.position - half_size
+	return BL.x <= point.x && point.x <= TR.x \
+	    && BL.y <= point.y && point.y <= TR.y 
+}
+
 hit_test_aabb_aabb :: proc (box1, box2: ^Entity) -> bool {
-	TR1 := box1.position + collider_size(box1)
-	BL1 := box1.position - collider_size(box1)
-	TR2 := box2.position + collider_size(box2)
-	BL2 := box2.position - collider_size(box2)
-	return \
-	   (TR2.x <= TR1.x && BL1.x <= TR2.x  \
-	&&  TR2.y <= TR1.y && BL1.y <= TR2.y  \
-	&&  TR2.z <= TR1.z && BL1.z <= TR2.z) \
-	|| (BL2.x <= TR1.x && BL1.x <= BL2.x  \
-	&&  BL2.y <= TR1.y && BL1.y <= BL2.y  \
-	&&  BL2.z <= TR1.z && BL1.z <= BL2.z)
+	box1_half_size := collider_size(box1)
+	TR := box1.position + collider_size(box1)
+	if point_in_aabb(TR, box2) do return true
+	BL := box1.position - collider_size(box1)
+	if point_in_aabb(BL, box2) do return true
+	TL := TR; TL.x = BL.x
+	if point_in_aabb(TL, box2) do return true
+	BR := BL; BR.x = TR.x
+	return point_in_aabb(BR, box2)
 }
 hit_test_point_point   :: proc (p1, p2: ^Entity) -> bool {
 	return is_nearly(p1.position, p2.position)
 }
 hit_test_aabb_circle   :: proc (box, circle: ^Entity) -> bool {
-	// There's an equivalence for the case of AABBs.
-	return hit_test_aabb_aabb(box, circle)
+	// This isn't right, but it's OK for now.
+	return hit_test_aabb_aabb(circle, box) // for some reason can't swap args.
 }
 hit_test_aabb_point    :: proc (box,p: ^Entity) -> bool {
 	TR := box.position + collider_size(box)
