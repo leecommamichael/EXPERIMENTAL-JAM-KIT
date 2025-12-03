@@ -7,8 +7,13 @@ import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
 
-pixels_per_meter: f32 = 880.0 // Such that 50mm skateboard wheel is 44px.
-gravity: Vec3 = DOWN * 9.8 * pixels_per_meter
+MASS :: 6.0
+pixels_per_meter: f32 = MASS * 880.0 // Such that 50mm skateboard wheel is 44px.
+pixels_per_decimeter: f32 = pixels_per_meter / 10
+pixels_per_centimeter: f32 = pixels_per_meter / 100
+pixels_per_millimeter: f32 = pixels_per_meter / 1000
+gravity_acceleration: f32 = 9.8 * pixels_per_meter
+gravity: Vec3 = DOWN * gravity_acceleration
 cursor: ^Entity
 
 game_init :: proc () {
@@ -37,12 +42,22 @@ game_step :: proc () {
 	floor, new_floor := rect(); if new_floor {
 		floor.name = "Floor"
 		floor.color = {0.1, 0.1, 0.1, 0.3}
-		floor.basis.scale = 100
-		floor.position.xy = 100
+		floor.basis.scale = 300
+		floor.position.xy = 160
 		floor.collider.size = floor.basis.scale
 		floor.collider.shape = .AABB
 		floor.flags += {.Collider_Enabled,}
 		floor.collider.layer += {.Terrain}
+	}
+	wall, new_wall := rect(); if new_wall {
+		wall.name = "Wall"
+		wall.color = {0.1, 0.1, 0.1, 0.3}
+		wall.basis.scale = 300
+		wall.position.xy = 300+160
+		wall.collider.size = floor.basis.scale
+		wall.collider.shape = .AABB
+		wall.flags += {.Collider_Enabled,}
+		wall.collider.layer += {.Terrain}
 	}
 
 	ball, new_ball := circle(); if new_ball {
@@ -53,6 +68,8 @@ game_step :: proc () {
 		ball.collider.size = ball.basis.scale
 		ball.collider.shape = .Circle
 		ball.flags += {.Collider_Enabled,}
+
+		ball.velocity.x += 2000
 	}
 
 	ball_step(ball)
@@ -91,10 +108,27 @@ ball_step :: proc (ball: ^Entity) {
 		}
 		// Deflect the object using the integrated vector.
 		// There is a force-threshold which determines roll vs bounce.
-		ENERGY_LOSS :: 0.15
-		reflected_velocity := (1 - ENERGY_LOSS) * reflect(ball.velocity, normal)
-		new_velocity = reflected_velocity
-		// log.infof("reflection normal %v", normal)
+		BOUNCE_LOSS :: 1 - 0.25
+		ROLL_LOSS :: 1 - 0.02
+		v_parallel := dot(ball.velocity, normal) * normal // force into surface
+		v_perp := ball.velocity - v_parallel              // force along surface
+		// If the force into the surface can't generate a bounce, roll.
+		bounce_minimum_force := f32(globals.dt) * pixels_per_meter/MASS
+		bounce_power := abs(length(v_parallel))
+		log.infof("pow: %v thresh: %v", bounce_power, bounce_minimum_force)
+		if bounce_power <= bounce_minimum_force {
+			// ROLL
+			ball.acceleration = 0
+			ball.velocity = ROLL_LOSS * v_perp
+			log.infof("ROLL vperp: %v", v_perp)
+		} else {
+			// BOUNCE
+			reflected_velocity := BOUNCE_LOSS * reflect(ball.velocity, normal)
+			log.infof("BOUNCE r: %v\normal: %v", reflected_velocity, normal)
+			new_velocity = reflected_velocity
+			// log.infof("v|| %v. vT: %v\n", v_parallel, v_perp)
+			// log.infof("reflected %v", reflected_velocity)
+		}
 	}
 	// if it's touching floor, and the resulting vector is weaker than gravity, follow surface.
 	// neutralize that force, but stay open to others.

@@ -117,6 +117,7 @@ reflect :: linalg.reflect // (incident, normal) -> reflection
 length :: linalg.length
 distance :: linalg.distance
 normalize :: linalg.normalize
+dot :: linalg.dot
 trunc :: glsl.trunc
 ceil :: glsl.ceil
 vec_min :: linalg.min
@@ -130,10 +131,10 @@ abs :: math.abs
 // Snaps input to nearest of: Left, Right, Up, Down
 nearest_direction_xy :: proc(vec: Vec3) -> Vec3 {
 	theta_xy := atan2(vec.y, vec.x) // -PI to PI
-	to_right := abs( 0    - theta_xy)
-	to_up    := abs( PI/2 - theta_xy)
-	to_left  := abs( PI   - theta_xy)
-	to_down  := abs(-PI/2 - theta_xy)
+	to_right := abs(  0    - theta_xy)
+	to_up    := abs(  PI/2 - theta_xy)
+	to_left  := abs(  PI   - theta_xy)
+	to_down  := abs(3*PI/2 - theta_xy)
 	directions := [4]f32{to_right, to_up, to_left, to_down}
 	nearest_direction :f32= vec_min(directions)
 	direction_index, found := find(directions[:], nearest_direction); assert(found)

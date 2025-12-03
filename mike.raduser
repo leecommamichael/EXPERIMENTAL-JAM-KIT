@@ -1,22 +1,22 @@
 // raddbg 0.9.20 user file
 
 recent_project: path: "game.radproj"
+recent_project: path: "../dukengine/proj"
 recent_project: path: game
 window:
 {
-  size: 3030 1527
+  size: 2688 1629
   panels:
   {
-    0.326665:
+    0.427691:
     {
-      0.319249:
+      0.360632:
       {
-        watch: expression: "query:types"
+        watch: selected expression: "query:types"
         watch:
         {
-          selected
           expression: "query:locals"
-          normal: 0.350000 0.410432 0.239568
+          normal: 0.317437 0.442995 0.239568
           sub_type: 0.350000 0.200317 0.177406 0.272277
         }
         watch: expression: "query:type_views"
@@ -30,15 +30,14 @@ window:
           }
         }
       }
-      0.283243:
+      0.241860:
       {
         watch: expression: "query:threads"
-        watch: expression: "query:targets"
+        watch: selected expression: "query:targets"
         watch: expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
-          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
@@ -46,6 +45,8 @@ window:
           watch: "entity.collider"
           watch: "other.collider"
           watch: "circle1.position"
+          watch: "g.swapchain"
+          watch: g
         }
       }
       0.123260: text:
@@ -74,7 +75,7 @@ window:
         }
       }
     }
-    0.441552:
+    0.572304:
     {
       selected
       text:
@@ -141,20 +142,63 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game_full_tilt.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 95
+        cursor_line: 106
         cursor_column: 1
-        mark_line: 95
+        mark_line: 106
         mark_column: 1
       }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/dukengine/build.odin\".data"
+        project: "C:/Users/thatl/usr/Repositories/dukengine/proj"
+        query: input: ""
+        cursor_line: 64
+        cursor_column: 45
+        mark_line: 64
+        mark_column: 45
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/math.odin\".data"
+        auto: 1
+        query: input: ""
+        cursor_line: 136
+        cursor_column: 19
+        mark_line: 136
+        mark_column: 19
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/dukengine/src/main.odin\".data"
+        project: "C:/Users/thatl/usr/Repositories/dukengine/proj"
+        query: input: ""
+        cursor_line: 56
+        cursor_column: 1
+        mark_line: 56
+        mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/dukengine/src/initialistation.odin\".data"
+        project: "C:/Users/thatl/usr/Repositories/dukengine/proj"
+        query:
+        {
+          input: flush
+          cmd: search
+        }
+        cursor_line: 808
+        cursor_column: 9
+        mark_line: 808
+        mark_column: 9
+      }
     }
-    0.231779
   }
   split_x
-  pos: 1485 280
+  pos: 2496 229
   monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0
@@ -280,5 +324,6 @@ keybindings:
   { open_palette p ctrl shift }
   { log_marker m ctrl shift alt }
   { toggle_dev_menu d ctrl shift alt }
+  { add_target o ctrl }
 }
-current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src"
+current_path: "C:/Users/thatl/usr/Repositories/dukengine/src"

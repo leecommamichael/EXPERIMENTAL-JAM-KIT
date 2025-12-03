@@ -1,6 +1,8 @@
 // raddbg 0.9.20 project file
 
+recent_file: path: "src/math.odin"
 recent_file: path: "src/main_game_full_tilt.odin"
+recent_file: path: "../dukengine/dukengine.exe"
 recent_file: path: "src/main_framework.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
@@ -66,16 +68,6 @@ type_view:
 }
 breakpoint:
 {
-  source_location: "src/asset_bundle_desktop.odin:193:1"
-  hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/main_game_full_tilt.odin:87:1"
-  hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/main_game_full_tilt.odin:71:1"
-  hit_count: 1
+  source_location: "src/main_game_full_tilt.odin:106:1"
+  hit_count: 2
 }
