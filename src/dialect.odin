@@ -21,6 +21,7 @@ is_subtype :: intrinsics.type_is_subtype_of
 is_array   :: intrinsics.type_is_array
 is_float   :: intrinsics.type_is_float
 type_of_pointee :: intrinsics.type_elem_type
+elem_type       :: intrinsics.type_elem_type
 Empty_Struct :: struct {}
 
 ////////////////////////////////////////////////////////////////////////////////

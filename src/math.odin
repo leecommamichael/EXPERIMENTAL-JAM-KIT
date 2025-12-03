@@ -118,6 +118,7 @@ length :: linalg.length
 distance :: linalg.distance
 normalize :: linalg.normalize
 dot :: linalg.dot
+abs :: linalg.abs
 trunc :: glsl.trunc
 ceil :: glsl.ceil
 vec_min :: linalg.min
@@ -126,7 +127,19 @@ lerp :: math.lerp
 atan2 :: math.atan2
 sign :: math.sign
 PI :: math.PI
-abs :: math.abs
+
+// Selects the quantity with the smaller absolute value,
+// but returns the quantity with sign included.
+@(require_results)
+min_by_abs :: proc "contextless" (a: ..f32) -> (out: f32) {
+	out = max(f32)
+	for elem in a {
+		if abs(elem) < abs(out) {
+			out = elem
+		}
+	}
+	return
+}
 
 // Snaps input to nearest of: Left, Right, Up, Down
 nearest_direction_xy :: proc(vec: Vec3) -> Vec3 {

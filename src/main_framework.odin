@@ -81,6 +81,7 @@ framework_init :: proc () {
 
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
+	dt := 0.0008
 	ren_clear()
 	
 	// position of mouse in design coordinates world.
@@ -204,6 +205,7 @@ framework_step :: proc (dt: f64) {
   })
 	ren_draw(globals.ren)
 	sugar.swap_buffers()
+	gl.glFinish()
 }
 
 next_z :: proc () -> f32 {
@@ -320,6 +322,7 @@ hit_test_rect_rect     :: proc (r1,r2: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_aabb     :: proc (r,bb: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_circle   :: proc (r,c: ^Entity) -> bool { panic("TODO") }
 hit_test_rect_point    :: proc (r,p: ^Entity) -> bool { panic("TODO") }
+
 // vector needs position and direction.
 hit_test_ray_aabb :: proc (s,v: Vec3, aabb: ^Entity) -> bool {
 	s := s - aabb.position
