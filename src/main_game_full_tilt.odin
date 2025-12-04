@@ -124,27 +124,22 @@ ball_step :: proc (ball: ^Entity) {
 		// If the force into the surface can't generate a bounce, roll.
 		// If it can't overcome gravity to bounce even a centimeter, we don't care.
 		bounce_minimum_force := (f32(globals.dt) * gravity_acceleration) + f32(globals.dt) * pixels_per_centimeter
-		v_parallel_force := length(v_parallel)
 		collision_position := nearest_point_along_aabb_to_circle(terrain, ball)
 		ball.position = collision_position + normal * ball.collider.size.x/2
+		v_parallel_force := length(v_parallel)
+		
 		if v_parallel_force <= bounce_minimum_force {
 			// ROLL
+			log.infof("ROLL v_perp: %v", length(v_perp))
 			v_perp_inverse := -1 * normalize(v_perp) // vector for deceleration
 			deceleration := v_perp_inverse * ROLL_DECELERATION * f32(globals.dt)
 			ball.velocity += -deceleration + v_perp * f32(globals.dt)
-			if is_nearly(length(v_perp), 0.1) {
-
-			} else {
-				log.infof("ROLL vperp: %v mag: %v", v_perp, length(v_perp))
-			}
+			
 		} else {
-			log.infof("len(v||): %v thresh: %v", v_parallel_force, bounce_minimum_force)
 			// BOUNCE.
+			log.infof("BOUNCE v||: %v OVER THRESH :%v", v_parallel_force, bounce_minimum_force)
 			reflected_velocity := BOUNCE_LOSS * reflect(ball.velocity, normal)
-			// log.infof("BOUNCE r: %v\normal: %v", reflected_velocity, normal)
 			ball.velocity = reflected_velocity
-			// log.infof("v|| %v. vT: %v\n", v_parallel, v_perp)
-			// log.infof("reflected %v", reflected_velocity)
 		}
 	}
 	// if it's touching floor, and the resulting vector is weaker than gravity, follow surface.
