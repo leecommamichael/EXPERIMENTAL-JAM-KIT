@@ -53,10 +53,21 @@ game_step :: proc () {
 		wall.color = {0.1, 0.1, 0.1, 0.3}
 		wall.basis.scale = 300
 		wall.position.xy = 300+160
-		wall.collider.size = floor.basis.scale
+		wall.collider.size = wall.basis.scale
 		wall.collider.shape = .AABB
 		wall.flags += {.Collider_Enabled,}
 		wall.collider.layer += {.Terrain}
+	}
+
+	bump, new_bump := rect(); if new_bump {
+		bump.name = "Bump"
+		bump.color = {0.1, 0.1, 0.1, 0.3}
+		bump.basis.scale = 30
+		bump.position.xy = 300+160 - {300,100}
+		bump.collider.size = bump.basis.scale
+		bump.collider.shape = .AABB
+		bump.flags += {.Collider_Enabled,}
+		bump.collider.layer += {.Terrain}
 	}
 
 	ball, new_ball := circle(); if new_ball {
@@ -121,7 +132,7 @@ ball_step :: proc (ball: ^Entity) {
 			v_perp_inverse := -1 * normalize(v_perp) // vector for deceleration
 			deceleration := v_perp_inverse * ROLL_DECELERATION * f32(globals.dt)
 			ball.velocity += -deceleration + v_perp * f32(globals.dt)
-			if is_nearly(length(ball.velocity), 0, 0.1) {
+			if is_nearly(length(v_perp), 0.1) {
 
 			} else {
 				log.infof("ROLL vperp: %v mag: %v", v_perp, length(v_perp))

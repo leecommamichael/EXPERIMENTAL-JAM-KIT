@@ -149,7 +149,7 @@ nearest_direction_xy :: proc(vec: Vec3) -> Vec3 {
 	case between(rad, -3*PI/4,   -PI/4): return DOWN;
 
 	case rad <= -3*PI/4 || rad >= 3*PI/4: return LEFT;
-	case rad <=   -PI/4 || rad >=   PI/4: return RIGHT;
+	case rad >=   -PI/4 || rad <=   PI/4: return RIGHT;
 	}
 	panic("unhandled range")
 }
