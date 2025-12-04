@@ -143,20 +143,19 @@ min_by_abs :: proc "contextless" (a: ..f32) -> (out: f32) {
 
 // Snaps input to nearest of: Left, Right, Up, Down
 nearest_direction_xy :: proc(vec: Vec3) -> Vec3 {
-	theta_xy := atan2(vec.y, vec.x) // -PI to PI
-	to_right := abs(  0    - theta_xy)
-	to_up    := abs(  PI/2 - theta_xy)
-	to_left  := abs(  PI   - theta_xy)
-	to_down  := abs(3*PI/2 - theta_xy)
-	directions := [4]f32{to_right, to_up, to_left, to_down}
-	nearest_direction :f32= vec_min(directions)
-	direction_index, found := find(directions[:], nearest_direction); assert(found)
-	snapped_vector: Vec3 // NOTICE: truncation to 2D from 3D
-	switch direction_index {
-	case 0: snapped_vector = RIGHT;
-	case 1: snapped_vector = UP;
-	case 2: snapped_vector = LEFT;
-	case 3: snapped_vector = DOWN;
+	rad := atan2(vec.y, vec.x) // -PI to PI
+	switch {
+	case between(rad,    PI/4,  3*PI/4): return UP;
+	case between(rad, -3*PI/4,   -PI/4): return DOWN;
+
+	case rad <= -3*PI/4 || rad >= 3*PI/4: return LEFT;
+	case rad <=   -PI/4 || rad >=   PI/4: return RIGHT;
 	}
-	return snapped_vector
+	panic("unhandled range")
+}
+
+// inclusive
+between :: #force_inline proc "contextless" (val, min, max: f32) -> bool {
+	assert_contextless(is_real(val))
+	return val >= min && val <= max;
 }

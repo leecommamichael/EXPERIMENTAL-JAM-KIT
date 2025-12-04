@@ -69,7 +69,7 @@ game_step :: proc () {
 		ball.flags += {.Collider_Enabled,}
 
 		ball.acceleration = gravity
-		ball.velocity.x = 1000
+		ball.velocity.x = 2000
 	}
 
 	ball_step(ball)
@@ -89,7 +89,6 @@ Ball_State :: enum {
 ball_state: Ball_State = .Air
 ball_step :: proc (ball: ^Entity) {
 	// Do ballistic motion with terrain.
-	new_velocity: Vec3 = ball.velocity
 	for collision in entity_collisions(ball) {
 		if .Terrain not_in collision.other.collider.layer { continue }
 
@@ -108,32 +107,37 @@ ball_step :: proc (ball: ^Entity) {
 		// Deflect the object using the integrated vector.
 		// There is a force-threshold which determines roll vs bounce.
 		BOUNCE_LOSS :: 1 - 0.25
-		ROLL_LOSS :: 1 - 0.02
+		ROLL_DECELERATION :: 1.0
 		v_parallel := dot(ball.velocity, normal) * normal // force into surface
 		v_perp := ball.velocity - v_parallel              // force along surface
 		// If the force into the surface can't generate a bounce, roll.
 		// If it can't overcome gravity to bounce even a centimeter, we don't care.
 		bounce_minimum_force := (f32(globals.dt) * gravity_acceleration) + f32(globals.dt) * pixels_per_centimeter
 		v_parallel_force := length(v_parallel)
+		collision_position := nearest_point_along_aabb_to_circle(terrain, ball)
+		ball.position = collision_position + normal * ball.collider.size.x/2
 		if v_parallel_force <= bounce_minimum_force {
 			// ROLL
-			collision_position := nearest_point_along_aabb_to_circle(terrain, ball)//ball vs 
-			ball.position = collision_position + normal * ball.collider.size.x/2
-			ball.velocity = ROLL_LOSS * v_perp
-			log.infof("ROLL vperp: %v", v_perp)
+			v_perp_inverse := -1 * normalize(v_perp) // vector for deceleration
+			deceleration := v_perp_inverse * ROLL_DECELERATION * f32(globals.dt)
+			ball.velocity += -deceleration + v_perp * f32(globals.dt)
+			if is_nearly(length(ball.velocity), 0, 0.1) {
+
+			} else {
+				log.infof("ROLL vperp: %v mag: %v", v_perp, length(v_perp))
+			}
 		} else {
 			log.infof("len(v||): %v thresh: %v", v_parallel_force, bounce_minimum_force)
-			// BOUNCE
+			// BOUNCE.
 			reflected_velocity := BOUNCE_LOSS * reflect(ball.velocity, normal)
 			// log.infof("BOUNCE r: %v\normal: %v", reflected_velocity, normal)
-			new_velocity = reflected_velocity
+			ball.velocity = reflected_velocity
 			// log.infof("v|| %v. vT: %v\n", v_parallel, v_perp)
 			// log.infof("reflected %v", reflected_velocity)
 		}
 	}
 	// if it's touching floor, and the resulting vector is weaker than gravity, follow surface.
 	// neutralize that force, but stay open to others.
-	ball.velocity = new_velocity
 }
 
 nearest_point_along_aabb_to_circle :: proc (aabb, circle: ^Entity) -> Vec3 {
@@ -152,7 +156,6 @@ nearest_point_along_aabb_to_circle :: proc (aabb, circle: ^Entity) -> Vec3 {
 		distance_to_nearest_edge_y := min_by_abs(to_min.y, to_max.y)
 		nearest_point.y += distance_to_nearest_edge_y
 	}
-
 
 	return nearest_point
 }

@@ -81,7 +81,7 @@ framework_init :: proc () {
 
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
-	dt := 0.0008
+	dt := 0.0016
 	ren_clear()
 	
 	// position of mouse in design coordinates world.

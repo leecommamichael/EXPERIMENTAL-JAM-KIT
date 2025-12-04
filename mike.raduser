@@ -1,20 +1,21 @@
-// raddbg 0.9.20 user file
+// raddbg 0.9.24 user file
 
 recent_project: path: "game.radproj"
 recent_project: path: "../dukengine/proj"
 recent_project: path: game
 window:
 {
-  size: 2688 1629
+  size: 2847 1629
   panels:
   {
-    0.427691:
+    0.405666:
     {
       0.360632:
       {
-        watch: selected expression: "query:types"
+        watch: expression: "query:types"
         watch:
         {
+          selected
           expression: "query:locals"
           normal: 0.317437 0.442995 0.239568
           sub_type: 0.350000 0.200317 0.177406 0.272277
@@ -33,20 +34,19 @@ window:
       0.241860:
       {
         watch: expression: "query:threads"
-        watch: selected expression: "query:targets"
+        watch: expression: "query:targets"
         watch: expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
+          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
           normal: 0.218506 0.531494 0.250000
-          watch: "entity.collider"
-          watch: "other.collider"
-          watch: "circle1.position"
-          watch: "g.swapchain"
-          watch: g
+          watch: "ball.velocity"
+          watch: reflected_velocity
+          watch: normal
         }
       }
       0.123260: text:
@@ -61,9 +61,10 @@ window:
       }
       0.274248:
       {
-        watch: selected expression: "query:call_stack"
+        watch: expression: "query:call_stack"
         disasm:
         {
+          selected
           expression: ""
           query: input: ""
         }
@@ -75,7 +76,7 @@ window:
         }
       }
     }
-    0.572304:
+    0.594329:
     {
       selected
       text:
@@ -142,12 +143,13 @@ window:
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game_full_tilt.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 106
+        cursor_line: 104
         cursor_column: 1
-        mark_line: 106
+        mark_line: 104
         mark_column: 1
       }
       text:
@@ -162,14 +164,13 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/math.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 136
-        cursor_column: 19
-        mark_line: 136
-        mark_column: 19
+        cursor_line: 149
+        cursor_column: 1
+        mark_line: 149
+        mark_column: 1
       }
       text:
       {
@@ -198,7 +199,7 @@ window:
     }
   }
   split_x
-  pos: 2496 229
+  pos: 2556 410
   monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0
