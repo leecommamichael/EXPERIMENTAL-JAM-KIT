@@ -71,18 +71,13 @@ breakpoint:
   source_location: "src/main_game_full_tilt.odin:104:1"
   hit_count: 6
 }
-breakpoint:
-{
-  source_location: "src/main_game_full_tilt.odin:123:1"
-  hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/main_game_full_tilt.odin:128:1"
-  hit_count: 5
-}
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/nord_gl/game.pdb"
-  timestamp: 66200169389116
+  timestamp: 66200192141883
+}
+breakpoint:
+{
+  source_location: "src/main_game_full_tilt.odin:103:1"
+  hit_count: 121
 }

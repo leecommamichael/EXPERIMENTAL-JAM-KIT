@@ -80,7 +80,7 @@ game_step :: proc () {
 		ball.flags += {.Collider_Enabled,}
 
 		ball.acceleration = gravity
-		ball.velocity.x = 2000
+		ball.velocity.x = 3000
 	}
 
 	ball_step(ball)
@@ -107,7 +107,6 @@ ball_step :: proc (ball: ^Entity) {
 		terrain_to_ball := ball.position - terrain.position
 		normal := normalize(terrain_to_ball)
 
-		// Integrate all collisions into a resulting vector.
 		switch terrain.collider.shape {
 		case .None: continue
 		case .Point: continue
@@ -117,17 +116,17 @@ ball_step :: proc (ball: ^Entity) {
 		}
 		// Deflect the object using the integrated vector.
 		// There is a force-threshold which determines roll vs bounce.
-		BOUNCE_LOSS :: 1 - 0.25
+		BOUNCE_LOSS :: 1 - 0.35
 		ROLL_DECELERATION :: 1.0
-		v_parallel := dot(ball.velocity, normal) * normal // force into surface
-		v_perp := ball.velocity - v_parallel              // force along surface
+		v_para := dot(ball.velocity, normal) * normal // force into surface
+		v_perp := ball.velocity - v_para // force along surface
 		// If the force into the surface can't generate a bounce, roll.
 		// If it can't overcome gravity to bounce even a centimeter, we don't care.
 		bounce_minimum_force := (f32(globals.dt) * gravity_acceleration) + f32(globals.dt) * pixels_per_centimeter
 		collision_position := nearest_point_along_aabb_to_circle(terrain, ball)
 		ball.position = collision_position + normal * ball.collider.size.x/2
-		v_parallel_force := length(v_parallel)
-		
+		v_parallel_force := length(v_para)
+
 		if v_parallel_force <= bounce_minimum_force {
 			// ROLL
 			log.infof("ROLL v_perp: %v", length(v_perp))
@@ -142,8 +141,6 @@ ball_step :: proc (ball: ^Entity) {
 			ball.velocity = reflected_velocity
 		}
 	}
-	// if it's touching floor, and the resulting vector is weaker than gravity, follow surface.
-	// neutralize that force, but stay open to others.
 }
 
 nearest_point_along_aabb_to_circle :: proc (aabb, circle: ^Entity) -> Vec3 {
