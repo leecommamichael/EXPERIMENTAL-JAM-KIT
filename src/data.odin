@@ -106,8 +106,15 @@ Entity :: struct {
 	flags:          bit_set[Entity_Flag; u64],
 	time_scale:     f64,
 	distance_from_camera: f32,
+	basis:           Transform,
 	using transform: Transform,
-	using instance:  ^Any_Instance,
+	_old_transform:  Transform, // for interpolation of fixed timestep
+	collider:        Collider,
+	velocity:             Vec3,
+	acceleration:         Vec3,
+	angular_velocity:     Vec3,
+	angular_acceleration: Vec3,
+	using instance:  ^Any_Instance, // rendered visual representation of transforms
 	draw_command:    Draw_Command,
 	ui: UI_Element,
 	variant: union {
@@ -116,12 +123,6 @@ Entity :: struct {
 		Sprite_State,
 		Timed_Effect_State(Empty_Struct),
 	},
-	basis:    Transform,
-	collider: Collider,
-	velocity:             Vec3,
-	acceleration:         Vec3,
-	angular_velocity:     Vec3,
-	angular_acceleration: Vec3,
 	parent: ^Entity,
 	children: []^Entity,
 }

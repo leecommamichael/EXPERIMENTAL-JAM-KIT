@@ -33,6 +33,10 @@ game_init :: proc () {
 }
 
 game_step :: proc () {
+	@static skip: int = 5
+	defer skip -= 1
+	if skip > 0 { return }
+
 	if sugar.on_key_press(.Space) {
 		globals.draw_colliders = !globals.draw_colliders
 	}

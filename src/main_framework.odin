@@ -39,6 +39,12 @@ framework_init :: proc () {
 
 	reset_z_cursor()
 
+	// globals.old_transforms          := make([]Transform, max(Entity_ID))
+	// globals.transforms              := make([]Transform, max(Entity_ID))
+	// globals.interpolated_transforms := make([]Transform, max(Entity_ID))
+	// By having a third buffer, I'm allowing the framework loop to just write through
+	// the entities in a way that doesn't overwrite important game state.
+
 	game_entities := make([]^Entity, max(Entity_ID))
 	globals.entities_3D = alias_slice_as_empty_dynamic(game_entities)
 
@@ -81,7 +87,7 @@ framework_init :: proc () {
 
 // Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f64) {
-	dt := 0.0016
+	// dt := 0.0016
 	ren_clear()
 	
 	// position of mouse in design coordinates world.
@@ -208,6 +214,52 @@ framework_step :: proc (dt: f64) {
 	gl.glFinish()
 }
 
+// Prepare an object for rendering.
+// The entity gets some time to do whatever.
+// Data which is derivable from Entity variant data is computed here.
+entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
+	entity.ui = {}
+
+	if .Allocated not_in entity.flags {
+		assert(false) // freed objects shouldn't make it here.
+	}
+	animate_physics :: proc (entity: ^Entity) {
+		entity.velocity += f32(globals.dt) * entity.acceleration
+		entity.position += f32(globals.dt) * entity.velocity
+		entity.angular_velocity += entity.angular_acceleration
+		entity.rotation += entity.angular_velocity
+	}
+	animate_physics(entity)
+
+	switch &variant in entity.variant {
+	case nil: // general-purpose entity
+	case Text_State:   //step_text(entity, immediate=false)
+	case Image_State:  step_image(entity, immediate=false)
+	case Sprite_State: step_sprite(entity, immediate=false)
+	case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
+	}
+
+	instance: ^Any_Instance = entity.instance
+	instance.model_transform =
+		linalg.matrix4_translate(entity.position + entity.basis.position)\
+		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation + entity.basis.rotation))\
+		* linalg.matrix4_scale(entity.scale * entity.basis.scale)
+	if .Is_3D in entity.flags {
+// TODO: Bucket Opaque from Transparent
+// ASSUME: Centroid is 0,0,0 in model coordinates
+		centroid: Vec4 : { 0, 0, 0, 1 }
+    entity_centroid_in_world := instance.model_transform * centroid
+		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+	} else {
+		// 2D sort will deviate especially with things like Y-sort
+		centroid: Vec4 : { 0, 0, 0, 1 }
+    entity_centroid_in_world := instance.model_transform * centroid
+		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+	}
+
+	return true
+}
+
 next_z :: proc () -> f32 {
 	z := globals.z_cursor
 	globals.z_cursor += 1.0
@@ -221,6 +273,12 @@ reset_z_cursor :: proc () {
 ////////////////////////////////////////////////////////////////////////////////
 // Collision Detection
 ////////////////////////////////////////////////////////////////////////////////
+
+// Half size. Entity.scale controls both collider and mesh. returns a half-size.
+collider_size :: proc (entity: ^Entity) -> Vec3 {
+	return entity.scale * entity.collider.size/2
+}
+
 
 they_touch :: proc (e1, e2: ^Entity) -> bool {
 	return find_collision_involving_entities(globals.collisions[:], e1, e2)
@@ -497,57 +555,6 @@ free_entity :: proc (entity: ^Entity) {
 	index, found := slice.linear_search(globals.entities[:], entity)
 	assert(found)
 	unordered_remove(&globals.entities, index)
-}
-
-// Entity.scale controls both collider and mesh. A half-size.
-collider_size :: proc (entity: ^Entity) -> Vec3 {
-	return entity.scale * entity.collider.size/2
-}
-
-// Prepare an object for rendering.
-// The entity gets some time to do whatever.
-// Data which is derivable from Entity variant data is computed here.
-entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
-	entity.ui = {}
-
-	if .Allocated not_in entity.flags {
-		assert(false) // freed objects shouldn't make it here.
-	}
-	animate_physics :: proc (entity: ^Entity) {
-		entity.velocity += f32(globals.dt) * entity.acceleration
-		entity.position += f32(globals.dt) * entity.velocity
-		entity.angular_velocity += entity.angular_acceleration
-		entity.rotation += entity.angular_velocity
-	}
-	animate_physics(entity)
-
-	switch &variant in entity.variant {
-	case nil: // general-purpose entity
-	case Text_State:   //step_text(entity, immediate=false)
-	case Image_State:  step_image(entity, immediate=false)
-	case Sprite_State: step_sprite(entity, immediate=false)
-	case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
-	}
-
-	instance: ^Any_Instance = entity.instance
-	instance.model_transform =
-		linalg.matrix4_translate(entity.position + entity.basis.position)\
-		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation + entity.basis.rotation))\
-		* linalg.matrix4_scale(entity.scale * entity.basis.scale)
-	if .Is_3D in entity.flags {
-// TODO: Bucket Opaque from Transparent
-// ASSUME: Centroid is 0,0,0 in model coordinates
-		centroid: Vec4 : { 0, 0, 0, 1 }
-    entity_centroid_in_world := instance.model_transform * centroid
-		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
-	} else {
-		// 2D sort will deviate especially with things like Y-sort
-		centroid: Vec4 : { 0, 0, 0, 1 }
-    entity_centroid_in_world := instance.model_transform * centroid
-		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
-	}
-
-	return true
 }
 
 ////////////////////////////////////////////////////////////////////////////////
