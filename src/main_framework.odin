@@ -27,6 +27,7 @@ framework_init :: proc () {
 	}
 	init_gl_constants()
 
+	globals.tick = 1./120.
 	globals.canvas_scale = 1
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretch = 1
@@ -38,12 +39,6 @@ framework_init :: proc () {
 	globals.ui_view = 1
 
 	reset_z_cursor()
-
-	// globals.old_transforms          := make([]Transform, max(Entity_ID))
-	// globals.transforms              := make([]Transform, max(Entity_ID))
-	// globals.interpolated_transforms := make([]Transform, max(Entity_ID))
-	// By having a third buffer, I'm allowing the framework loop to just write through
-	// the entities in a way that doesn't overwrite important game state.
 
 	game_entities := make([]^Entity, max(Entity_ID))
 	globals.entities_3D = alias_slice_as_empty_dynamic(game_entities)
@@ -86,22 +81,16 @@ framework_init :: proc () {
 }
 
 // Mixed-scope between renderer and game entities.
-framework_step :: proc (dt: f64) {
-	// dt := 0.0016
-	ren_clear()
-	
-	// position of mouse in design coordinates world.
+framework_step :: proc (dt: f32) {
 	globals.ui_mouse_position = (sugar.mouse_position / globals.canvas_stretch) 
-	// position of mouse in world coordinates. (same thing if no offset.)
-	globals.mouse_position = (sugar.mouse_position / globals.canvas_stretch) 
-	// globals.mouse_position += globals.camera.offset.xy
+	globals.mouse_position = (sugar.mouse_position / globals.canvas_stretch)  // TODO camera offset
 	globals.dt = dt
-	globals.uniforms.tau_time += f32(dt)
+	globals.uniforms.tau_time += f32(globals.dt)
 	overflow := linalg.TAU - globals.uniforms.tau_time
 	if overflow >= 0 {
 		globals.uniforms.tau_time = overflow
 	}
-	globals.uniforms.time += f32(dt)
+	globals.uniforms.time += f32(globals.dt)
 
 	clear(&globals.entities)
 	clear(&globals.entities_2D)
@@ -109,6 +98,9 @@ framework_step :: proc (dt: f64) {
 	for &e in globals._entity_storage {
 		if .Allocated in e.flags {
 			append(&globals.entities, &e)
+			// Prior to entity motion, consider this the "old state"
+			e.old_transform = e.transform
+			e.old_basis = e.basis
 			if .Immediate_In_Use in e.flags {
 				// assume it is not used
 				// after the game_step, if it is still not used, free it.
@@ -142,8 +134,8 @@ framework_step :: proc (dt: f64) {
 			continue
 		}
 
-////////////////////////////////////////////////////////////////////////////////
-		entity_step(entity) or_continue
+//// ///////////////////////////////////////////////////////////////////////////
+		entity_step(entity)
 ////////////////////////////////////////////////////////////////////////////////
 
 		if .Is_3D in entity.flags {
@@ -199,7 +191,31 @@ framework_step :: proc (dt: f64) {
 			// An old collision is not present in this sample. It's an "exit" event.
 		}
 	} // for old_collisions
+}
 
+framework_draw :: proc (alpha: f32) {
+	// This is the soonest scope we can lerp the transforms and determine draw-order.
+	for entity in globals.entities {
+		instance: ^Any_Instance = entity.instance
+		xform := lerp_transform(entity.old_transform, entity.transform, alpha)
+		basis := lerp_transform(entity.old_basis,     entity.basis,     alpha)
+		instance.model_transform =
+			linalg.matrix4_translate(xform.position + basis.position)\
+			* linalg.matrix4_from_euler_angles_xyz(expand_values(xform.rotation + basis.rotation))\
+			* linalg.matrix4_scale(xform.scale * basis.scale)
+		if .Is_3D in entity.flags {
+	// TODO: Bucket Opaque from Transparent
+	// ASSUME: Centroid is 0,0,0 in model coordinates
+			centroid: Vec4 : { 0, 0, 0, 1 }
+	    entity_centroid_in_world := instance.model_transform * centroid
+			entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+		} else {
+			// 2D sort will deviate especially with things like Y-sort
+			centroid: Vec4 : { 0, 0, 0, 1 }
+	    entity_centroid_in_world := instance.model_transform * centroid
+			entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+		}
+	}
 ////////////////////////////////////////////////////////////////////////////////
 // THIS SORT DEFINES THE DEPTH BUFFER.       (TODO: It's also an unstable sort.)
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,6 +225,8 @@ framework_step :: proc (dt: f64) {
   slice.sort_by(globals.entities_2D[:], proc (i,j: ^Entity) -> bool {
     return i.position.z > j.position.z
   })
+
+	ren_clear()
 	ren_draw(globals.ren)
 	sugar.swap_buffers()
 	gl.glFinish()
@@ -217,15 +235,15 @@ framework_step :: proc (dt: f64) {
 // Prepare an object for rendering.
 // The entity gets some time to do whatever.
 // Data which is derivable from Entity variant data is computed here.
-entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
+entity_step :: #force_inline proc (entity: ^Entity) {
 	entity.ui = {}
 
 	if .Allocated not_in entity.flags {
 		assert(false) // freed objects shouldn't make it here.
 	}
 	animate_physics :: proc (entity: ^Entity) {
-		entity.velocity += f32(globals.dt) * entity.acceleration
-		entity.position += f32(globals.dt) * entity.velocity
+		entity.velocity += f32(globals.tick) * entity.acceleration
+		entity.position += f32(globals.tick) * entity.velocity
 		entity.angular_velocity += entity.angular_acceleration
 		entity.rotation += entity.angular_velocity
 	}
@@ -238,26 +256,6 @@ entity_step :: #force_inline proc (entity: ^Entity) -> (draw_it: bool) {
 	case Sprite_State: step_sprite(entity, immediate=false)
 	case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
 	}
-
-	instance: ^Any_Instance = entity.instance
-	instance.model_transform =
-		linalg.matrix4_translate(entity.position + entity.basis.position)\
-		* linalg.matrix4_from_euler_angles_xyz(expand_values(entity.rotation + entity.basis.rotation))\
-		* linalg.matrix4_scale(entity.scale * entity.basis.scale)
-	if .Is_3D in entity.flags {
-// TODO: Bucket Opaque from Transparent
-// ASSUME: Centroid is 0,0,0 in model coordinates
-		centroid: Vec4 : { 0, 0, 0, 1 }
-    entity_centroid_in_world := instance.model_transform * centroid
-		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
-	} else {
-		// 2D sort will deviate especially with things like Y-sort
-		centroid: Vec4 : { 0, 0, 0, 1 }
-    entity_centroid_in_world := instance.model_transform * centroid
-		entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
-	}
-
-	return true
 }
 
 next_z :: proc () -> f32 {
@@ -493,7 +491,9 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity^ = {} // zero all fields
 	entity.id = id
 	entity.flags = { .Allocated }
-	entity.scale = 1
+	entity.old_transform.scale = 1
+	entity.transform.scale = 1
+	entity.old_basis.scale = 1
 	entity.basis.scale = 1
 	entity.instance = &globals.instance_staging[entity.id]
 	entity.color = 1
@@ -565,16 +565,16 @@ free_entity :: proc (entity: ^Entity) {
 Timed_Effect_State :: struct ($T: typeid) {
 	data: ^T,
 	step: proc(data: ^T, percent: f32),
-	seconds_total: f64,
-	seconds_left: f64,
+	seconds_total: f32,
+	seconds_left: f32,
 	timeout: proc(^T),
 	allocator: runtime.Allocator,
 }
 
-step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
+step_timed_effect :: proc (entity: ^Entity, tick: f32 = globals.tick) {
 	it := &entity.variant.(Timed_Effect_State(Empty_Struct))
 
-	it.seconds_left -= dt
+	it.seconds_left -= tick
 	percent := clamp(1 - cast(f32) (it.seconds_left/it.seconds_total), 0, 1)
 	it.step(it.data, percent)
 
@@ -589,7 +589,7 @@ step_timed_effect :: proc (entity: ^Entity, dt: f64 = globals.dt) {
 
 timed_effect :: proc (
 	data: $T,
-	seconds_left: f64,
+	seconds_left: f32,
 	step: proc(data: ^T, percent: f32),
 	allocator := context.allocator
 ) -> ^Timed_Effect_State(T) {
@@ -619,7 +619,7 @@ Timed_Lerp :: Timed_Effect_State(Lerp)
 timed_lerp :: proc (
 	data: ^f32,
 	target: f32,
-	seconds_left: f64,
+	seconds_left: f32,
 	allocator := context.allocator
 ) -> ^Timed_Lerp {
 	ent := make_entity()

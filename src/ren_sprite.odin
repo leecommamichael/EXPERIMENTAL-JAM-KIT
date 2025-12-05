@@ -12,7 +12,7 @@ Sprite_State :: struct {
 	repetitions:     int,
 	animation:       ^Sprite_Animation,
 	frame_index:     int,
-	frame_seconds_remaining: f64,
+	frame_seconds_remaining: f32,
 	_play_in_reverse: bool,
 }
 
@@ -26,7 +26,7 @@ Sprite_Asset :: struct {
 
 /**/	Sprite_Animation_Frame :: struct {
 /**/		uv_rect: Vec4, // .xy = top_left, .w = width, .z = height
-/**/		seconds: f64,
+/**/		seconds: f32,
 /**/	}
 /**/
 /**/	Sprite_Animation :: struct {
@@ -149,7 +149,7 @@ reset_animation :: proc (it: ^Sprite_State) {
 step_sprite :: proc (entity: ^Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
 	it: ^Sprite_State = &entity.variant.(Sprite_State)
 	defer entity.instance.uv_transform = it.asset.frames[it.frame_index].uv_rect
-	dt := globals.dt * entity.time_scale
+	dt := globals.tick * entity.time_scale
 	assert(is_real(dt))
 	seconds_left := it.frame_seconds_remaining - dt
 	if it.animation.frame_count < 2 { return } // Single frame, no work.

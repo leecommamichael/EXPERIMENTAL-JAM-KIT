@@ -13,7 +13,8 @@ globals: Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
-	dt: f64,
+	tick: f32,
+	dt:   f32,
 	avg_fps: f64,
 	// Assets
 	assets: Asset_Bundle,
@@ -100,20 +101,21 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	name:           string,
-	immediate_hash: u64,
-	id:             Entity_ID,  // index in storage.
-	flags:          bit_set[Entity_Flag; u64],
-	time_scale:     f64,
-	distance_from_camera: f32,
+	name:            string,
+	immediate_hash:  u64,
+	id:              Entity_ID,  // index in storage.
+	flags:           bit_set[Entity_Flag; u64],
+	time_scale:      f32,
 	basis:           Transform,
 	using transform: Transform,
-	_old_transform:  Transform, // for interpolation of fixed timestep
+	old_basis:       Transform,
+	old_transform:   Transform, // for interpolation of fixed timestep
 	collider:        Collider,
 	velocity:             Vec3,
 	acceleration:         Vec3,
 	angular_velocity:     Vec3,
 	angular_acceleration: Vec3,
+	distance_from_camera: f32,
 	using instance:  ^Any_Instance, // rendered visual representation of transforms
 	draw_command:    Draw_Command,
 	ui: UI_Element,

@@ -227,9 +227,9 @@ ren_draw :: proc (ren: ^Ren) {
 				case .None:
 				case .Point: fallthrough
 				case .Circle:
-					geom_append_circle(&mesh, 16, entity.position, entity.collider.size.x/2)
+					geom_append_circle(&mesh, 16, entity.position, entity.collider.size.x/2) // <---| NOTE not interpolated
 				case .AABB:
-					geom_append_quad(&mesh, entity.position, entity.collider.size)
+					geom_append_quad(&mesh, entity.position, entity.collider.size) // <-------------| NOTE not interpolated
 				}
 			}
 			ent := globals.collider_visualization

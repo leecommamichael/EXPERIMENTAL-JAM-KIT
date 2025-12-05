@@ -361,7 +361,7 @@ assert(dir_err2 == nil)
 					sprite.pixels[i] = img
 					sprite.frames[i] = {
 						{},
-						f64(frame.duration) / 1000,
+						f32(frame.duration) / 1000,
 					}
 				}
 				for tag in ase_info.tags {
@@ -393,7 +393,7 @@ assert(dir_err2 == nil)
 					sprite.pixels[i] = img
 					sprite.frames[i] = {
 						{},
-						f64(frame.duration) / 1000
+						f32(frame.duration) / 1000
 					}
 				}
 				animation := Sprite_Animation { // principle difference between this and the above

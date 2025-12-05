@@ -229,7 +229,7 @@ game_step :: proc ()  {
 		}
 	}
 
-	globals.perspective_view = tick_mouse_camera(&globals.camera, f32(globals.dt))
+	globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
 	if sugar.is_button_pressed(.A) {
 		globals.camera.offset.xy += 1
 	}

@@ -44,6 +44,8 @@ main :: proc() {
 // The context is defaulted each time you enter. Related: `runtime.default_context_ptr()`
 @export
 step :: proc (dt: f64) -> bool {
+	dt: f32 = f32(dt)
+////////////////////////////////////////////////////////////////////////////////
 	@static start_time: time.Tick
 	@static frame_number: uint = 0
 	if frame_number == 1 {
@@ -55,22 +57,27 @@ step :: proc (dt: f64) -> bool {
 		// log.infof("[FPS] %v", globals.avg_fps)
 	}
 	frame_number += 1
-	events := sugar.poll_events() // begins input frame.
-	if .Should_Exit in events { return false }
-	if .Window_Scale_Factor_Changed in events {
-		// Noop
-	}
-	if .Window_Resized in events {
-		window_resized()
+////////////////////////////////////////////////////////////////////////////////
+	@static tick_buildup: f32
+	for tick_buildup += dt; tick_buildup >= globals.tick; tick_buildup -= globals.tick {
+		
+		events := sugar.poll_events() // begins input frame.
+		if .Should_Exit in events { return false }
+		if .Window_Scale_Factor_Changed in events {
+			// Noop
+		}
+		if .Window_Resized in events {
+			window_resized()
+		}
+
+		if sugar.on_key_release(.Escape) || sugar.on_button_release(.Select) {
+			return false
+		}
+		framework_step(dt)
+		sugar.end_input_frame()
 	}
 
-	if sugar.on_key_release(.Escape) || sugar.on_button_release(.Select) {
-		return false
-	}
-
-	framework_step(dt)
-
-	sugar.end_input_frame()
+	framework_draw(tick_buildup/globals.tick)
 	free_all(context.temp_allocator)
 	return true
 }

@@ -23,6 +23,7 @@ game_init :: proc () {
 
 	cursor = make_sprite(`berserker.aseprite`)
 	cursor.basis.position = 0
+	cursor.old_basis.scale = 0
 	cursor.basis.scale = 44
 	cursor.flags += {.Collider_Enabled,}
 	cursor.collider.shape = .Circle
@@ -126,21 +127,21 @@ ball_step :: proc (ball: ^Entity) {
 		v_perp := ball.velocity - v_para // force along surface
 		// If the force into the surface can't generate a bounce, roll.
 		// If it can't overcome gravity to bounce even a centimeter, we don't care.
-		bounce_minimum_force := (f32(globals.dt) * gravity_acceleration) + f32(globals.dt) * pixels_per_centimeter
+		bounce_minimum_force := (globals.tick * gravity_acceleration) + globals.tick * pixels_per_centimeter
 		collision_position := nearest_point_along_aabb_to_circle(terrain, ball)
 		ball.position = collision_position + normal * ball.collider.size.x/2
 		v_parallel_force := length(v_para)
 
 		if v_parallel_force <= bounce_minimum_force {
 			// ROLL
-			log.infof("ROLL v_perp: %v", length(v_perp))
+			// log.infof("ROLL v_perp: %v", length(v_perp))
 			v_perp_inverse := -1 * normalize(v_perp) // vector for deceleration
-			deceleration := v_perp_inverse * ROLL_DECELERATION * f32(globals.dt)
-			ball.velocity += -deceleration + v_perp * f32(globals.dt)
+			deceleration := v_perp_inverse * ROLL_DECELERATION * globals.tick
+			ball.velocity += -deceleration + v_perp * globals.tick
 			
 		} else {
 			// BOUNCE.
-			log.infof("BOUNCE v||: %v OVER THRESH :%v", v_parallel_force, bounce_minimum_force)
+			// log.infof("BOUNCE v||: %v OVER THRESH :%v", v_parallel_force, bounce_minimum_force)
 			reflected_velocity := BOUNCE_LOSS * reflect(ball.velocity, normal)
 			ball.velocity = reflected_velocity
 		}

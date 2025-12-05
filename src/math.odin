@@ -123,7 +123,11 @@ trunc :: glsl.trunc
 ceil :: glsl.ceil
 vec_min :: linalg.min
 vec_max :: linalg.max
-lerp :: math.lerp
+lerp :: proc { 
+	math.lerp,
+	lerp_vec,
+	lerp_transform,
+}
 atan2 :: math.atan2
 sign :: math.sign
 PI :: math.PI
@@ -158,4 +162,20 @@ nearest_direction_xy :: proc(vec: Vec3) -> Vec3 {
 between :: #force_inline proc "contextless" (val, min, max: f32) -> bool {
 	assert_contextless(is_real(val))
 	return val >= min && val <= max;
+}
+
+lerp_vec :: proc "contextless" (l,r: Vec3, alpha: f32) -> Vec3 {
+	return {
+		lerp(l.x, r.x, alpha),
+		lerp(l.y, r.y, alpha),
+		lerp(l.z, r.z, alpha),
+	}
+}
+
+lerp_transform :: proc (l,r: Transform, alpha: f32) -> Transform {
+	return {
+		lerp_vec(l.position, r.position, alpha),
+		lerp_vec(l.rotation, r.rotation, alpha),
+		lerp_vec(l.scale, r.scale, alpha),
+	}
 }
