@@ -43,7 +43,7 @@ game_step :: proc () {
 		floor.name = "Floor"
 		floor.color = {0.1, 0.1, 0.1, 0.3}
 		floor.basis.scale = 300
-		floor.position.xy = 160
+		floor.position.xy = {160, 0}
 		floor.collider.size = floor.basis.scale
 		floor.collider.shape = .AABB
 		floor.flags += {.Collider_Enabled,}
@@ -81,7 +81,6 @@ game_step :: proc () {
 		ball.flags += {.Collider_Enabled,}
 
 		ball.acceleration = gravity
-		ball.velocity.x = 3000
 	}
 
 	ball_step(ball)
@@ -119,25 +118,32 @@ ball_step :: proc (ball: ^Entity) {
 		// There is a force-threshold which determines roll vs bounce.
 		BOUNCE_LOSS :: 1 - 0.35
 		ROLL_DECELERATION :: 1.0
-		v_para := dot(ball.velocity, normal) * normal // force into surface
-		v_perp := ball.velocity - v_para // force along surface
 		// If the force into the surface can't generate a bounce, roll.
 		// If it can't overcome gravity to bounce even a centimeter, we don't care.
 		bounce_minimum_force := (globals.tick * gravity_acceleration) + globals.tick * pixels_per_centimeter
 		collision_position := nearest_point_along_aabb_to_circle(terrain, ball)
 		ball.position = collision_position + normal * ball.collider.size.x/2
-		v_parallel_force := length(v_para)
+		v_para := dot(ball.velocity, normal) * normal // force into surface
+		v_perp := ball.velocity - v_para // force along surface
+		v_para_force := length(v_para)
+		v_perp_force := length(v_perp)
 
-		if v_parallel_force <= bounce_minimum_force {
-			// ROLL
-			// log.infof("ROLL v_perp: %v", length(v_perp))
-			v_perp_inverse := -1 * normalize(v_perp) // vector for deceleration
-			deceleration := v_perp_inverse * ROLL_DECELERATION * globals.tick
-			ball.velocity += -deceleration + v_perp * globals.tick
-			
+		if v_para_force <= bounce_minimum_force {
+			if is_nearly(v_perp_force, 0) {
+				ball.acceleration = 0
+				// at rest.
+			} else {
+				// ROLL
+				log.infof("ROLL v_perp: %v", length(v_perp))
+				v_perp_inverse := -1 * normalize(v_perp) // vector for deceleration
+				deceleration := v_perp_inverse * ROLL_DECELERATION * globals.tick
+				ball.velocity += -deceleration + v_perp * globals.tick
+				ball.acceleration = gravity
+			}
 		} else {
+			ball.acceleration = gravity
 			// BOUNCE.
-			// log.infof("BOUNCE v||: %v OVER THRESH :%v", v_parallel_force, bounce_minimum_force)
+			log.infof("BOUNCE v||: %v OVER THRESH :%v", v_para_force, bounce_minimum_force)
 			reflected_velocity := BOUNCE_LOSS * reflect(ball.velocity, normal)
 			ball.velocity = reflected_velocity
 		}
