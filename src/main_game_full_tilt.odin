@@ -49,6 +49,18 @@ game_step :: proc () {
 		floor.flags += {.Collider_Enabled,}
 		floor.collider.layer += {.Terrain}
 	}
+
+	floor2, new_floor2 := rect(); if new_floor2 {
+		floor2.name = "Floor2"
+		floor2.color = {0.1, 0.1, 0.1, 0.3}
+		floor2.basis.scale = 300
+		floor2.position.xy = {600, 0}
+		floor2.collider.size = floor2.basis.scale
+		floor2.collider.shape = .AABB
+		floor2.flags += {.Collider_Enabled,}
+		floor2.collider.layer += {.Terrain}
+	}
+
 	wall, new_wall := rect(); if new_wall {
 		wall.name = "Wall"
 		wall.color = {0.1, 0.1, 0.1, 0.3}
@@ -82,22 +94,92 @@ game_step :: proc () {
 
 		ball.acceleration = gravity
 	}
-
-	ball_step(ball)
-
-	if they_touch(cursor, floor) {
-		cursor.color = {1,0,0, 0.5}
-	} else {
-		cursor.color = {0.0, 0.0, 0.0, 0.0}
+	hand, new_hand := circle(); if new_hand {
+		hand.name = "Hand"
+		hand.color = {0.3, 0.3, 0.3, 0.3}
+		hand.basis.scale = 22
+		hand.position.xy = {100, 400}
+		hand.collider.size = hand.basis.scale
+		hand.collider.shape = .Circle
+		hand.flags += {.Collider_Enabled,}
 	}
+
+	pc_step(ball, hand)
+	// ball_step(ball)
 }
 
-Ball_State :: enum {
-	Ground,
-	Air,
+// Crawl, Roll, or Swing
+// Swinging if hand mounted and body not on ground.
+// Crawling if body mounted and not ball
+// Rolling  if not hand mounted and LT held.
+//
+// hand mounted if hand in contact with something & RT held.
+// body mounted if in contact with something.
+PC_State :: struct {
+	hand: Vec3,
+	hand_anchored: bool,
+	ball_motion:   bool,
 }
 
-ball_state: Ball_State = .Air
+pc: PC_State
+
+pc_step :: proc (blob: ^Entity, hand: ^Entity) {
+	if sugar.input.gamepad.left_trigger > 0.1 {
+		if pc.hand_anchored {
+			// can't go ball while hanging (for now?)
+		} else {
+			pc.ball_motion = true
+		}
+	}
+
+	if sugar.input.gamepad.right_trigger > 0.1 {
+		pc.hand_anchored = true
+	} else {
+		pc.hand_anchored = false
+	}
+
+	if pc.ball_motion {
+		ball_step(blob)
+	} else { // INTENT: do slime movement because we're not a ball.
+		pc.hand = blob.position // until moved | shooting | retracting this will move the hand instantly.
+		if pc.hand_anchored {
+			// TODO: pendulum.
+		}
+		hand_range: f32 : 32.0
+		ls := clamp_length(vec3(sugar.input.gamepad.left_stick), 1)
+		rs := clamp_length(vec3(sugar.input.gamepad.right_stick), 1)
+		blob.position += ls
+		pc.hand = blob.position + rs * hand_range
+		hand.position = pc.hand
+		// TODO: if R3, pop hand out, check collision and propel.
+		////////////////////////////////////////////////////////////////////////////
+		// INTENT: acceleration is gravity, unless touching something or mounted.
+		touching_something: bool
+		for collision in entity_collisions(blob) {
+			if .Terrain not_in collision.other.collider.layer { continue }
+			touching_something = true
+			terrain := collision.other
+			terrain_to_blob := blob.position - terrain.position
+			normal := normalize(terrain_to_blob)
+
+			switch terrain.collider.shape {
+			case .None: continue
+			case .Point: continue
+			case .AABB:
+				normal = nearest_direction_xy(normal)
+			case .Circle:
+			}
+			collision_position := nearest_point_along_aabb_to_circle(terrain, blob)
+			blob.position = collision_position + (normal * blob.collider.size.x/2)
+		} // for collision /////////////////////////////////////////////////////////
+		if touching_something {
+			blob.acceleration = 0
+		} else {
+			blob.acceleration = gravity
+		}
+	} // else blob motion
+} // pc step
+
 ball_step :: proc (ball: ^Entity) {
 	// Do ballistic motion with terrain.
 	for collision in entity_collisions(ball) {
@@ -120,7 +202,6 @@ ball_step :: proc (ball: ^Entity) {
 		ROLL_DECELERATION :: 1.0
 		// If the force into the surface can't generate a bounce, roll.
 		// If it can't overcome gravity to bounce even a centimeter, we don't care.
-		bounce_minimum_force := (globals.tick * gravity_acceleration) + globals.tick * pixels_per_centimeter
 		collision_position := nearest_point_along_aabb_to_circle(terrain, ball)
 		ball.position = collision_position + normal * ball.collider.size.x/2
 		v_para := dot(ball.velocity, normal) * normal // force into surface
@@ -128,10 +209,13 @@ ball_step :: proc (ball: ^Entity) {
 		v_para_force := length(v_para)
 		v_perp_force := length(v_perp)
 
+		bounce_minimum_force := (globals.tick * gravity_acceleration)\
+		                       + globals.tick * pixels_per_centimeter
 		if v_para_force <= bounce_minimum_force {
 			if is_nearly(v_perp_force, 0) {
 				ball.acceleration = 0
 				// at rest.
+				// log.infof("rest")
 			} else {
 				// ROLL
 				log.infof("ROLL v_perp: %v", length(v_perp))

@@ -129,6 +129,8 @@ lerp :: proc {
 	lerp_transform,
 }
 atan2 :: math.atan2
+sin :: math.sin
+cos :: math.cos
 sign :: math.sign
 PI :: math.PI
 
@@ -178,4 +180,13 @@ lerp_transform :: proc (l,r: Transform, alpha: f32) -> Transform {
 		lerp_vec(l.rotation, r.rotation, alpha),
 		lerp_vec(l.scale, r.scale, alpha),
 	}
+}
+
+clamp_length :: proc (direction: Vec3, max_length: f32) -> Vec3 {
+	length := length(direction)
+	if length > max_length {
+		normalized := direction / length
+		return normalized * max_length
+	}
+	return direction
 }
