@@ -120,12 +120,7 @@ framework_step :: proc (dt: f32) {
 ////////////////////////////////////////////////////////////////////////////////
 	reset_z_cursor()
 	build_camera()
-
-	clear(&globals.exit_collisions)
-	clear(&globals.enter_collisions)
-	clear(&globals.old_collisions)
-	append(&globals.old_collisions, ..globals.collisions[:])
-	clear(&globals.collisions)
+	physics_begin_frame()
 	#reverse for &entity in globals.entities {
 		if .Immediate_Mode in entity.flags \
 		&& .Immediate_In_Use not_in entity.flags {
@@ -134,10 +129,21 @@ framework_step :: proc (dt: f32) {
 			continue
 		}
 
-//// ///////////////////////////////////////////////////////////////////////////
-		entity_step(entity)
 ////////////////////////////////////////////////////////////////////////////////
+		entity.ui = {}
 
+		if .Allocated not_in entity.flags {
+			assert(false) // freed objects shouldn't make it here.
+		}
+
+		switch &variant in entity.variant {
+		case nil: // general-purpose entity
+		case Text_State:   //step_text(entity, immediate=false)
+		case Image_State:  step_image(entity, immediate=false)
+		case Sprite_State: step_sprite(entity, immediate=false)
+		case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
+		}
+////////////////////////////////////////////////////////////////////////////////
 		if .Is_3D in entity.flags {
 			append(&globals.entities_3D, entity)
 			if .Collider_Enabled in entity.flags {
@@ -146,37 +152,20 @@ framework_step :: proc (dt: f32) {
 		} else {
 			append(&globals.entities_2D, entity)
 		}
-
-		if .Collider_Enabled in entity.flags {
-			assert(entity.collider.shape != nil)
-			collider_loop: for &other in globals.entities {
-				for pair in globals.collisions {
-					if pair.ids[0] == entity.id && pair.ids[1] == other.id \
-					|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
-						continue collider_loop // INTENT: Already in list. Don't duplicate.
-					}
-				}
-
-				if entity_contains_entity(entity, other) {
-					old_collision: bool
-					for oc in globals.old_collisions {
-						if oc.ids[0] == entity.id && oc.ids[1] == other.id \
-						|| oc.ids[1] == entity.id && oc.ids[0] == other.id {
-							// this collision existed last frame. Dwelling overlap.
-							old_collision = true
-						}
-					}
-					new_collision := Collision {ids={entity.id, other.id}}
-					if !old_collision {
-						append(&globals.enter_collisions, new_collision)
-						// The collision is new in this sample, so it's an "enter" event.
-					}
-					append(&globals.collisions, new_collision)
-				}
-			} // collider_loop
-		} // if has collider
+		physics_integrate_tick(entity)
+		physics_collide(entity)
 	} // reverse entity loop
+	physics_end_frame()
+}
 
+physics_begin_frame :: proc () {
+	clear(&globals.exit_collisions)
+	clear(&globals.enter_collisions)
+	clear(&globals.old_collisions)
+	append(&globals.old_collisions, ..globals.collisions[:])
+	clear(&globals.collisions)
+}
+physics_end_frame :: proc () {
 	// Now all collisions are gathered, and we can compare them with old_collisions.
 	for oc in globals.old_collisions {
 		still_colliding: bool
@@ -191,6 +180,42 @@ framework_step :: proc (dt: f32) {
 			// An old collision is not present in this sample. It's an "exit" event.
 		}
 	} // for old_collisions
+}
+physics_integrate_tick :: proc (entity: ^Entity) {
+	entity.velocity += f32(globals.tick) * entity.acceleration
+	entity.position += f32(globals.tick) * entity.velocity
+	entity.angular_velocity += entity.angular_acceleration
+	entity.rotation += entity.angular_velocity
+}
+physics_collide :: proc (entity: ^Entity) {
+	if .Collider_Enabled in entity.flags {
+		assert(entity.collider.shape != nil)
+		collider_loop: for &other in globals.entities {
+			for pair in globals.collisions {
+				if pair.ids[0] == entity.id && pair.ids[1] == other.id \
+				|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
+					continue collider_loop // INTENT: Already in list. Don't duplicate.
+				}
+			}
+
+			if entity_contains_entity(entity, other) {
+				old_collision: bool
+				for oc in globals.old_collisions {
+					if oc.ids[0] == entity.id && oc.ids[1] == other.id \
+					|| oc.ids[1] == entity.id && oc.ids[0] == other.id {
+						// this collision existed last frame. Dwelling overlap.
+						old_collision = true
+					}
+				}
+				new_collision := Collision {ids={entity.id, other.id}}
+				if !old_collision {
+					append(&globals.enter_collisions, new_collision)
+					// The collision is new in this sample, so it's an "enter" event.
+				}
+				append(&globals.collisions, new_collision)
+			}
+		} // collider_loop
+	} // if has collider
 }
 
 framework_draw :: proc (alpha: f32) {
@@ -230,32 +255,6 @@ framework_draw :: proc (alpha: f32) {
 	ren_draw(globals.ren)
 	sugar.swap_buffers()
 	gl.glFinish()
-}
-
-// Prepare an object for rendering.
-// The entity gets some time to do whatever.
-// Data which is derivable from Entity variant data is computed here.
-entity_step :: #force_inline proc (entity: ^Entity) {
-	entity.ui = {}
-
-	if .Allocated not_in entity.flags {
-		assert(false) // freed objects shouldn't make it here.
-	}
-	animate_physics :: proc (entity: ^Entity) {
-		entity.velocity += f32(globals.tick) * entity.acceleration
-		entity.position += f32(globals.tick) * entity.velocity
-		entity.angular_velocity += entity.angular_acceleration
-		entity.rotation += entity.angular_velocity
-	}
-	animate_physics(entity)
-
-	switch &variant in entity.variant {
-	case nil: // general-purpose entity
-	case Text_State:   //step_text(entity, immediate=false)
-	case Image_State:  step_image(entity, immediate=false)
-	case Sprite_State: step_sprite(entity, immediate=false)
-	case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
-	}
 }
 
 next_z :: proc () -> f32 {

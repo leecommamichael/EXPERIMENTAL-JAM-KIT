@@ -60,7 +60,6 @@ step :: proc (dt: f64) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 	@static tick_buildup: f32
 	for tick_buildup += dt; tick_buildup >= globals.tick; tick_buildup -= globals.tick {
-		
 		events := sugar.poll_events() // begins input frame.
 		if .Should_Exit in events { return false }
 		if .Window_Scale_Factor_Changed in events {
@@ -75,6 +74,7 @@ step :: proc (dt: f64) -> bool {
 		}
 		framework_step(dt)
 		sugar.end_input_frame()
+		// when ODIN_DEBUG do break
 	}
 
 	framework_draw(tick_buildup/globals.tick)

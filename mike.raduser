@@ -91,6 +91,7 @@ window:
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -98,9 +99,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 161
+        cursor_line: 232
         cursor_column: 1
-        mark_line: 161
+        mark_line: 232
         mark_column: 1
       }
       text:
@@ -143,13 +144,12 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game_full_tilt.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 103
+        cursor_line: 130
         cursor_column: 1
-        mark_line: 103
+        mark_line: 130
         mark_column: 1
       }
       text:
@@ -199,7 +199,7 @@ window:
     }
   }
   split_x
-  pos: 496 217
+  pos: 1576 229
   monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0

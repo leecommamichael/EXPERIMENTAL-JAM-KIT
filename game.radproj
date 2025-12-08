@@ -1,11 +1,11 @@
 // raddbg 0.9.24 project file
 
+recent_file: path: "src/main_framework.odin"
 recent_file: path: "src/main_game_full_tilt.odin"
 recent_file: path: "src/math.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core_builtin.odin"
 recent_file: path: "../../applications (compilers)/odin/core/math/math.odin"
 recent_file: path: "../dukengine/dukengine.exe"
-recent_file: path: "src/main_framework.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "../../applications (compilers)/odin/base/runtime/core.odin"
 recent_file: path: "src/main_entrypoint.odin"
@@ -66,18 +66,8 @@ type_view:
   type: "image::Image"
   expr: "bitmap($.pixels.buf.data, $.width, $.height)"
 }
-breakpoint:
-{
-  source_location: "src/main_game_full_tilt.odin:104:1"
-  hit_count: 6
-}
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/nord_gl/game.pdb"
-  timestamp: 66200192141883
-}
-breakpoint:
-{
-  source_location: "src/main_game_full_tilt.odin:103:1"
-  hit_count: 121
+  timestamp: 66200510618994
 }
