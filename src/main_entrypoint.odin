@@ -17,7 +17,7 @@ main :: proc() {
 	sugar.init()
 	asset_init()
 	displays := sugar.list_displays()
-	display := displays[1] if len(displays) > 1 else displays[0]
+	display := displays[0] if len(displays) > 1 else displays[0]
 	ok := sugar.create_window(
 		[4]int{
 			display.top_left.x,

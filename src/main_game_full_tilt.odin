@@ -88,39 +88,40 @@ game_step :: proc () {
 		bump.collider.layer += {.Terrain}
 	}
 
-	ball, new_ball := circle(); if new_ball {
-		ball.name = "Ball"
-		ball.color = {0.3, 0.3, 0.3, 0.3}
-		ball.basis.scale = 44
-		ball.position.xy = {100, 400}
-		ball.collider.size = ball.basis.scale
-		ball.collider.shape = .Circle
-		ball.flags += {.Collider_Enabled,}
-
-		ball.acceleration = gravity
-	}
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
-		hand.color = {0.3, 0.3, 0.3, 0.3}
+		hand.color = {0.4, 0.4, 1.0, 0.1}
 		hand.basis.scale = 22
 		hand.position.xy = {100, 400}
 		hand.collider.size = hand.basis.scale
 		hand.collider.shape = .Circle
-		hand.flags += {.Collider_Enabled,}
+		hand.flags += {.Collider_Enabled, .Physics_Skip_Integrate}
+	}
+	ball, new_ball := circle(); if new_ball {
+		ball.name = "Ball"
+		ball.color = {0.0, 0.2, 0.5, 0.1}
+		ball.basis.scale = 44
+		ball.position.xy = {100, 400}
+		ball.collider.size = ball.basis.scale
+		ball.collider.shape = .Circle
+		ball.flags += {.Collider_Enabled, .Physics_Skip_Integrate}
+
+		ball.acceleration = gravity
 	}
 
 	if pc.hand_grounded {
-		hand.color = 0.8
+		hand.color.a = 0.8
 	} else {
-		hand.color = 0.5
+		hand.color.a = 0.5
 	}
 	if pc.blob_grounded {
-		ball.color = 0.8
+		ball.color.a = 0.8
 	} else {
-		ball.color = 0.5
+		ball.color.a = 0.5
 	}
 
 	pc_step(ball, hand)
+
 	if globals.draw_colliders {
 		e := text(fmt.tprintf("%#v", pc));
 		e.basis.position.y = globals.canvas_size_px.y - 20
@@ -130,11 +131,12 @@ game_step :: proc () {
 }
 
 PC_State :: struct {
-	ball_mode:     bool, // else sticky blob
-	blob_grounded: bool, // in terrain, corrected.
+	ball_mode:       bool, // else sticky blob
+	blob_grounded:   bool, // in terrain, corrected.
+	hand_grounded:   bool, // in terrain (assumes grabbing at all times) (no RT yet.)
 	blob_on_surface: Vec3,
-	hand_grounded: bool, // in terrain (assumes grabbing at all times) (no RT yet.)
-	hand_on_surface: Vec3
+	hand_on_surface: Vec3,
+	prev_rs:         Vec3,
 }
 
 pc: PC_State
@@ -142,11 +144,8 @@ pc: PC_State
 // Allowing the system to move objects with acceleration
 // will end in jank unless you fix the numbers to avoid it.
 // Jank in this case is the jiggling above:below Terrain boundaries.
+//
 pc_step :: proc (blob: ^Entity, hand: ^Entity) {
-	// t0: - The game state drives possible inputs.
-	//     - Colliders are promised integrity by previous step. (adjustments)
-	// Goal of t0 is to set all forces allowed by controls.
-	////////////////////////////////////////////////////////////////////////////// t0
 	lt := sugar.input.gamepad.left_trigger
 	wants_ball := lt > 0.01
 	pc.ball_mode = wants_ball
@@ -155,21 +154,33 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		pc.blob_grounded = false
 		pc.hand_grounded = false
 		blob.acceleration = gravity
-		hand.position = blob.position // (TODO: needs to happen after integration)             Hand trails ball by one frame.
-		ball_step(blob) ///////////////////////////////// <--------- DIVERGE TO BALL
+		ball_step(blob)
+		do_physics_integrate_tick(blob)
+		hand.position = blob.position
 		return
 	}
-	rt := sugar.input.gamepad.right_trigger
-	wants_grab := rt > 0.01
 
+	// t0: - The game state drives possible inputs.
+	//     - Colliders are promised integrity by previous step. (adjustments)
+	// Goal of t0 is to set all forces allowed by controls.
+	////////////////////////////////////////////////////////////////////////////// begin t0
+
+	rt := sugar.input.gamepad.right_trigger
+	rt_down := rt > 0.01;
 	ls := clamp_length(vec3(sugar.input.gamepad.left_stick), 1)
 	rs := clamp_length(vec3(sugar.input.gamepad.right_stick), 1)
-	if pc.hand_grounded {
-		hand.position = pc.hand_on_surface
+	defer pc.prev_rs = rs
+	if pc.blob_grounded && pc.hand_grounded {
+		// hand.position = pc.hand_on_surface
 		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
-		hand.velocity = 0
+		blob.acceleration = 0
+	}
+	if pc.hand_grounded && !pc.blob_grounded {
+		// hand.position = pc.hand_on_surface
+		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
 		blob.acceleration = 0 // TODO: make this stretchy|pendulum
-	} else if pc.blob_grounded {
+	} 
+	if pc.blob_grounded && !pc.hand_grounded {
 		// INPUT RULE: LEFT STICK
 		// Left stick moves the blob because it's grounded.
 		blob.velocity = 0 // PUNT: needs to eliminate perp vel, not be zero.
@@ -178,16 +189,21 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		// INPUT RULE: RIGHT STICK
 		// Right stick works because it always does outside of the ball.
 		hand.position = blob.position + rs * 32
-	} else { // Fall, cause nothing is grounded.
+	}
+	if !pc.blob_grounded && !pc.hand_grounded { // Fall, cause nothing is grounded.
 		blob.acceleration = gravity
 		// INPUT RULE: RIGHT STICK
 		// Right stick works because it always does outside of the ball.
 		hand.position = blob.position + rs * 32
 	}
+	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
+	////////////////////////////////////////////////////////////////////////////// begin t1
 	// t1: - Inputs are consumed and wiped for re-testing.
 	// Goal of t1 is to adjust positions to prevent jitter caused by overlap + thrashing.
 	////////////////////////////////////////////////////////////////////////////// t1
-	for collision in entity_collisions(blob) {
+	pc.blob_grounded = false
+	blob_collisions := find_collisions_involving_entity(game_check_phase2_collisions(blob)[:], blob)
+	for collision in blob_collisions {
 		if .Terrain not_in collision.other.collider.layer { continue }
 		terrain := collision.other
 		terrain_to_blob := blob.position - terrain.position
@@ -205,32 +221,65 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		pc.blob_grounded = true
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
-	if !wants_grab {
-		pc.hand_grounded = false
-	} else {
-		for collision in entity_collisions(hand) {
-			if .Terrain not_in collision.other.collider.layer { continue }
-			terrain := collision.other
-			terrain_to_hand := hand.position - terrain.position
-			normal := normalize(terrain_to_hand)
 
-			switch terrain.collider.shape {
-			case .None: continue
-			case .Point: continue
-			case .AABB:
-				normal = nearest_direction_xy(normal)
-			case .Circle:
-			}
+	@static ctr := 0
+	pc.hand_grounded = false
+	hand_collisions := find_collisions_involving_entity(game_check_phase2_collisions(hand)[:], hand)
+	for collision in hand_collisions {
+		if .Terrain not_in collision.other.collider.layer { continue }
+		terrain := collision.other
+		terrain_to_hand := hand.position - terrain.position
+		normal := normalize(terrain_to_hand)
+
+		switch terrain.collider.shape {
+		case .None: continue
+		case .Point: continue
+		case .AABB:
+			normal = nearest_direction_xy(normal)
+		case .Circle:
+		}
+		if rt_down {
+			pc.hand_grounded = true // due to hand touching something.
+		} else {
+			pc.blob_grounded = false
+			ctr += 1
 			collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
 			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
-			pc.hand_grounded = true // due to hand touching something.
 			hand.position = pc.hand_on_surface
-		} // for collision(hand)
-	}
+			rs_vec := (rs - pc.prev_rs) * 10 * gravity_acceleration
+			if sugar.input.gamepad.buttons[.Up].is_pressed {
+				rs_vec = { 0,-100000, 0 }
+			} 
+			log.infof("rs_vec %v: %v", ctr, rs_vec)
+			blob.acceleration += reflect(rs_vec, normal)
+		}
+	} // for collision(hand)
+
+	blob_collisions = find_collisions_involving_entity(game_check_phase2_collisions(blob)[:], blob)
+	for collision in blob_collisions {
+		if .Terrain not_in collision.other.collider.layer { continue }
+		terrain := collision.other
+		terrain_to_blob := blob.position - terrain.position
+		normal := normalize(terrain_to_blob)
+
+		switch terrain.collider.shape {
+		case .None: continue
+		case .Point: continue
+		case .AABB:
+			normal = nearest_direction_xy(normal)
+		case .Circle:
+		}
+		collision_position := nearest_point_along_aabb_to_circle(terrain, blob)
+		pc.blob_on_surface = collision_position + (normal * blob.collider.size.x/2)
+		pc.blob_grounded = true
+		blob.position = pc.blob_on_surface
+	} // for collision(blob)
+	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
 } // pc step
 
 phase2_collisions: [dynamic]Collision
-game_check_phase2_collisions :: proc (entity: ^Entity) {
+game_check_phase2_collisions :: proc (entity: ^Entity) -> [dynamic]Collision {
+	clear(&phase2_collisions)
 	if .Collider_Enabled in entity.flags {
 		assert(entity.collider.shape != nil)
 		collider_loop: for &other in globals.entities {
@@ -247,6 +296,7 @@ game_check_phase2_collisions :: proc (entity: ^Entity) {
 			}
 		} // collider_loop
 	}
+	return phase2_collisions
 }
 
 ball_step :: proc (ball: ^Entity) {

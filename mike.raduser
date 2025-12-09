@@ -91,7 +91,6 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -147,9 +146,9 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game_full_tilt.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query: input: ""
-        cursor_line: 130
+        cursor_line: 132
         cursor_column: 1
-        mark_line: 130
+        mark_line: 132
         mark_column: 1
       }
       text:
@@ -195,6 +194,17 @@ window:
         cursor_column: 9
         mark_line: 808
         mark_column: 9
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_text.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        query: input: ""
+        cursor_line: 62
+        cursor_column: 21
+        mark_line: 62
+        mark_column: 21
       }
     }
   }
@@ -327,4 +337,4 @@ keybindings:
   { toggle_dev_menu d ctrl shift alt }
   { add_target o ctrl }
 }
-current_path: "C:/Users/thatl/usr/Repositories/dukengine/src"
+current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src"

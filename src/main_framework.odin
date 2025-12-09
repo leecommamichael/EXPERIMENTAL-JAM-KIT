@@ -181,11 +181,16 @@ physics_end_frame :: proc () {
 		}
 	} // for old_collisions
 }
-physics_integrate_tick :: proc (entity: ^Entity) {
+
+do_physics_integrate_tick :: proc (entity: ^Entity) {
 	entity.velocity += f32(globals.tick) * entity.acceleration
 	entity.position += f32(globals.tick) * entity.velocity
 	entity.angular_velocity += entity.angular_acceleration
 	entity.rotation += entity.angular_velocity
+}
+physics_integrate_tick :: proc (entity: ^Entity) {
+	if .Physics_Skip_Integrate in entity.flags do return
+	do_physics_integrate_tick(entity)
 }
 physics_collide :: proc (entity: ^Entity) {
 	if .Collider_Enabled in entity.flags {

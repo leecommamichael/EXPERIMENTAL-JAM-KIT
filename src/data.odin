@@ -136,6 +136,7 @@ Entity_Flag :: enum {
 	Is_3D,
 	Hidden,
 	Collider_Enabled,
+	Physics_Skip_Integrate,
 	Is_UI,
 }
 
