@@ -12,7 +12,7 @@ pixels_per_meter: f32 = 880.0 // Such that 50mm skateboard wheel is 44px.
 pixels_per_decimeter: f32 = pixels_per_meter / 10
 pixels_per_centimeter: f32 = pixels_per_meter / 100
 pixels_per_millimeter: f32 = pixels_per_meter / 1000
-gravity_acceleration: f32 = 9.8 * pixels_per_meter
+gravity_acceleration: f32 = 100 // 9.8 * pixels_per_meter
 gravity: Vec3 = DOWN * gravity_acceleration
 cursor: ^Entity
 
@@ -174,7 +174,6 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	if rs_vel > 0.2 do rs_vel = 1
 	hand.color.r = rs_vel
 	hand.color.a = rs_vel
-	log.infof("r = %v", rs_vel)
 	defer pc.prev_rs = rs
 	if pc.blob_grounded && pc.hand_grounded {
 		// hand.position = pc.hand_on_surface
@@ -244,20 +243,22 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 			normal = nearest_direction_xy(normal)
 		case .Circle:
 		}
-		if rt_down {
-			pc.hand_grounded = true // due to hand touching something.
-		} else if pc.launch_debounce <= 0 {
-			pc.blob_grounded = false
-			pc.launch_debounce = 100
-			collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
-			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
-			hand.position = pc.hand_on_surface
-			rs_vec := (rs - pc.prev_rs) * 10 * gravity_acceleration
-			if sugar.input.gamepad.buttons[.Up].is_pressed {
-				rs_vec = { 0,-100000, 0 }
-			} 
-			log.infof("rs_vec %v", rs_vec)
-			blob.acceleration += reflect(rs_vec, normal)
+		if pc.launch_debounce <= 0 {
+			if rt_down {
+				pc.hand_grounded = true // due to hand touching something.
+			} else {
+				pc.blob_grounded = false
+				pc.launch_debounce = 6
+				collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
+				pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
+				hand.position = pc.hand_on_surface
+				rs_vec := (rs - pc.prev_rs) * 100000
+				if sugar.input.gamepad.buttons[.Up].is_pressed {
+					rs_vec = { 0,-100000, 0 }
+				} 
+				log.infof("rs_vec %v", rs_vec)
+				blob.acceleration += -reflect(rs_vec, normal)
+			}
 		}
 	} // for collision(hand)
 
