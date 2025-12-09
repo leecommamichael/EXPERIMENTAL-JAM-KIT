@@ -110,14 +110,14 @@ game_step :: proc () {
 	}
 
 	if pc.hand_grounded {
-		hand.color.a = 0.8
+		hand.color.a = 0.4
 	} else {
-		hand.color.a = 0.5
+		hand.color.a = 0.2
 	}
 	if pc.blob_grounded {
-		ball.color.a = 0.8
+		ball.color.a = 0.4
 	} else {
-		ball.color.a = 0.5
+		ball.color.a = 0.2
 	}
 
 	pc_step(ball, hand)
@@ -137,6 +137,7 @@ PC_State :: struct {
 	blob_on_surface: Vec3,
 	hand_on_surface: Vec3,
 	prev_rs:         Vec3,
+	launch_debounce: int
 }
 
 pc: PC_State
@@ -169,6 +170,11 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	rt_down := rt > 0.01;
 	ls := clamp_length(vec3(sugar.input.gamepad.left_stick), 1)
 	rs := clamp_length(vec3(sugar.input.gamepad.right_stick), 1)
+	rs_vel := length(rs - pc.prev_rs)
+	if rs_vel > 0.2 do rs_vel = 1
+	hand.color.r = rs_vel
+	hand.color.a = rs_vel
+	log.infof("r = %v", rs_vel)
 	defer pc.prev_rs = rs
 	if pc.blob_grounded && pc.hand_grounded {
 		// hand.position = pc.hand_on_surface
@@ -222,7 +228,7 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
 
-	@static ctr := 0
+	pc.launch_debounce -= 1
 	pc.hand_grounded = false
 	hand_collisions := find_collisions_involving_entity(game_check_phase2_collisions(hand)[:], hand)
 	for collision in hand_collisions {
@@ -240,9 +246,9 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		}
 		if rt_down {
 			pc.hand_grounded = true // due to hand touching something.
-		} else {
+		} else if pc.launch_debounce <= 0 {
 			pc.blob_grounded = false
-			ctr += 1
+			pc.launch_debounce = 100
 			collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
 			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
 			hand.position = pc.hand_on_surface
@@ -250,7 +256,7 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 			if sugar.input.gamepad.buttons[.Up].is_pressed {
 				rs_vec = { 0,-100000, 0 }
 			} 
-			log.infof("rs_vec %v: %v", ctr, rs_vec)
+			log.infof("rs_vec %v", rs_vec)
 			blob.acceleration += reflect(rs_vec, normal)
 		}
 	} // for collision(hand)
@@ -275,6 +281,8 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
 	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
+	hand.position = blob.position + rs * 32
+
 } // pc step
 
 phase2_collisions: [dynamic]Collision
