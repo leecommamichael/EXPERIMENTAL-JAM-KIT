@@ -22,7 +22,7 @@ Text_State :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-Default_Font_Usage :: Font_Usage.pixel
+Default_Font_Usage :: Font_Usage.mono
 Default_Font_Variant :: Font_Variant.regular
 
 make_text :: proc (
@@ -41,18 +41,23 @@ make_text :: proc (
 }
 
 text :: proc (
-	message:  string,
+	message: string,
 	usage := Default_Font_Usage,
 	variant := Default_Font_Variant,
 	loc := #caller_location,
-) -> ^Entity {
-	entity, is_new := do_entity(loc)
+) -> (^Entity) {
+	entity, is_new := do_entity(loc); if is_new {
+		entity.variant = Text_State {}
+		entity.color = 1
+	}
+	message_changed := is_new || raw_data(message) != raw_data(entity.variant.(Text_State).text)
 	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
 	}
-	entity.color = 1
-	if is_new || message != entity.variant.(Text_State).text {
+	if message_changed {
+		ts := entity.variant.(Text_State)
+		ts.text = message
 		set_text(entity)
 	}
 	entity.position.z = next_z()
@@ -97,19 +102,19 @@ Font :: struct {
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
 set_text :: proc (entity: ^Entity) {
-	variant := entity.variant.(Text_State)
-	verts_needed   := len(variant.text) * 4
-	indices_needed := len(variant.text) * 6
+	text := entity.variant.(Text_State)
+	verts_needed   := len(text.text) * 4
+	indices_needed := len(text.text) * 6
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)
 	indices := make([]u32, indices_needed, context.temp_allocator)
 
   atlas_size: [2]int = globals.assets.font_atlas.size_px
 	text_cursor: [2]f32
-	for byte, glyph_index in variant.text {
+	for byte, glyph_index in text.text {
 		chardata_index := i32(byte - 32)
 		quad: stbtt.aligned_quad
 		stbtt.GetPackedQuad(
-			raw_data(variant.font.data),
+			raw_data(text.font.data),
 			cast(i32) atlas_size.x,
 			cast(i32) atlas_size.y,
 			chardata_index,
@@ -126,6 +131,13 @@ set_text :: proc (entity: ^Entity) {
 			quad.y1 = ceil(quad.y1)
 			text_cursor.x = ceil(text_cursor.x)
 			text_cursor.y = ceil(text_cursor.y)
+		}
+		if byte == '\t' {
+			text_cursor.x += text.font.monospace_advance * 2
+		}
+		if byte == '\n' {
+			text_cursor.x = 0
+			text_cursor.y += text.font.line_height
 		}
 
 		gnum := glyph_index+1
@@ -148,15 +160,15 @@ set_text :: proc (entity: ^Entity) {
 // text cursor is at the baseline, so it's not useful.
 // gotta measure distance between y1 and y0
 measure_text :: proc (entity: Entity) -> (out: Vec2) {
-	variant := entity.variant.(Text_State)
+	text := entity.variant.(Text_State)
   atlas_size: [2]int = globals.assets.font_atlas.size_px
 
 	text_cursor: Vec2
 	quad: stbtt.aligned_quad
-	for byte, glyph_index in variant.text {
+	for byte, glyph_index in text.text {
 		chardata_index := i32(byte - 32)
 		stbtt.GetPackedQuad(
-			raw_data(variant.font.data),
+			raw_data(text.font.data),
 			cast(i32) atlas_size.x,
 			cast(i32) atlas_size.y,
 			chardata_index,
@@ -174,8 +186,15 @@ measure_text :: proc (entity: Entity) -> (out: Vec2) {
 			text_cursor.x = ceil(text_cursor.x)
 			text_cursor.y = ceil(text_cursor.y)
 		}
+		if byte == '\t' {
+			text_cursor.x += text.font.monospace_advance * 2
+		}
+		if byte == '\n' {
+			text_cursor.x = 0
+			text_cursor.y += text.font.line_height
+		}
 	}
 	out.x = text_cursor.x + quad.x0 - quad.x1
-	out.y = variant.font.line_height
+	out.y = text.font.line_height
 	return
 }
