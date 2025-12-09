@@ -115,7 +115,7 @@ framework_step :: proc (dt: f32) {
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...
 	rect.basis.position.xy = rect.scale.xy/2
-	rect.flags += {.Is_UI}
+	rect.flags += {.Is_UI, .Skip_Interpolation}
 	rect.name = "Canvas Rect"
 ////////////////////////////////////////////////////////////////////////////////
 	reset_z_cursor()
@@ -227,8 +227,15 @@ framework_draw :: proc (alpha: f32) {
 	// This is the soonest scope we can lerp the transforms and determine draw-order.
 	for entity in globals.entities {
 		instance: ^Any_Instance = entity.instance
-		xform := lerp_transform(entity.old_transform, entity.transform, alpha)
-		basis := lerp_transform(entity.old_basis,     entity.basis,     alpha)
+		xform: Transform
+		basis: Transform
+		if .Skip_Interpolation in entity.flags {
+			xform = entity.transform
+			basis = entity.basis
+		} else {
+			xform = lerp_transform(entity.old_transform, entity.transform, alpha)
+			basis = lerp_transform(entity.old_basis,     entity.basis,     alpha)
+		}
 		instance.model_transform =
 			linalg.matrix4_translate(xform.position + basis.position)\
 			* linalg.matrix4_from_euler_angles_xyz(expand_values(xform.rotation + basis.rotation))\

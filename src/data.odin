@@ -137,6 +137,7 @@ Entity_Flag :: enum {
 	Hidden,
 	Collider_Enabled,
 	Physics_Skip_Integrate,
+	Skip_Interpolation,
 	Is_UI,
 }
 
