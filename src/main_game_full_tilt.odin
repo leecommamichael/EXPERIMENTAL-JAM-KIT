@@ -1,5 +1,6 @@
 package main
 
+import "core:fmt"
 import "core:log"
 import "sugar"
 import "base:runtime"
@@ -108,17 +109,32 @@ game_step :: proc () {
 		hand.flags += {.Collider_Enabled,}
 	}
 
+	if pc.hand_grounded {
+		hand.color = 0.8
+	} else {
+		hand.color = 0.5
+	}
+	if pc.blob_grounded {
+		ball.color = 0.8
+	} else {
+		ball.color = 0.5
+	}
+
 	pc_step(ball, hand)
+	if globals.draw_colliders {
+		e := text(fmt.tprintf("%#v", pc));
+		e.basis.position.y = globals.canvas_size_px.y - 20
+		e2 := text(fmt.tprintf("ball acc. := %#v", ball.acceleration));
+		e2.basis.position.y = globals.canvas_size_px.y - 350
+	}
 }
 
-// Crawl, Roll, or Swing
-// Swinging if hand mounted and body not on ground.
-// Crawling if body mounted and not ball
-// Rolling  if not hand mounted and LT held.
-//
-// hand mounted if hand in contact with something & RT held.
-// body mounted if in contact with something.
 PC_State :: struct {
+	ball_mode:     bool, // else sticky blob
+	blob_grounded: bool, // in terrain, corrected.
+	blob_on_surface: Vec3,
+	hand_grounded: bool, // in terrain (assumes grabbing at all times) (no RT yet.)
+	hand_on_surface: Vec3
 }
 
 pc: PC_State
@@ -127,24 +143,50 @@ pc: PC_State
 // will end in jank unless you fix the numbers to avoid it.
 // Jank in this case is the jiggling above:below Terrain boundaries.
 pc_step :: proc (blob: ^Entity, hand: ^Entity) {
+	// t0: - The game state drives possible inputs.
+	//     - Colliders are promised integrity by previous step. (adjustments)
+	// Goal of t0 is to set all forces allowed by controls.
+	////////////////////////////////////////////////////////////////////////////// t0
 	lt := sugar.input.gamepad.left_trigger
-	hard_ball := lt > 0.01
+	wants_ball := lt > 0.01
+	pc.ball_mode = wants_ball
 
-	rt := sugar.input.gamepad.right_trigger
-	soft_hand := rt < 0.01
-
-	if hard_ball {
-		hand.position = blob.position
-		ball_step(blob) /////////////////////////////////////////// <--------- DIVERGE TO BALL
+	if pc.ball_mode {
+		pc.blob_grounded = false
+		pc.hand_grounded = false
+		blob.acceleration = gravity
+		hand.position = blob.position // (TODO: needs to happen after integration)             Hand trails ball by one frame.
+		ball_step(blob) ///////////////////////////////// <--------- DIVERGE TO BALL
 		return
 	}
+	rt := sugar.input.gamepad.right_trigger
+	wants_grab := rt > 0.01
 
 	ls := clamp_length(vec3(sugar.input.gamepad.left_stick), 1)
 	rs := clamp_length(vec3(sugar.input.gamepad.right_stick), 1)
-//////////////////////////////////////////////////////////////////////////////// BODY ////
-	// INTENT: acceleration is gravity, unless touching something or mounted.
-	blob_grounded: bool
-	blob_on_surface: Vec3
+	if pc.hand_grounded {
+		hand.position = pc.hand_on_surface
+		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
+		hand.velocity = 0
+		blob.acceleration = 0 // TODO: make this stretchy|pendulum
+	} else if pc.blob_grounded {
+		// INPUT RULE: LEFT STICK
+		// Left stick moves the blob because it's grounded.
+		blob.velocity = 0 // PUNT: needs to eliminate perp vel, not be zero.
+		blob.acceleration = 0
+		blob.position.x += ls.x
+		// INPUT RULE: RIGHT STICK
+		// Right stick works because it always does outside of the ball.
+		hand.position = blob.position + rs * 32
+	} else { // Fall, cause nothing is grounded.
+		blob.acceleration = gravity
+		// INPUT RULE: RIGHT STICK
+		// Right stick works because it always does outside of the ball.
+		hand.position = blob.position + rs * 32
+	}
+	// t1: - Inputs are consumed and wiped for re-testing.
+	// Goal of t1 is to adjust positions to prevent jitter caused by overlap + thrashing.
+	////////////////////////////////////////////////////////////////////////////// t1
 	for collision in entity_collisions(blob) {
 		if .Terrain not_in collision.other.collider.layer { continue }
 		terrain := collision.other
@@ -159,52 +201,32 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		case .Circle:
 		}
 		collision_position := nearest_point_along_aabb_to_circle(terrain, blob)
-		blob_on_surface = collision_position + (normal * blob.collider.size.x/2)
-		blob_grounded = true
+		pc.blob_on_surface = collision_position + (normal * blob.collider.size.x/2)
+		pc.blob_grounded = true
+		blob.position = pc.blob_on_surface
 	} // for collision(blob)
-	//////////////////////////////////////////////////////////////////////////////// HAND ////
-	hand_grounded: bool
-	hand_on_surface: Vec3
-	for collision in entity_collisions(hand) {
-		if .Terrain not_in collision.other.collider.layer { continue }
-		terrain := collision.other
-		terrain_to_hand := hand.position - terrain.position
-		normal := normalize(terrain_to_hand)
-
-		switch terrain.collider.shape {
-		case .None: continue
-		case .Point: continue
-		case .AABB:
-			normal = nearest_direction_xy(normal)
-		case .Circle:
-		}
-		collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
-		hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
-		hand_grounded = true // due to hand touching something.
-	} // for collision(hand)
-	//////////////////////////////////////////////////////////////////////////////// HAND ////
-	hand.position = blob.position + rs * 32
-	if blob_grounded {
-		blob.velocity = 0 // PUNT: needs to eliminate perp vel, not be zero.
-		blob.acceleration = 0
-		blob.position.x += ls.x
-		hand.position = blob.position + rs * 32 // blob moved, need to move this now.
-		// FAULTS: Both blob and hand were positioned.
-		// This means we have to re-test what's going on with the hand.
-	}
-	if hand_grounded {
-		hand.position = hand_on_surface
-		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
-		hand.velocity = 0
-		blob.acceleration = 0
-	} else if blob_grounded {
-		blob.velocity = 0 // PUNT: needs to eliminate perp vel, not be zero.
-		blob.acceleration = 0
-		blob.position.x += ls.x
+	if !wants_grab {
+		pc.hand_grounded = false
 	} else {
-		blob.acceleration = gravity
+		for collision in entity_collisions(hand) {
+			if .Terrain not_in collision.other.collider.layer { continue }
+			terrain := collision.other
+			terrain_to_hand := hand.position - terrain.position
+			normal := normalize(terrain_to_hand)
+
+			switch terrain.collider.shape {
+			case .None: continue
+			case .Point: continue
+			case .AABB:
+				normal = nearest_direction_xy(normal)
+			case .Circle:
+			}
+			collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
+			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
+			pc.hand_grounded = true // due to hand touching something.
+			hand.position = pc.hand_on_surface
+		} // for collision(hand)
 	}
-//////////////////////////////////////////////////////////////////////////////// BODY ////
 } // pc step
 
 phase2_collisions: [dynamic]Collision
@@ -262,7 +284,7 @@ ball_step :: proc (ball: ^Entity) {
 			if is_nearly(v_perp_force, 0) {
 				ball.acceleration = 0
 				// at rest.
-				// log.infof("rest")
+				log.infof("rest")
 			} else {
 				// ROLL
 				log.infof("ROLL v_perp: %v", length(v_perp))
