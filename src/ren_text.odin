@@ -31,11 +31,12 @@ make_text :: proc (
 	variant := Default_Font_Variant,
 ) -> ^Entity {
 	entity: ^Entity = make_entity()
+	entity.flags += {.Skip_Interpolation}
 	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
 	}
-	set_text(entity)
+	set_text(entity, message)
 	entity.color = 1
 	return entity
 }
@@ -47,6 +48,7 @@ text :: proc (
 	loc := #caller_location,
 ) -> (^Entity) {
 	entity, is_new := do_entity(loc); if is_new {
+		entity.flags += {.Skip_Interpolation}
 		entity.variant = Text_State {}
 		entity.color = 1
 	}
@@ -58,14 +60,14 @@ text :: proc (
 	if message_changed {
 		ts := entity.variant.(Text_State)
 		ts.text = message
-		set_text(entity)
+		set_text(entity, message)
 	}
 	entity.position.z = next_z()
 	return entity
 }
 
 Font_Usage :: enum {
-	caption,    // 10px, sans // TODO: link to definition
+	caption,    // 10px, sans
 	body,       // 12px, sans
 	body_large, // 16px, sans
 	header,     // 20px, sans
@@ -101,8 +103,9 @@ Font :: struct {
 // Framework Integration Implementation
 //////////////////////////////////////////////////////////////////////
 // Last chance to write instance data before it's bulk-copied.
-set_text :: proc (entity: ^Entity) {
+set_text :: proc (entity: ^Entity, message: string) {
 	text := entity.variant.(Text_State)
+	text.text = message
 	verts_needed   := len(text.text) * 4
 	indices_needed := len(text.text) * 6
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)

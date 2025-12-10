@@ -126,23 +126,27 @@ framework_step :: proc (dt: f32) {
 		&& .Immediate_In_Use not_in entity.flags {
 			delete_key(&globals.immediate_entities, entity.immediate_hash)
 			free_entity(entity) // mutates this array, hence the #reverse.
-			continue
 		}
 
 ////////////////////////////////////////////////////////////////////////////////
 		entity.ui = {}
 
 		if .Allocated not_in entity.flags {
-			assert(false) // freed objects shouldn't make it here.
+			continue
+		}
+		if .Immediate_Mode not_in entity.flags {
+			switch &variant in entity.variant {
+			case nil: // general-purpose entity
+			case Text_State:
+			case Image_State:  step_image(entity)
+			case Sprite_State: step_sprite(entity)
+			case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
+			}
+		}
+		if .Allocated not_in entity.flags {
+			continue // in case a _step function changed something.
 		}
 
-		switch &variant in entity.variant {
-		case nil: // general-purpose entity
-		case Text_State:   //step_text(entity, immediate=false)
-		case Image_State:  step_image(entity, immediate=false)
-		case Sprite_State: step_sprite(entity, immediate=false)
-		case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
-		}
 ////////////////////////////////////////////////////////////////////////////////
 		if .Is_3D in entity.flags {
 			append(&globals.entities_3D, entity)
