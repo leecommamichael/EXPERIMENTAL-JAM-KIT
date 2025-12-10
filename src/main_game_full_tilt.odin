@@ -12,7 +12,8 @@ pixels_per_meter: f32 = 880.0 // Such that 50mm skateboard wheel is 44px.
 pixels_per_decimeter: f32 = pixels_per_meter / 10
 pixels_per_centimeter: f32 = pixels_per_meter / 100
 pixels_per_millimeter: f32 = pixels_per_meter / 1000
-gravity_acceleration: f32 = 100 // 9.8 * pixels_per_meter
+just_cuz :: 10.0
+gravity_acceleration: f32 = 9.8 * pixels_per_meter / just_cuz
 gravity: Vec3 = DOWN * gravity_acceleration
 cursor: ^Entity
 
@@ -48,7 +49,7 @@ game_step :: proc () {
 		floor.name = "Floor"
 		floor.color = {0.1, 0.1, 0.1, 0.3}
 		floor.basis.scale = 300
-		floor.position.xy = {160, 0}
+		floor.position.xy = {160, 100}
 		floor.collider.size = floor.basis.scale
 		floor.collider.shape = .AABB
 		floor.flags += {.Collider_Enabled,}
@@ -59,7 +60,7 @@ game_step :: proc () {
 		floor2.name = "Floor2"
 		floor2.color = {0.1, 0.1, 0.1, 0.3}
 		floor2.basis.scale = 300
-		floor2.position.xy = {600, 0}
+		floor2.position.xy = {600, 100}
 		floor2.collider.size = floor2.basis.scale
 		floor2.collider.shape = .AABB
 		floor2.flags += {.Collider_Enabled,}
@@ -70,7 +71,7 @@ game_step :: proc () {
 		wall.name = "Wall"
 		wall.color = {0.1, 0.1, 0.1, 0.3}
 		wall.basis.scale = 300
-		wall.position.xy = 300+160
+		wall.position.xy = 300+260
 		wall.collider.size = wall.basis.scale
 		wall.collider.shape = .AABB
 		wall.flags += {.Collider_Enabled,}
@@ -81,7 +82,7 @@ game_step :: proc () {
 		bump.name = "Bump"
 		bump.color = {0.1, 0.1, 0.1, 0.3}
 		bump.basis.scale = 30
-		bump.position.xy = 300+160 - {300,100}
+		bump.position.xy = 300+260 - {300,100}
 		bump.collider.size = bump.basis.scale
 		bump.collider.shape = .AABB
 		bump.flags += {.Collider_Enabled,}
@@ -125,8 +126,6 @@ game_step :: proc () {
 	if globals.draw_colliders {
 		e := text(fmt.tprintf("%#v", pc));
 		e.basis.position.y = globals.canvas_size_px.y - 20
-		e2 := text(fmt.tprintf("ball acc. := %#v", ball.acceleration));
-		e2.basis.position.y = globals.canvas_size_px.y - 350
 	}
 }
 
@@ -137,7 +136,6 @@ PC_State :: struct {
 	blob_on_surface: Vec3,
 	hand_on_surface: Vec3,
 	prev_rs:         Vec3,
-	launch_debounce: int
 }
 
 pc: PC_State
@@ -148,28 +146,13 @@ pc: PC_State
 //
 pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	lt := sugar.input.gamepad.left_trigger
-	wants_ball := lt > 0.01
-	pc.ball_mode = wants_ball
-
-	if pc.ball_mode {
-		pc.blob_grounded = false
-		pc.hand_grounded = false
-		blob.acceleration = gravity
-		ball_step(blob)
-		do_physics_integrate_tick(blob)
-		hand.position = blob.position
-		return
-	}
-
-	// t0: - The game state drives possible inputs.
-	//     - Colliders are promised integrity by previous step. (adjustments)
-	// Goal of t0 is to set all forces allowed by controls.
-	////////////////////////////////////////////////////////////////////////////// begin t0
-
+	lt_down := lt > 0.01
 	rt := sugar.input.gamepad.right_trigger
 	rt_down := rt > 0.01;
 	ls := clamp_length(vec3(sugar.input.gamepad.left_stick), 1)
 	rs := clamp_length(vec3(sugar.input.gamepad.right_stick), 1)
+	pc.ball_mode = lt_down
+
 	rs_vel := length(rs - pc.prev_rs)
 	if rs_vel > 0.2 do rs_vel = 1
 	hand.color.r = rs_vel
@@ -202,6 +185,7 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		hand.position = blob.position + rs * 32
 	}
 	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
+	blob.acceleration = 0 // don't re-integrate gravity (this is new/untested)
 	////////////////////////////////////////////////////////////////////////////// begin t1
 	// t1: - Inputs are consumed and wiped for re-testing.
 	// Goal of t1 is to adjust positions to prevent jitter caused by overlap + thrashing.
@@ -227,7 +211,6 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
 
-	pc.launch_debounce -= 1
 	pc.hand_grounded = false
 	hand_collisions := find_collisions_involving_entity(game_check_phase2_collisions(hand)[:], hand)
 	for collision in hand_collisions {
@@ -243,22 +226,19 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 			normal = nearest_direction_xy(normal)
 		case .Circle:
 		}
-		if pc.launch_debounce <= 0 {
-			if rt_down {
-				pc.hand_grounded = true // due to hand touching something.
-			} else {
-				pc.blob_grounded = false
-				pc.launch_debounce = 6
-				collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
-				pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
-				hand.position = pc.hand_on_surface
-				rs_vec := (rs - pc.prev_rs) * 100000
-				if sugar.input.gamepad.buttons[.Up].is_pressed {
-					rs_vec = { 0,-100000, 0 }
-				} 
-				log.infof("rs_vec %v", rs_vec)
-				blob.acceleration += -reflect(rs_vec, normal)
-			}
+		if rt_down {
+			pc.hand_grounded = true // due to hand touching something.
+		} else {
+			pc.blob_grounded = false
+			collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
+			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
+			hand.position = pc.hand_on_surface
+			rs_vec := (rs - pc.prev_rs) * 500
+			v_para := dot(rs_vec, normal) * normal // force into surface
+			v_perp := rs_vec - v_para // force along surface
+			v_para_force := length(v_para)
+			v_perp_force := length(v_perp)
+			blob.velocity += -v_para - v_perp;//reflect(rs_vec, normal)
 		}
 	} // for collision(hand)
 
