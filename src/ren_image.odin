@@ -94,7 +94,7 @@ image_fragment_shader_source :: fragment_preamble +
 	}
 `
 
-step_image :: proc (entity: ^Entity, immediate: bool) {
+step_image :: proc (entity: ^Entity) {
 	variant := entity.variant.(Image_State)
 	globals.instance_staging[cast(int) entity.id].uv_transform = variant.asset.uv_rect
 	// ...

@@ -147,7 +147,7 @@ reset_animation :: proc (it: ^Sprite_State) {
 //////////////////////////////////////////////////////////////////////
 
 // If instance data needs to be mutated from properites mutated during `step`, do it here.
-step_sprite :: proc (entity: ^Entity, immediate: bool) -> (events: bit_set[Sprite_Event]) {
+step_sprite :: proc (entity: ^Entity) -> (events: bit_set[Sprite_Event]) {
 	it: ^Sprite_State = &entity.variant.(Sprite_State)
 	defer entity.instance.uv_transform = it.asset.frames[it.frame_index].uv_rect
 	dt := globals.tick * entity.time_scale
