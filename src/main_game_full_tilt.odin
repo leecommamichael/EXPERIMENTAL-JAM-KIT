@@ -133,9 +133,11 @@ PC_State :: struct {
 	ball_mode:       bool, // else sticky blob
 	blob_grounded:   bool, // in terrain, corrected.
 	hand_grounded:   bool, // in terrain (assumes grabbing at all times) (no RT yet.)
+	hand_striking:   bool, // in terrain (assumes grabbing at all times) (no RT yet.)
 	blob_on_surface: Vec3,
 	hand_on_surface: Vec3,
 	prev_rs:         Vec3,
+	rs_velocity:     Vec3, // % of a half-circle moved per second
 }
 
 pc: PC_State
@@ -151,6 +153,10 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	rt_down := rt > 0.01;
 	ls := clamp_length(vec3(sugar.input.gamepad.left_stick), 1)
 	rs := clamp_length(vec3(sugar.input.gamepad.right_stick), 1)
+	pc.rs_velocity += (rs - pc.prev_rs) * globals.tick
+	// if length(rs - pc.prev_rs) < 0.0001 {
+	// 	pc.rs_velocity = 0
+	// }
 	pc.ball_mode = lt_down
 
 	rs_vel := length(rs - pc.prev_rs)
@@ -159,12 +165,10 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	hand.color.a = rs_vel
 	defer pc.prev_rs = rs
 	if pc.blob_grounded && pc.hand_grounded {
-		// hand.position = pc.hand_on_surface
 		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
 		blob.acceleration = 0
 	}
 	if pc.hand_grounded && !pc.blob_grounded {
-		// hand.position = pc.hand_on_surface
 		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
 		blob.acceleration = 0 // TODO: make this stretchy|pendulum
 	} 
@@ -211,7 +215,10 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
 
+	pc.hand_striking = false
 	pc.hand_grounded = false
+	te: ^Timed_Effect_State(Empty_Struct)
+	@static num_effects: int = 0
 	hand_collisions := find_collisions_involving_entity(game_check_phase2_collisions(hand)[:], hand)
 	for collision in hand_collisions {
 		if .Terrain not_in collision.other.collider.layer { continue }
@@ -229,19 +236,43 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		if rt_down {
 			pc.hand_grounded = true // due to hand touching something.
 		} else {
+			pc.hand_striking = true
 			pc.blob_grounded = false
 			collision_position := nearest_point_along_aabb_to_circle(terrain, hand)
-			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x/2)
+			pc.hand_on_surface = collision_position + (normal * hand.collider.size.x)
 			hand.position = pc.hand_on_surface
-			rs_vec := (rs - pc.prev_rs) * 500
+			rs_stick_diff := pc.rs_velocity//rs - pc.prev_rs
+			rs_vec := (rs_stick_diff) * 5000
 			v_para := dot(rs_vec, normal) * normal // force into surface
 			v_perp := rs_vec - v_para // force along surface
 			v_para_force := length(v_para)
 			v_perp_force := length(v_perp)
-			blob.velocity += -v_para - v_perp;//reflect(rs_vec, normal)
+			assert(v_para_force >= 0)
+			assert(v_perp_force >= 0)
+			// if v_para_force + v_para_force < 100.0 { continue }
+			// if v_para.y > 0 { continue }
+			blob.velocity += -v_para - v_perp;
+			{ // LOG
+				Timed_Label :: struct {anchor: Vec2, label: ^Entity, value: Vec3}
+				effect := Timed_Label {
+					anchor = Vec2 {300, globals.canvas_size_px.y - 20} - { 0, 14 * f32(num_effects)},
+					label = make_text("Hello"),
+					value = rs_stick_diff
+				}
+				te := timed_effect(effect, 2, proc(it: ^Timed_Label, percent: f32) {
+					set_text(it.label, fmt.tprintf("RSd %v", it.value))
+					it.label.basis.position.xy = it.anchor
+				})
+				num_effects += 1
+				te.timeout = proc (it: ^Timed_Label) {
+					free_entity(it.label)
+					num_effects -= 1
+				}
+			}
 		}
 	} // for collision(hand)
-
+	defer do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
+	defer hand.position = blob.position + rs * 32
 	blob_collisions = find_collisions_involving_entity(game_check_phase2_collisions(blob)[:], blob)
 	for collision in blob_collisions {
 		if .Terrain not_in collision.other.collider.layer { continue }
@@ -261,8 +292,6 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		pc.blob_grounded = true
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
-	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
-	hand.position = blob.position + rs * 32
 
 } // pc step
 
