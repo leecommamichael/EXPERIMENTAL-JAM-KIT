@@ -13,17 +13,6 @@ platform_calls_step :: false
 GL_Context :: windows.HGLRC
 Window :: windows.HWND
 
-gl_set_proc_address :: proc(p: rawptr, name: cstring) {
-	func := windows.wglGetProcAddress(name)
-	switch uintptr(func) {
-	case 0, 1, 2, 3, ~uintptr(0):
-		module := windows.LoadLibraryW(windows.L("opengl32.dll"))
-		func = windows.GetProcAddress(module, name)
-	}
-	assert(func != nil)
-	(^rawptr)(p)^ = func
-}
-
 stat :: os.stat
 process_exec :: os.process_exec
 get_working_directory :: os.get_working_directory
