@@ -16,7 +16,8 @@ globals: ^Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
-	game_step: proc (engine_globals: ^Globals, engine_pc: ^PC_State),
+	hot_reload: proc (engine_globals: ^Globals, engine_pc: ^PC_State),
+	game_step:  proc (),
 	game_dll: dynlib.Library,
 	cursor: ^Entity,
 	sugar: sugar.Memory,

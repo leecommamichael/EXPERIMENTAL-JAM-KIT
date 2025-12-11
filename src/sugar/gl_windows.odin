@@ -9,10 +9,14 @@ import win "../windows"
 CONTEXT_MAJOR:: 3
 CONTEXT_MINOR:: 3
 
+load_gl :: proc () {
+  gl.load_up_to(CONTEXT_MAJOR, CONTEXT_MINOR, windows.gl_set_proc_address)
+}
+
 // https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#Create_a_False_Context
 // https://www.khronos.org/opengl/wiki/Load_OpenGL_Functions#Windows_2
 @require_results
-load_gl :: proc () -> bool {
+init_gl :: proc () -> bool {
   g.platform.gpu_hdc = win.nonzero(windows.GetDC(g.platform.window)) or_return
   pf := dummy_gl_pixel_format
   pf_id := windows.ChoosePixelFormat(g.platform.gpu_hdc, &pf)
@@ -41,7 +45,7 @@ load_gl :: proc () -> bool {
   actual_version: [2]int
 
   g.platform.gl_context = modern_ctx
-  gl.load_up_to(CONTEXT_MAJOR, CONTEXT_MINOR, windows.gl_set_proc_address)
+  load_gl()
   // TODO: Version check the context.
   gl.glGetIntegerv(gl.MAJOR_VERSION, &actual_version[0])
   gl.glGetIntegerv(gl.MINOR_VERSION, &actual_version[1])

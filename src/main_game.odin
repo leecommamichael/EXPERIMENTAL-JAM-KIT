@@ -4,20 +4,8 @@ import "core:fmt"
 import "core:log"
 import "core:sys/windows"
 import "sugar"
-import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
-
-gl_set_proc_address :: proc(p: rawptr, name: cstring) {
-	func := windows.wglGetProcAddress(name)
-	switch uintptr(func) {
-	case 0, 1, 2, 3, ~uintptr(0):
-		module := windows.LoadLibraryW(windows.L("opengl32.dll"))
-		func = windows.GetProcAddress(module, name)
-	}
-	assert(func != nil)
-	(^rawptr)(p)^ = func
-}
 
 pixels_per_meter: f32 = 880.0 // Such that 50mm skateboard wheel is 44px.
 pixels_per_decimeter: f32 = pixels_per_meter / 10
@@ -51,15 +39,17 @@ game_init :: proc () {
 }
 
 @export
-game_step :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
-	// set this process' globals to be the engine on
+hot_reload :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 	ensure(engine_pc != nil)
 	ensure(engine_globals != nil)
 	pc = engine_pc
 	globals = engine_globals
 	sugar.set_memory(&globals.sugar)
-  gl.load_up_to(sugar.CONTEXT_MAJOR, sugar.CONTEXT_MINOR, gl_set_proc_address) // <------ call to sugar
-//sugar.load_gl(sugar.CONTEXT_MAJOR, sugar.CONTEXT_MINOR)
+	sugar.load_gl()
+}
+
+@export
+game_step :: proc () {
 	clear(&pc.phase2_collisions)
 
 	if sugar.on_key_press(.Space) {
@@ -149,7 +139,7 @@ game_step :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 		e := text(fmt.tprintf("%#v", pc));
 		e.basis.position.y = globals.canvas_size_px.y - 20
 	}
-	ball.color = {0,1,0,1}
+	ball.color = {0.2, 0.2, 0.8, 1.0} // TODO: BLENDING NOT WORKING (alpha can be anything.)
 }
 
 PC_State :: struct {

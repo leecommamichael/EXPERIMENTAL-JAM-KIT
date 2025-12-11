@@ -28,6 +28,7 @@ framework_init :: proc () {
 		log.infof("OpenGL Platform Constants ---\n%#v", globals.gl_standard)
 	}
 	init_gl_constants()
+	globals.hot_reload = hot_reload
 	globals.game_step = game_step
 	globals.tick = 1./120.
 	globals.canvas_scale = 1
@@ -150,10 +151,14 @@ when !sugar.platform_calls_step { // When !web
 			if mv_err != nil do log.panicf("%v", mv_err)
 		  lib, lib_ok := dynlib.load_library(`./game.dll`)
 		  ensure(lib_ok)
-		  fn, fn_ok := dynlib.symbol_address(lib, "game_step")
-		  ensure(fn_ok)
+		  new_game_step, gs_ok := dynlib.symbol_address(lib, "game_step")
+		  ensure(gs_ok)
+		  new_hot_reload, hr_ok := dynlib.symbol_address(lib, "hot_reload")
+		  ensure(hr_ok)
 			globals.game_dll = lib
-			globals.game_step = auto_cast fn
+			globals.game_step = auto_cast new_game_step
+			globals.hot_reload = auto_cast new_hot_reload
+			globals.hot_reload(globals, pc)
 			log.infof("Hot reloaded the game.")
 		} else {
 			log.errorf("Failed to compile new DLL.")
@@ -162,7 +167,7 @@ when !sugar.platform_calls_step { // When !web
 		// log.infof("DLL:%v, Code:%v", dll_stat.modification_time, source_stat.modification_time)
 	}
 }
-	globals.game_step(globals, pc)
+	globals.game_step()
 
 	rect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)

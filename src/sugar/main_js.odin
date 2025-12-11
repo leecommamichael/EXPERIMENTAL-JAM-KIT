@@ -31,7 +31,6 @@ create_window :: proc (
   title: string,
   use_gl: bool // Would be a better build constant like SUGAR_GL
 ) -> bool {
-
 	if use_gl {
 	  ctx := gl.CreateCurrentContextById(canvas_id, {})
 	  if !ctx {

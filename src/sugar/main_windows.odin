@@ -13,6 +13,17 @@ platform_calls_step :: false
 GL_Context :: windows.HGLRC
 Window :: windows.HWND
 
+gl_set_proc_address :: proc(p: rawptr, name: cstring) {
+	func := windows.wglGetProcAddress(name)
+	switch uintptr(func) {
+	case 0, 1, 2, 3, ~uintptr(0):
+		module := windows.LoadLibraryW(windows.L("opengl32.dll"))
+		func = windows.GetProcAddress(module, name)
+	}
+	assert(func != nil)
+	(^rawptr)(p)^ = func
+}
+
 stat :: os.stat
 process_exec :: os.process_exec
 get_working_directory :: os.get_working_directory
@@ -55,7 +66,7 @@ Key :: enum {
 	Right_Arrow = windows.VK_RIGHT,
 	Up_Arrow    = windows.VK_UP,
 	Down_Arrow  = windows.VK_DOWN,
-	Space = windows.VK_SPACE,
+	Space       = windows.VK_SPACE,
 	W   = windows.VK_W,
 	A   = windows.VK_A,
 	S   = windows.VK_S,
@@ -224,7 +235,7 @@ create_window :: proc (
 	g.platform.window_resized = true
 	// Now let's deal with graphics.
 	if use_gl {
-		gl_ok := load_gl()
+		gl_ok := init_gl()
 		if !gl_ok {
 			log.debug("Failed to initialize GL when creating a window.")
 			return false
