@@ -18,7 +18,6 @@ MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
 	game_step: proc (engine_globals: ^Globals, engine_pc: ^PC_State),
 	game_dll: dynlib.Library,
-	last_game_reload: time.Time,
 	cursor: ^Entity,
 	sugar: sugar.Memory,
 	tick: f32,

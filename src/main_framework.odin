@@ -152,7 +152,6 @@ when !sugar.platform_calls_step { // When !web
 		  ensure(lib_ok)
 		  fn, fn_ok := dynlib.symbol_address(lib, "game_step")
 		  ensure(fn_ok)
-			globals.last_game_reload = source_stat.modification_time
 			globals.game_dll = lib
 			globals.game_step = auto_cast fn
 			log.infof("Hot reloaded the game.")
