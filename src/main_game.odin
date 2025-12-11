@@ -149,7 +149,7 @@ game_step :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 		e := text(fmt.tprintf("%#v", pc));
 		e.basis.position.y = globals.canvas_size_px.y - 20
 	}
-	ball.color = {1,0,0,1}
+	ball.color = {0,1,0,1}
 }
 
 PC_State :: struct {
@@ -277,21 +277,21 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 			// if v_para.y > 0 { continue }
 			blob.velocity += -v_para - v_perp;
 			{ // LOG
-				Timed_Label :: struct {anchor: Vec2, label: ^Entity, value: Vec3}
-				effect := Timed_Label {
-					anchor = Vec2 {300, globals.canvas_size_px.y - 20} - { 0, 14 * f32(num_effects)},
-					label = make_text("Hello"),
-					value = rs_stick_diff
-				}
-				te := timed_effect(effect, 2, proc(it: ^Timed_Label, percent: f32) {
-					set_text(it.label, fmt.tprintf("RSd %v", it.value))
-					it.label.basis.position.xy = it.anchor
-				})
-				num_effects += 1
-				te.timeout = proc (it: ^Timed_Label) {
-					free_entity(it.label)
-					num_effects -= 1
-				}
+				// Timed_Label :: struct {anchor: Vec2, label: ^Entity, value: Vec3}
+				// effect := Timed_Label {
+				// 	anchor = Vec2 {300, globals.canvas_size_px.y - 20} - { 0, 14 * f32(num_effects)},
+				// 	label = make_text("Hello"),
+				// 	value = rs_stick_diff
+				// }
+				// te := timed_effect(effect, 2, proc(it: ^Timed_Label, percent: f32) {
+				// 	set_text(it.label, fmt.tprintf("RSd %v", it.value))
+				// 	it.label.basis.position.xy = it.anchor
+				// })
+				// num_effects += 1
+				// te.timeout = proc (it: ^Timed_Label) {
+				// 	free_entity(it.label)
+				// 	num_effects -= 1
+				// }
 			}
 		}
 	} // for collision(hand)
