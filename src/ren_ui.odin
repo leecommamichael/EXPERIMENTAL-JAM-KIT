@@ -169,7 +169,7 @@ button :: proc (loc := #caller_location) -> ^Entity {
 	}
 	entity.position.z = next_z()
 
-	if they_touch(cursor, entity) {
+	if they_touch(globals.cursor, entity) {
 		entity.ui.state += {.Hovered}
 		if sugar.is_key_pressed(.Left_Mouse) {
 			entity.ui.state += {.Pressed}

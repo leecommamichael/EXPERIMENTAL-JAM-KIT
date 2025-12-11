@@ -1,0 +1,46 @@
+// raddbg 0.9.24 project file
+
+recent_file: path: "src/main_framework.odin"
+recent_file: path: "../../Applications (Compilers)/odin/core/os/os2/stat_windows.odin"
+recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
+recent_file: path: "../../Applications (Compilers)/odin/core/os/os2/stat.odin"
+recent_file: path: "src/sugar/main_windows.odin"
+recent_file: path: "../../Applications (Compilers)/odin/base/runtime/entry_windows.odin"
+recent_file: path: "../../Applications (Compilers)/odin/base/runtime/core.odin"
+recent_file: path: "src/main_entrypoint.odin"
+recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/dll_dllmain.cpp"
+recent_file: path: "src/main_game_full_tilt.odin"
+recent_file: path: "src/nord_gl/loader_desktop.odin"
+recent_file: path: "../../Applications (Compilers)/odin/core/sys/windows/wgl.odin"
+target:
+{
+  executable: "engine.exe"
+  working_directory: src
+  label: Engine
+  enabled: 1
+}
+debug_info:
+{
+  path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
+  timestamp: 66200805983562
+}
+debug_info:
+{
+  path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/game.pdb"
+  timestamp: 66200797443045
+}
+breakpoint:
+{
+  source_location: "src/main_game_full_tilt.odin:60:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main_game_full_tilt.odin:12:1"
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/main_framework.odin:116:1"
+  hit_count: 1
+}

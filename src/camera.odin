@@ -26,7 +26,6 @@ Camera :: struct {
 
 // Controls a camera with the mouse and keyboard.
 tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
-  input: sugar.Input_Frame = sugar.input
   move_vel :: 6
   look_vel :: 0.33
 
@@ -37,8 +36,8 @@ tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
 
   strafe_vel := dt * move_vel * f32(move_right + move_left) // x
   depth_vel  := dt * move_vel * f32(move_forward + move_backward) // z
-  hori_rot   := dt * look_vel * sugar.mouse_delta.x
-  vert_rot   := dt * look_vel * sugar.mouse_delta.y
+  hori_rot   := dt * look_vel * globals.sugar.mouse_delta.x
+  vert_rot   := dt * look_vel * globals.sugar.mouse_delta.y
 
   // camera.right_rad += vert_rot // to look vertically, rotate on the side-vector of the orientation.
   camera.right_rad = clamp(camera.right_rad + vert_rot, -glsl.PI/2, glsl.PI/2)

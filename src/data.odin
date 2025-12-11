@@ -3,16 +3,24 @@ package main
 // Purpose: This file is a non-comprehensive overview of
 //          data which crosses layer-boundaries in the program.
 
+import "core:time"
+import "core:dynlib"
+import sugar "sugar"
 import gl "nord_gl"
 
 //////////////////////////////////////////////////////////////////////
 // Section: Framework + App Data
 //////////////////////////////////////////////////////////////////////
 
-globals: Globals
+globals: ^Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
+	game_step: proc (engine_globals: ^Globals, engine_pc: ^PC_State),
+	game_dll: dynlib.Library,
+	last_game_reload: time.Time,
+	cursor: ^Entity,
+	sugar: sugar.Memory,
 	tick: f32,
 	dt:   f32,
 	avg_fps: f64,

@@ -24,3 +24,6 @@ src/texture_atlas_metadata.cbor
 src/font_atlas.qoi
 /cache
 /assets
+*.exp
+*.lib
+*.dll

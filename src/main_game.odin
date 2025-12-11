@@ -2,11 +2,22 @@ package main
 
 import "core:fmt"
 import "core:log"
+import "core:sys/windows"
 import "sugar"
-import "base:runtime"
 import gl "nord_gl"
 import linalg "core:math/linalg"
 import glsl "core:math/linalg/glsl"
+
+gl_set_proc_address :: proc(p: rawptr, name: cstring) {
+	func := windows.wglGetProcAddress(name)
+	switch uintptr(func) {
+	case 0, 1, 2, 3, ~uintptr(0):
+		module := windows.LoadLibraryW(windows.L("opengl32.dll"))
+		func = windows.GetProcAddress(module, name)
+	}
+	assert(func != nil)
+	(^rawptr)(p)^ = func
+}
 
 pixels_per_meter: f32 = 880.0 // Such that 50mm skateboard wheel is 44px.
 pixels_per_decimeter: f32 = pixels_per_meter / 10
@@ -15,35 +26,46 @@ pixels_per_millimeter: f32 = pixels_per_meter / 1000
 just_cuz :: 10.0
 gravity_acceleration: f32 = 9.8 * pixels_per_meter / just_cuz
 gravity: Vec3 = DOWN * gravity_acceleration
-cursor: ^Entity
 
+pc: ^PC_State
 game_init :: proc () {
+	pc = new(PC_State)
+
 	globals.draw_colliders = true
 	globals.canvas_size_px = {960, 720}
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretching = .Smooth_Aspect
 
-	cursor = make_sprite(`berserker.aseprite`)
-	cursor.basis.position = 0
-	cursor.old_basis.scale = 0
-	cursor.basis.scale = 44
-	cursor.flags += {.Collider_Enabled,}
-	cursor.collider.shape = .Circle
-	cursor.collider.layer += {.Terrain}
-	cursor.collider.size = 44
-	cursor.scale = 1
-	cursor.position.z = next_z()
+	globals.cursor = make_sprite(`berserker.aseprite`)
+	globals.cursor.basis.position = 0
+	globals.cursor.old_basis.scale = 0
+	globals.cursor.basis.scale = 44
+	globals.cursor.flags += {.Collider_Enabled,}
+	globals.cursor.collider.shape = .Circle
+	globals.cursor.collider.layer += {.Terrain}
+	globals.cursor.collider.size = 44
+	globals.cursor.scale = 1
+	globals.cursor.position.z = next_z()
 
-	phase2_collisions = alias_slice_as_empty_dynamic(make([]Collision, MAX_COLLISIONS_PER_FRAME))
+	pc.phase2_collisions = alias_slice_as_empty_dynamic(make([]Collision, MAX_COLLISIONS_PER_FRAME))
 }
 
-game_step :: proc () {
-	clear(&phase2_collisions)
+@export
+game_step :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
+	// set this process' globals to be the engine on
+	ensure(engine_pc != nil)
+	ensure(engine_globals != nil)
+	pc = engine_pc
+	globals = engine_globals
+	sugar.set_memory(&globals.sugar)
+  gl.load_up_to(sugar.CONTEXT_MAJOR, sugar.CONTEXT_MINOR, gl_set_proc_address) // <------ call to sugar
+//sugar.load_gl(sugar.CONTEXT_MAJOR, sugar.CONTEXT_MINOR)
+	clear(&pc.phase2_collisions)
 
 	if sugar.on_key_press(.Space) {
 		globals.draw_colliders = !globals.draw_colliders
 	}
-	cursor.position.xy = globals.mouse_position
+	globals.cursor.position.xy = globals.mouse_position
 
 	floor, new_floor := rect(); if new_floor {
 		floor.name = "Floor"
@@ -127,6 +149,7 @@ game_step :: proc () {
 		e := text(fmt.tprintf("%#v", pc));
 		e.basis.position.y = globals.canvas_size_px.y - 20
 	}
+	ball.color = {1,0,0,1}
 }
 
 PC_State :: struct {
@@ -138,15 +161,16 @@ PC_State :: struct {
 	hand_on_surface: Vec3,
 	prev_rs:         Vec3,
 	rs_velocity:     Vec3, // % of a half-circle moved per second
+	phase2_collisions: [dynamic]Collision,
 }
 
-pc: PC_State
 
 // Allowing the system to move objects with acceleration
 // will end in jank unless you fix the numbers to avoid it.
 // Jank in this case is the jiggling above:below Terrain boundaries.
 //
 pc_step :: proc (blob: ^Entity, hand: ^Entity) {
+	sugar := &globals.sugar
 	lt := sugar.input.gamepad.left_trigger
 	lt_down := lt > 0.01
 	rt := sugar.input.gamepad.right_trigger
@@ -295,13 +319,12 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 
 } // pc step
 
-phase2_collisions: [dynamic]Collision
 game_check_phase2_collisions :: proc (entity: ^Entity) -> [dynamic]Collision {
-	clear(&phase2_collisions)
+	clear(&pc.phase2_collisions)
 	if .Collider_Enabled in entity.flags {
 		assert(entity.collider.shape != nil)
 		collider_loop: for &other in globals.entities {
-			for pair in phase2_collisions {
+			for pair in pc.phase2_collisions {
 				if pair.ids[0] == entity.id && pair.ids[1] == other.id \
 				|| pair.ids[1] == entity.id && pair.ids[0] == other.id {
 					continue collider_loop // INTENT: Already in list. Don't duplicate.
@@ -310,11 +333,11 @@ game_check_phase2_collisions :: proc (entity: ^Entity) -> [dynamic]Collision {
 
 			if entity_contains_entity(entity, other) {
 				new_collision := Collision {ids={entity.id, other.id}}
-				append(&phase2_collisions, new_collision)
+				append(&pc.phase2_collisions, new_collision)
 			}
 		} // collider_loop
 	}
-	return phase2_collisions
+	return pc.phase2_collisions
 }
 
 ball_step :: proc (ball: ^Entity) {

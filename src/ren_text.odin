@@ -1,6 +1,5 @@
 package main
 
-import gl "nord_gl"
 import stbtt "vendor:stb/truetype"
 import "base:runtime"
 import "core:fmt"

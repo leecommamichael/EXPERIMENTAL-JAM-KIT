@@ -6,7 +6,12 @@ import "core:log"
 import "sugar"
 import "audio"
 
+EJK_DLL :: #config(EJK_DLL, false)
+
 main :: proc() {
+	when EJK_DLL do return // SHIM: compiling with -no-entry-point failed to link.
+
+	globals = new(Globals)
 	when !sugar.platform_calls_step {
 		context.logger = create_sublime_text_logger()
 	} else when ODIN_OS == .JS {
@@ -14,6 +19,7 @@ main :: proc() {
 		context = runtime.default_context_ptr()^
 	}
 	_, k := audio.init(); assert(k)
+	sugar.set_memory(&globals.sugar)
 	sugar.init()
 	asset_init()
 	displays := sugar.list_displays()
@@ -87,7 +93,7 @@ import "core:math"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
 window_resized :: proc () {
-	viewport_size := array_cast(sugar.viewport_size,f32)
+	viewport_size := array_cast(globals.sugar.viewport_size,f32)
 	////////////////////////////////////////////////////////////////////////////
 	// decide how the viewport will be sized. affects render-target size.
 	switch globals.canvas_scaling {
@@ -129,7 +135,7 @@ window_resized :: proc () {
 	log.infof("viewport = %v", viewport_size)
 	log.infof("stretch = %v", globals.canvas_stretch)
 	log.infof("scale = %v", globals.canvas_scale)
-  gl.Viewport(0,0, sugar.viewport_size.x, sugar.viewport_size.y)
+  gl.Viewport(0,0, globals.sugar.viewport_size.x, globals.sugar.viewport_size.y)
   build_camera()
 }
 
@@ -142,7 +148,7 @@ MAX_Z  :: 10000 // furthest.
 MIN_Z  :: -10000 // nearest.
 
 build_camera :: proc () {
-	viewport_size := array_cast(sugar.viewport_size,f32)
+	viewport_size := array_cast(globals.sugar.viewport_size,f32)
 	aspect_ratio := viewport_size.x / viewport_size.y
 
 	globals.perspective_projection = linalg.matrix4_perspective_f32(

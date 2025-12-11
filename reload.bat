@@ -1,0 +1,1 @@
+odin build %1/src -debug -out:%1/%2.dll -build-mode:dll -define:EJK_DLL=true -define:MAX_DIMENSIONS=268435456

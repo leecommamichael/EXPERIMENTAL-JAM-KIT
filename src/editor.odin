@@ -4,13 +4,12 @@ import gl "vendor:OpenGL"
 import ngl "nord_gl"
 import "core:math/linalg"
 import "core:math"
-import "sugar" // reports mouse in pixels. top left is 0
 import "core:log"
 
 // Returns the position of the cursor, and its direction thru the camera frustum.
 // e.g. cursor_in_world, cursor_direction := cursor_direction_in_world()
 cursor_direction_in_world :: proc () -> (Vec3, Vec3) {
-	ndc := pixel_to_ndc(sugar.mouse_position)
+	ndc := pixel_to_ndc(globals.sugar.mouse_position)
 	return camera_clip_coord_direction(
 		&globals.perspective_projection,
 		&globals.perspective_view,
@@ -21,8 +20,8 @@ cursor_direction_in_world :: proc () -> (Vec3, Vec3) {
 // LIMIT: 32 bit floats have no gaps up to 16384 2^14, so screen resolution.
 pixel_to_ndc :: proc (offset: [2]f32) -> [2]f32 {
 	res: Vec2 = {
-		cast(f32)sugar.viewport_size.x,
-		cast(f32)sugar.viewport_size.y,
+		cast(f32)globals.sugar.viewport_size.x,
+		cast(f32)globals.sugar.viewport_size.y,
 	}
 	ndc: Vec2 = {
 		 (2*offset.x / res.x) - 1,

@@ -1,5 +1,6 @@
 // raddbg 0.9.24 user file
 
+recent_project: path: "engine.radproj"
 recent_project: path: "game.radproj"
 recent_project: path: "../dukengine/proj"
 recent_project: path: game
@@ -34,10 +35,11 @@ window:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
-        watch: selected expression: "query:breakpoints"
+        watch: expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
+          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
@@ -45,6 +47,7 @@ window:
           watch: "ball.velocity"
           watch: reflected_velocity
           watch: normal
+          watch: p
         }
       }
       0.123260: text:
@@ -59,10 +62,9 @@ window:
       }
       0.274248:
       {
-        watch: expression: "query:call_stack"
+        watch: selected expression: "query:call_stack"
         disasm:
         {
-          selected
           expression: ""
           query: input: ""
         }
@@ -141,7 +143,6 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game_full_tilt.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
         query:
@@ -166,13 +167,13 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/repositories/nord_gl/src/math.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin/core/os/os2/stat_windows.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 149
-        cursor_column: 1
-        mark_line: 149
-        mark_column: 1
+        cursor_line: 72
+        cursor_column: 27
+        mark_line: 72
+        mark_column: 27
       }
       text:
       {
@@ -207,6 +208,21 @@ window:
         cursor_column: 11
         mark_line: 55
         mark_column: 11
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_framework.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query:
+        {
+          input: ""
+          cmd: search
+        }
+        cursor_line: 117
+        cursor_column: 1
+        mark_line: 117
+        mark_column: 1
       }
     }
   }
@@ -339,4 +355,9 @@ keybindings:
   { toggle_dev_menu d ctrl shift alt }
   { add_target o ctrl }
 }
-current_path: "C:/Users/thatl/usr/Repositories/nord_gl/src"
+current_path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src"
+file_path_map:
+{
+  source: "C:/Users/thatl/usr/repositories/nord_gl/src/math.odin"
+  dest: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game_full_tilt.odin"
+}

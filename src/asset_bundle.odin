@@ -1,9 +1,7 @@
 package main
 
 import "base:runtime"
-import "core:thread"
 import "core:log"
-import "core:fmt"
 import "core:bytes"
 import "core:encoding/cbor"
 import "core:image"

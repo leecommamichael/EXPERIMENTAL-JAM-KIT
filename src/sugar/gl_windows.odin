@@ -6,23 +6,20 @@ import "core:sys/windows"
 import gl "../nord_gl"
 import win "../windows"
 
-GL_Context :: windows.HGLRC
-g_dc: windows.HDC
-g_context: GL_Context
+CONTEXT_MAJOR:: 3
+CONTEXT_MINOR:: 3
 
 // https://www.khronos.org/opengl/wiki/Creating_an_OpenGL_Context_(WGL)#Create_a_False_Context
 // https://www.khronos.org/opengl/wiki/Load_OpenGL_Functions#Windows_2
 @require_results
 load_gl :: proc () -> bool {
-  g_dc = win.nonzero(windows.GetDC(g_window)) or_return
+  g.platform.gpu_hdc = win.nonzero(windows.GetDC(g.platform.window)) or_return
   pf := dummy_gl_pixel_format
-  pf_id := windows.ChoosePixelFormat(g_dc, &pf)
-  windows.SetPixelFormat(g_dc, pf_id, &pf) // What? Why send the id and the data?
-  dummy_ctx: windows.HGLRC = win.nonzero(windows.wglCreateContext(g_dc)) or_return
-  dummy_is_current := win.nonzero(windows.wglMakeCurrent(g_dc, dummy_ctx)) or_return
+  pf_id := windows.ChoosePixelFormat(g.platform.gpu_hdc, &pf)
+  windows.SetPixelFormat(g.platform.gpu_hdc, pf_id, &pf) // What? Why send the id and the data?
+  dummy_ctx: windows.HGLRC = win.nonzero(windows.wglCreateContext(g.platform.gpu_hdc)) or_return
+  dummy_is_current := win.nonzero(windows.wglMakeCurrent(g.platform.gpu_hdc, dummy_ctx)) or_return
 
-  CONTEXT_MAJOR:: 3
-  CONTEXT_MINOR:: 3
   // TODO: vsync (needs extension detection)
   // windows.wglGetExtensionsStringARB = auto_cast windows.wglGetProcAddress("wglGetExtensionsStringARB")
   windows.wglCreateContextAttribsARB = auto_cast windows.wglGetProcAddress("wglCreateContextAttribsARB")
@@ -37,13 +34,13 @@ load_gl :: proc () -> bool {
     windows.CONTEXT_FLAGS_ARB,         debug_flags,
     windows.CONTEXT_PROFILE_MASK_ARB,  windows.CONTEXT_CORE_PROFILE_BIT_ARB, 0
   }
-  modern_ctx := windows.wglCreateContextAttribsARB(g_dc, nil, raw_data(ctx_attribs))
-  no_ctx := win.nonzero(windows.wglMakeCurrent(g_dc, nil)) or_return
-  modern_ctx_is_current := win.nonzero(windows.wglMakeCurrent(g_dc, modern_ctx)) or_return
+  modern_ctx := windows.wglCreateContextAttribsARB(g.platform.gpu_hdc, nil, raw_data(ctx_attribs))
+  no_ctx := win.nonzero(windows.wglMakeCurrent(g.platform.gpu_hdc, nil)) or_return
+  modern_ctx_is_current := win.nonzero(windows.wglMakeCurrent(g.platform.gpu_hdc, modern_ctx)) or_return
   windows.wglDeleteContext(dummy_ctx)
   actual_version: [2]int
 
-  g_context = modern_ctx
+  g.platform.gl_context = modern_ctx
   gl.load_up_to(CONTEXT_MAJOR, CONTEXT_MINOR, windows.gl_set_proc_address)
   // TODO: Version check the context.
   gl.glGetIntegerv(gl.MAJOR_VERSION, &actual_version[0])

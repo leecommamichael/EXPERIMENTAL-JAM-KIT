@@ -2,9 +2,22 @@ package sugar
 
 import "core:time"
 
-//////////////////////////////////////////////////////////////////////
-// Common/Easy Interface
-//////////////////////////////////////////////////////////////////////
+Memory :: struct {
+	input:          Input_Frame,
+	viewport_size:  [2]int,
+	mouse_position: [2]f32,
+	mouse_delta:    [2]f32,
+	scale_factor:         f32, // physical px per logical px
+	prev_scale_factor:    f32,
+	scale_factor_changed: bool,
+	platform:             Platform_State,
+}
+
+g: ^Memory
+
+set_memory :: proc (ptr: ^Memory) {
+	g = ptr
+}
 
 // With the exception of "Should_Exit" you don't need to handle these.
 // Sugar tries to handle as many things as possible.
@@ -16,13 +29,10 @@ Feedback :: enum {
 	Window_Scale_Factor_Changed,
 }
 
-g_scale_factor_changed: bool
-prev_scale_factor: f32
-scale_factor: f32 // physical px per logical px
 set_scale_factor :: proc "contextless" (f: f32) {
-	g_scale_factor_changed = true
-	prev_scale_factor = scale_factor
-	scale_factor = f
+	g.scale_factor_changed = true
+	g.prev_scale_factor = g.scale_factor
+	g.scale_factor = f
 }
 
 dpi_from_scale_factor :: #force_inline proc "contextless" (scale: f32) -> f32 {
@@ -31,17 +41,16 @@ dpi_from_scale_factor :: #force_inline proc "contextless" (scale: f32) -> f32 {
 scale_factor_from_dpi :: #force_inline proc "contextless" (dpi: f32) -> f32 {
 	return dpi / 96
 }
-
-viewport_size:  [2]int
-mouse_position: [2]f32
-mouse_delta:    [2]f32
+//////////////////////////////////////////////////////////////////////
+// Common/Easy Interface
+//////////////////////////////////////////////////////////////////////
 
 is_key_pressed :: #force_inline proc (key: Key) -> bool {
-	return input.keys[key].is_pressed
+	return g.input.keys[key].is_pressed
 }
 
 is_button_pressed :: #force_inline proc (btn: Gamepad_Button) -> bool {
-	return input.gamepad.buttons[btn].is_pressed
+	return g.input.gamepad.buttons[btn].is_pressed
 }
 
 // Instantly fires when pressed, but cannot refire without both of:
@@ -59,19 +68,19 @@ on_release :: proc {
 }
 
 on_key_press :: proc (key: Key, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
-	return on_switch_press(&input.keys[key], debounce)
+	return on_switch_press(&g.input.keys[key], debounce)
 }
 
 on_key_release :: proc (key: Key, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
-	return on_switch_release(&input.keys[key], debounce)
+	return on_switch_release(&g.input.keys[key], debounce)
 }
 
 on_button_press :: proc (btn: Gamepad_Button, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
-	return on_switch_press(&input.gamepad.buttons[btn], debounce)
+	return on_switch_press(&g.input.gamepad.buttons[btn], debounce)
 }
 
 on_button_release :: proc (btn: Gamepad_Button, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
-	return on_switch_release(&input.gamepad.buttons[btn], debounce)
+	return on_switch_release(&g.input.gamepad.buttons[btn], debounce)
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -85,9 +94,6 @@ Display :: struct {
 //////////////////////////////////////////////////////////////////////
 // Input Interface
 //////////////////////////////////////////////////////////////////////
-init_input :: proc () {
-	init_native_input()
-}
 
 on_switch_press :: proc (state: ^Switch_State, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
 	if state.pending_trigger { return true }
@@ -118,7 +124,6 @@ on_switch_release :: proc (state: ^Switch_State, debounce: time.Duration = DEFAU
 DEFAULT_DEBOUNCE :: 50.0 * time.Millisecond
 
 // This isn't really necessary to use, since procs exist to use its data idiomatically.
-input: Input_Frame
 
 Switch_State :: struct {
 	is_pressed:   bool,
@@ -148,30 +153,30 @@ Input_Frame :: struct {
 }
 
 begin_input_frame :: proc () {
-	input.tick = time.tick_now()
+	g.input.tick = time.tick_now()
 }
 
 end_input_frame :: proc () {
-	mouse_delta = 0
+	g.mouse_delta = 0
 	// TODO?: Allocate switch state from one array and rip through it with handles.
 	// Allows sugar.on_press(.Space) to return true more than once per frame,
 	//   but not more often than the debounce.
-	for &key in input.keys {
+	for &key in g.input.keys {
 		if key.pending_trigger {
-			key.last_trigger = input.tick
+			key.last_trigger = g.input.tick
 			key.pending_trigger = false
 		}
 	}
-	for &button in input.gamepad.buttons {
+	for &button in g.input.gamepad.buttons {
 		if button.pending_trigger {
-			button.last_trigger = input.tick
+			button.last_trigger = g.input.tick
 			button.pending_trigger = false
 		}
 	}
 }
 
 time_since_action_triggered :: proc (action: ^Switch_State) -> time.Duration {
-	return time.tick_diff(action.last_trigger, input.tick)
+	return time.tick_diff(action.last_trigger, g.input.tick)
 }
 
 // Procs below may be used to simulate input events coming from the OS.
@@ -187,27 +192,27 @@ set_released :: proc {
 }
 
 press_gamepad_button :: proc (button: Gamepad_Button) {
-	press_switch(&input.gamepad.buttons[button])
+	press_switch(&g.input.gamepad.buttons[button])
 }
 
 release_gamepad_button :: proc (button: Gamepad_Button) {
-	release_switch(&input.gamepad.buttons[button])
+	release_switch(&g.input.gamepad.buttons[button])
 }
 
 press_key :: proc (button: Key) {
-	press_switch(&input.keys[button])
+	press_switch(&g.input.keys[button])
 }
 
 release_key :: proc (button: Key) {
-	release_switch(&input.keys[button])
+	release_switch(&g.input.keys[button])
 }
 
 press_switch :: proc (it: ^Switch_State) {
 	it.is_pressed = true
-	it.prev_press = input.tick
+	it.prev_press = g.input.tick
 }
 
 release_switch :: proc (it: ^Switch_State) {
 	it.is_pressed = false
-	it.prev_release = input.tick
+	it.prev_release = g.input.tick
 }
