@@ -4,8 +4,6 @@ import NS "../../../darwodin/darwodin-macos-lite/darwodin/AppKit"
 import CG "../../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
 import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
 
-init_native_input :: proc () {}
-
 Gamepad_Button :: enum u32 {
 	Start,
 	Select,
@@ -31,21 +29,15 @@ Key :: enum {
 	Right_Arrow =4,
 	Up_Arrow    =5,
 	Down_Arrow  =6,
-	Space_Bar   =7,
+	Space       =7,
 	W,
 	A,
 	S,
 	D,
 }
 
-Feedback :: enum {
-	None,
-	Should_Exit,
-	Resized, // the new resolution is already in global state.
-}
-
 @require_results
-poll_events :: proc () -> (feedback: Feedback) {
+poll_events :: proc () -> (feedback: bit_set[Feedback]) {
 	event: ^NS.Event
 	event = NS.App->nextEventMatchingMask(
 		mask = transmute(NS.EventMask) cast(u64) NS.AnyEventMask,
@@ -53,13 +45,13 @@ poll_events :: proc () -> (feedback: Feedback) {
 		mode = NSF.DefaultRunLoopMode,
 		deqFlag = true) // dequeue
 
-	if g_window_resized {
-		g_window_resized = false
-		feedback = .Resized
+	if g.platform.window_resized {
+		g.platform.window_resized = false
+		feedback += {.Window_Resized}
 	}
 
 	if event == nil {
-		return feedback if feedback != .None else .None
+		return feedback if feedback != {} else {}
 	}
 	
 	switch event->type() {
@@ -100,5 +92,5 @@ poll_events :: proc () -> (feedback: Feedback) {
 	}
 
 	NS.App->sendEvent(event)
-	return .None
+	return {}
 }

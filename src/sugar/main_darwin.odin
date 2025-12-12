@@ -5,23 +5,45 @@ import "base:intrinsics"
 import "core:log"
 import "core:sys/posix"
 import "core:dynlib"
+import os "core:os/os2"
 import gl "../nord_gl"
 import NS "core:sys/darwin/Foundation"
 import Metal "vendor:darwin/Metal"
 import MTK "vendor:darwin/MetalKit"
 
-g_window_resized: bool
+platform_calls_step :: false
+
+
+stat :: os.stat
+process_exec :: os.process_exec
+get_working_directory :: os.get_working_directory
+rename :: os.rename
+
+Platform_State :: struct {
+  window_resized: bool,
+  display: EGL_Display,
+  surface: Surface,
+  lib:     dynlib.Library,
+}
+
+init :: proc () {}
+
+list_displays :: proc () -> []Display {
+  d := make([]Display, 1)
+  d[0] = {{0,0},{0,0}, 96} // TODO
+  return d
+}
 
 NativeDisplayType :: distinct rawptr
 NativeWindowType  :: distinct rawptr
-Display :: distinct rawptr
+EGL_Display :: distinct rawptr
 Surface :: distinct rawptr
 Config  :: distinct rawptr
 Context :: distinct rawptr
 
 Boolean :: b32
 
-NO_DISPLAY :: Display(uintptr(0))
+NO_DISPLAY :: EGL_Display(uintptr(0))
 NO_CONTEXT :: Context(uintptr(0))
 NO_SURFACE :: Surface(uintptr(0))
 
@@ -68,40 +90,49 @@ OPENGL_API        :: 0x30A2
 foreign import egl "../libEGL.dylib"
 @(default_calling_convention="c")
 foreign egl {
-  eglGetDisplay          :: proc(display: NativeDisplayType) -> Display ---
-  eglInitialize          :: proc(display: Display, major: ^i32, minor: ^i32) -> Boolean ---
+  eglGetDisplay          :: proc(display: NativeDisplayType) -> EGL_Display ---
+  eglInitialize          :: proc(display: EGL_Display, major: ^i32, minor: ^i32) -> Boolean ---
   eglBindAPI             :: proc(api: u32) -> Boolean ---
-  eglChooseConfig        :: proc(display: Display, attrib_list: ^i32, configs: ^Config, config_size: i32, num_config: ^i32) -> Boolean ---
-  eglCreateWindowSurface :: proc(display: Display, config: Config, native_window: NativeWindowType, attrib_list: ^i32) -> Surface ---
-  eglCreateContext       :: proc(display: Display, config: Config, share_context: Context, attrib_list: ^i32) -> Context ---
-  eglMakeCurrent         :: proc(display: Display, draw: Surface, read: Surface, ctx: Context) -> Boolean ---
-  eglQuerySurface        :: proc(display: Display, surface: Surface, attribute: i32, value: ^i32) -> Boolean ---
-  eglSwapInterval        :: proc(display: Display, interval: i32) -> Boolean ---
-  eglSwapBuffers         :: proc(display: Display, surface: Surface) -> Boolean ---
+  eglChooseConfig        :: proc(display: EGL_Display, attrib_list: ^i32, configs: ^Config, config_size: i32, num_config: ^i32) -> Boolean ---
+  eglCreateWindowSurface :: proc(display: EGL_Display, config: Config, native_window: NativeWindowType, attrib_list: ^i32) -> Surface ---
+  eglCreateContext       :: proc(display: EGL_Display, config: Config, share_context: Context, attrib_list: ^i32) -> Context ---
+  eglMakeCurrent         :: proc(display: EGL_Display, draw: Surface, read: Surface, ctx: Context) -> Boolean ---
+  eglQuerySurface        :: proc(display: EGL_Display, surface: Surface, attribute: i32, value: ^i32) -> Boolean ---
+  eglSwapInterval        :: proc(display: EGL_Display, interval: i32) -> Boolean ---
+  eglSwapBuffers         :: proc(display: EGL_Display, surface: Surface) -> Boolean ---
   eglGetProcAddress      :: proc(name: cstring) -> rawptr ---
-  eglGetConfigAttrib     :: proc(display: Display, config: Config, attribute: i32, value: ^i32) -> Boolean ---
-  eglDestroyContext      :: proc(display: Display, ctx: Context) -> Boolean ---
-  eglDestroySurface      :: proc(display: Display, surface: Surface) -> Boolean ---
-  eglTerminate           :: proc(display: Display) -> Boolean ---
+  eglGetConfigAttrib     :: proc(display: EGL_Display, config: Config, attribute: i32, value: ^i32) -> Boolean ---
+  eglDestroyContext      :: proc(display: EGL_Display, ctx: Context) -> Boolean ---
+  eglDestroySurface      :: proc(display: EGL_Display, surface: Surface) -> Boolean ---
+  eglTerminate           :: proc(display: EGL_Display) -> Boolean ---
 }
 
 @private
 resize_viewport :: proc (w,h: int) {
-  g_window_resized = true
-  viewport_size = { w, h }
+  g.platform.window_resized = true
+  g.viewport_size = { w, h }
   gl.Viewport(0,0, w, h)
   log.infof("viewport set to %d,%d", w,h)
 }
 msgSend :: intrinsics.objc_send
 
-platform_calls_step :: false
+load_gl :: proc () {
+  gl.load_up_to(3, 2, set_proc_address)
+}
 
-display: Display
-surface: Surface
-
-lib: dynlib.Library
-lib_ok: bool
-import "core:fmt"
+set_proc_address :: proc (set_me: rawptr, name: cstring) {
+  dest := set_me
+  // 
+  // source: rawptr = posix.dlsym(transmute(posix.Symbol_Table)int(-1), name)
+  source, found := dynlib.symbol_address(g.platform.lib, string(name))
+  if !found {
+    log.errorf("%v = %v AKA %s", dest, source, name)
+  }
+  ensure(found)
+  ensure(dest != nil)
+  (^rawptr)(set_me)^ = source
+  ensure(dest != nil)
+}
 
 @require_results
 create_window :: proc (
@@ -109,7 +140,8 @@ create_window :: proc (
   title: string,
   use_gl: bool
 ) -> bool {
-  lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/nord_gl/src/libGLESv2.dylib`)
+  lib_ok: bool
+  g.platform.lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/nord_gl/src/libGLESv2.dylib`)
   ensure(lib_ok)
   NS.application_delegate_register_and_alloc({
     applicationShouldTerminateAfterLastWindowClosed = proc(app: ^NS.Application) -> NS.BOOL {
@@ -149,7 +181,8 @@ assert(content_view != nil)
   window->setContentView(content_view)
   maj: i32 = 0
   min: i32 = 0
-  display = eglGetDisplay(auto_cast content_view->layer())
+  display := eglGetDisplay(auto_cast content_view->layer())
+  g.platform.display = display
   assert(display != NO_DISPLAY)
   egl_ok := eglInitialize(display, &maj, &min)
   assert(maj >= 1)
@@ -168,7 +201,8 @@ assert(content_view != nil)
   assert(egl_ok == true)
   assert(configs_found > 0)
   surface_attribs: []i32 = { EGL_NONE }
-  surface = eglCreateWindowSurface(display, config, auto_cast content_view->layer(), raw_data(surface_attribs))
+  surface := eglCreateWindowSurface(display, config, auto_cast content_view->layer(), raw_data(surface_attribs))
+  g.platform.surface = surface
   assert(surface != NO_SURFACE)
   ctx_attribs: []i32 = {
     CONTEXT_MAJOR_VERSION, 3,
@@ -182,26 +216,13 @@ assert(content_view != nil)
   egl_ok = eglMakeCurrent(display, surface, surface, ctx)
   assert(egl_ok == true)
 
-  set_proc_address :: proc (set_me: rawptr, name: cstring) {
-    dest := set_me
-    // 
-    // source: rawptr = posix.dlsym(transmute(posix.Symbol_Table)int(-1), name)
-    source, found := dynlib.symbol_address(lib, string(name))
-    if !found {
-      log.errorf("%v = %v AKA %s", dest, source, name)
-    }
-    ensure(found)
-    ensure(dest != nil)
-    (^rawptr)(set_me)^ = source
-    ensure(dest != nil)
-  }
-  gl.load_up_to(3, 2, set_proc_address)
+  load_gl()
   resize_viewport(rect.z, rect.w)
   return true
 }
 
 swap_buffers :: proc () {
-  assert(true == eglSwapBuffers(display, surface))
+  assert(true == eglSwapBuffers(g.platform.display, g.platform.surface))
 }
 
 capture_cursor :: proc () {
