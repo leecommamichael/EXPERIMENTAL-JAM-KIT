@@ -220,12 +220,15 @@ Any_Instance :: struct {
 	color:           Vec4,
 }
 
+// Keep synchronized with global constant frame_uniforms :: string
 Uniforms :: struct #align(16) {
-	view:       Mat4,
-	projection: Mat4,
-	time:     f32,
-	tau_time: f32,
-	padding0: Vec2, // std140
+	view:           Mat4, // 4 slots
+	projection:     Mat4, // 4 slots
+	time:           f32,  // 1 slot
+	tau_time:       f32,  // 1 slot
+	ball_position:  Vec2, // 2 slots
+	ball_size:      Vec2, // 2 slots
+	canvas_size_px: Vec2  // 2 slots
 }
 
 Ren_Vertex_Base :: struct {

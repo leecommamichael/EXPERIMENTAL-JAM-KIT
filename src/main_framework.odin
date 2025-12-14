@@ -28,6 +28,7 @@ framework_init :: proc () {
 		log.infof("OpenGL Platform Constants ---\n%#v", globals.gl_standard)
 	}
 	init_gl_constants()
+	globals.hot_reloaded_this_frame = true // INTENT: load live shaders
 	globals.hot_reload = hot_reload
 	globals.game_step = game_step
 	globals.tick = 1./120.

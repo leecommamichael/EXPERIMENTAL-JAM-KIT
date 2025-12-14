@@ -90,6 +90,7 @@ Texture_Unit :: enum {
 // How might a bad-shader cycle happen?
 // If I never let a compilation failure run, then I guess it's fine.
 hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
+	when !ODIN_DEBUG do return
 	if !globals.hot_reloaded_this_frame { return }
 	if .Shader_Reload_Failed in entity.flags { return }
 
@@ -851,13 +852,16 @@ precision_defaults :: `
 	precision highp int;
 `
 
+// Keep synchronized with Uniforms :: struct (stored at globals.uniforms.)
 frame_uniforms :: `
 	layout(std140) uniform Frame_Uniforms {
-		mat4 view;       // where the camera is
-		mat4 projection; // camera lens
+		mat4  view;       // where the camera is
+		mat4  projection; // camera lens
 		float time;
 		float tau_time;
-		vec2  padding0; // extend to vec4
+		vec2  ball_position;
+		vec2  ball_size;
+		vec2  canvas_size_px;
 	} frame;
 `
 

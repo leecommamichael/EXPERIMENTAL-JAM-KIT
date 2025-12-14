@@ -128,21 +128,45 @@ game_step :: proc () {
 	`
 	//ball_vert
 		out vec4 io_color;
-
+		out vec2 io_pos;
 		void main() {
 			io_color = i_color;
 			mat4 mvp = frame.projection * frame.view * i_model_mat;
-			gl_Position = mvp * vec4(v_position, 1);
+			vec2 vpm = v_position.xy;
+			vpm.x = min(vpm.x, 0.4*sin(frame.tau_time));
+			vpm.y = max(vpm.y, 0.4*cos(frame.tau_time));
+			gl_Position = mvp * vec4(vec3(vpm, 1.0), 1);
+			io_pos = gl_Position.xy;
 		}
 	`
 
 	ball_fragment_shader_source := fragment_preamble + `
 	//ball_frag
+		in vec2 io_pos;
 		in vec4 io_color;
 		out vec4 outColor;
 		void main() {
 			outColor = io_color;
-			outColor = vec4(1.0, 0.0, 0.0, 1.0);
+			vec2 portion = frame.ball_position / frame.canvas_size_px;
+			if (portion.x != portion.x) {
+				outColor = vec4(1.,0.,0.,1.);
+				return;
+			}
+			if (portion.y != portion.y) {
+				outColor = vec4(1.,0.,0.,1.);
+				return;
+			}
+			if (portion.x <= 0.00001) {
+				outColor = vec4(1.,1.,0.,1.);
+				return;
+			}
+			if (portion.y <= 0.00001) {
+				outColor = vec4(1.,1.,0.,1.);
+				return;
+			}
+			float x = sin(2.0*frame.time);
+			float y = cos(2.0*frame.time);
+			outColor = vec4(x, y, portion.y, 1.0);
 		}
 	`
 // Ball Shaders ////////////////////////////////////////////////////////////////
@@ -311,8 +335,6 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 			}
 		}
 	} // for collision(hand)
-	defer do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
-	defer hand.position = blob.position + rs * 32
 	blob_collisions = find_collisions_involving_entity(game_check_phase2_collisions(blob)[:], blob)
 	for collision in blob_collisions {
 		if .Terrain not_in collision.other.collider.layer { continue }
@@ -332,7 +354,10 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		pc.blob_grounded = true
 		blob.position = pc.blob_on_surface
 	} // for collision(blob)
-
+	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
+	hand.position = blob.position + rs * 32
+	globals.uniforms.ball_position = blob.position.xy
+	globals.uniforms.ball_size = blob.scale.xy
 } // pc step
 
 game_check_phase2_collisions :: proc (entity: ^Entity) -> [dynamic]Collision {

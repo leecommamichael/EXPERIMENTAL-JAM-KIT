@@ -9,7 +9,7 @@ import "audio"
 EJK_DLL :: #config(EJK_DLL, false)
 
 main :: proc() {
-	when EJK_DLL do return // SHIM: compiling with -no-entry-point failed to link.
+	when EJK_DLL do return // compiling with -no-entry-point failed to link.
 
 	globals = new(Globals)
 	when !sugar.platform_calls_step {
@@ -141,6 +141,7 @@ window_resized :: proc () {
 
 set_canvas_size :: proc (size_px: [2]int, _loc := #caller_location) {
 	make_or_resize_render_target(&globals.ren.canvas, size_px, _loc)
+	globals.uniforms.canvas_size_px = globals.canvas_size_px
 }
 
 // YES, I KNOW. These are opposite the near/far args in matrix procs.
