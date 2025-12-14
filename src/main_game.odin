@@ -46,6 +46,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 	globals = engine_globals
 	sugar.set_memory(&globals.sugar)
 	sugar.load_gl()
+	globals.hot_reloaded_this_frame = true
 }
 
 @export
@@ -110,6 +111,7 @@ game_step :: proc () {
 		hand.collider.shape = .Circle
 		hand.flags += {.Collider_Enabled, .Physics_Skip_Integrate}
 	}
+
 	ball, new_ball := circle(); if new_ball {
 		ball.name = "Ball"
 		ball.color = {0.0, 0.2, 0.5, 0.1}
@@ -121,6 +123,30 @@ game_step :: proc () {
 
 		ball.acceleration = gravity
 	}
+// Ball Shader /////////////////////////////////////////////////////////////////
+	ball_vertex_shader_source := vertex_preamble + basic_vertex_inputs +
+	`
+	//ball_vert
+		out vec4 io_color;
+
+		void main() {
+			io_color = i_color;
+			mat4 mvp = frame.projection * frame.view * i_model_mat;
+			gl_Position = mvp * vec4(v_position, 1);
+		}
+	`
+
+	ball_fragment_shader_source := fragment_preamble + `
+	//ball_frag
+		in vec4 io_color;
+		out vec4 outColor;
+		void main() {
+			outColor = io_color;
+			outColor = vec4(1.0, 0.0, 0.0, 1.0);
+		}
+	`
+// Ball Shaders ////////////////////////////////////////////////////////////////
+	hot_reloaded_shader(ball, ball_vertex_shader_source, ball_fragment_shader_source)
 
 	if pc.hand_grounded {
 		hand.color.a = 0.4

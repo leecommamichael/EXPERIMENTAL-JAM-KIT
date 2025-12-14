@@ -168,7 +168,7 @@ when !sugar.platform_calls_step { // When !web
 	}
 }
 	globals.game_step()
-
+	globals.hot_reloaded_this_frame = false
 	rect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)
 	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	rect.basis.scale.y = -1 // because textures are flipped...

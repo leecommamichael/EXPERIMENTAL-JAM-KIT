@@ -590,6 +590,9 @@ GenSamplers :: proc (
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
+
+
+
 BindSampler :: proc (unit: GLuint, sampler: Sampler) {
 	glBindSampler(unit, sampler)
 }
@@ -597,6 +600,25 @@ BindSampler :: proc (unit: GLuint, sampler: Sampler) {
 CheckFramebufferStatus :: proc (target: Framebuffer_Target) -> GLenum {
 	return glCheckFramebufferStatus(auto_cast target)
 }
+
+
+
+
+DeleteVertexArray :: proc (it: VertexArrayObject) {
+	it := it
+	glDeleteVertexArrays(1, auto_cast &it)
+}
+
+DeleteBuffer :: proc (it: Buffer) {
+	it := it
+	glDeleteBuffers(1, auto_cast &it)
+}
+
+DeleteProgram :: proc (it: Program) {
+	glDeleteProgram(auto_cast it)
+}
+
+
 
 //////////////////////////////////////////////////////////////////////
 // Platform-Specific Stuff Below

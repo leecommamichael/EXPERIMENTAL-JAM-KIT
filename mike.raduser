@@ -167,13 +167,14 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin/core/os/os2/stat_windows.odin\".data"
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 72
-        cursor_column: 27
-        mark_line: 72
-        mark_column: 27
+        cursor_line: 199
+        cursor_column: 8
+        mark_line: 199
+        mark_column: 8
       }
       text:
       {
@@ -211,7 +212,6 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query:
@@ -219,9 +219,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 117
+        cursor_line: 119
         cursor_column: 1
-        mark_line: 117
+        mark_line: 119
         mark_column: 1
       }
     }

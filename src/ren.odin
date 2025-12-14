@@ -31,13 +31,12 @@ ren_make :: proc () -> ^Ren {
 	gl.BufferData(.ARRAY_BUFFER, globals.glyph_staging[:], .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
-
-	ren.programs[Game_Shader.Basic]  = ren_make_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
-	ren.programs[Game_Shader.Water]  = ren_make_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
-	ren.programs[Game_Shader.Text]   = ren_make_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
-	ren.programs[Game_Shader.Image]  = ren_make_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
-	ren.programs[Game_Shader.Sprite] = ren_make_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
-	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
+	ren.programs[Game_Shader.Basic]  = ren_make_basic_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
+	ren.programs[Game_Shader.Water]  = ren_make_basic_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
+	ren.programs[Game_Shader.Text]   = ren_make_basic_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
+	ren.programs[Game_Shader.Image]  = ren_make_basic_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
+	ren.programs[Game_Shader.Sprite] = ren_make_basic_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
+	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_basic_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
 
 	ren.linear_sampler = gl.CreateSampler()
 	gl.Set_Sampler_Min_Filter(ren.linear_sampler, .LINEAR)
@@ -88,7 +87,72 @@ Texture_Unit :: enum {
 	Framebuffer_Texture = 3,
 }
 
-ren_make_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
+// How might a bad-shader cycle happen?
+// If I never let a compilation failure run, then I guess it's fine.
+hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
+	if !globals.hot_reloaded_this_frame { return }
+	if .Shader_Reload_Failed in entity.flags { return }
+
+	new_program, ok := ren_maybe_make_basic_shader(globals.ren, vert, frag)
+	if !ok {
+		log.infof("[RELOADER] failed to reload a shader for entity %d: %s", entity.id, entity.name)
+		// If we failed to compile, don't change the shader from one that works.
+		entity.flags += {.Shader_Reload_Failed}
+		return 
+	} else {
+		entity.flags -= {.Shader_Reload_Failed}
+	}
+	old_program := entity.draw_command.program
+	if !contains(slice.enumerated_array(&globals.ren.programs), old_program) {
+		// INTENT: Don't delete shaders the rest of the game might want.
+		gl.DeleteProgram(old_program)
+	}
+	entity.draw_command.program = new_program
+	log.infof("[RELOADER] reloaded a shader for entity %d: %s", entity.id, entity.name)
+}
+
+ren_maybe_make_basic_shader :: proc (
+	ren: ^Ren,
+	vert: string,
+	frag: string,
+	caller := #caller_location,
+) -> (program: gl.Program, ok: bool) {
+	// Compile program
+	program, ok = gl.load_shaders_source(vert, frag)
+	if !ok {
+		log.errorf("A shader failed to compile/link.\n%s\n%s", vert, frag)
+		return 0, false
+	}
+	gl.UseProgram(program)
+	defer gl.validate(caller)
+	defer gl.UseProgram(0)
+
+	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
+	if font_atlas_sampler >= 0 {
+		gl.glUniform1i(font_atlas_sampler, cast(int) Texture_Unit.Font)
+	}
+
+	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
+	if texture_atlas_sampler >= 0 {
+		gl.glUniform1i(texture_atlas_sampler, cast(int) Texture_Unit.Texture)
+	}
+
+	fb_sampler := gl.GetUniformLocation(program, "framebuffer_color")
+	if fb_sampler >= 0 {
+		gl.glUniform1i(fb_sampler, cast(int) Texture_Unit.Framebuffer_Texture)
+	}
+	// Link Uniform Block
+	//   TODO: apparently this is global and only needs to happen once
+	//   if all programs share the same name + layout.
+	uniform_index := gl.GetUniformBlockIndex(program, "Frame_Uniforms")
+	(uniform_index != gl.INVALID_INDEX) or_return
+	gl.UniformBlockBinding(program, uniform_index, FRAME_UNIFORM_INDEX)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, FRAME_UNIFORM_INDEX, ren.frame_UBO)
+
+	return program, true
+}
+
+ren_make_basic_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
 	// Compile program
 	program, ok := gl.load_shaders_source(vert, frag)
 	gl.UseProgram(program)
@@ -165,7 +229,6 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 		prev^ = next^
 	}
 }
-
 
 ren_force_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 	gl.glDepthMask(.Is_3D in entity.flags)
@@ -366,7 +429,6 @@ init_cmd_with_basic_vertex_attributes :: proc (
 	VBO: gl.Buffer,
 	instance_buffer: gl.Buffer,
 	instance_index: int,
-	allocator := context.allocator,
 ) {
 	cmd.render_target = globals.ren.canvas.fbo
 	entity_offset := uintptr(size_of(Any_Instance) * instance_index) 
@@ -464,6 +526,32 @@ ren_make_basic_draw_cmd :: proc (
 	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
 	init_cmd_with_basic_vertex_attributes(&cmd, VBO, instance_buffer, instance_index)
 	return
+}
+
+// TODO: maybe rename it something "entity draw cmd?"
+//   but that can't be it, it implies there are draws that aren't for entities.
+//
+// A "basic" draw command uses the engine frame-buffer and instance-buffer.
+// This proc will not free those resources, but will free all else.
+//
+// ASSUMES: Shaders are deleted upon linking the Program.
+ren_free_basic_draw_cmd :: proc (cmd: Draw_Command) {
+	if cmd.index_buffer != 0 {
+		gl.DeleteBuffer(cmd.index_buffer)
+	}
+	if cmd.attributes != nil {
+		for attr in cmd.attributes {
+			if attr.buffer == globals.instance_buffer && attr.buffer != 0 {
+				// EARLY RETURN INTENT: Don't free the shared entity instance buffer.
+				continue
+			}
+			gl.DeleteBuffer(attr.buffer)
+		}
+		delete(cmd.attributes)
+	}
+	if cmd.textures != nil { delete(cmd.textures) }
+	gl.DeleteProgram(cmd.program)
+	gl.DeleteVertexArray(cmd.VAO)
 }
 
 ren_make_text_draw_cmd :: proc (

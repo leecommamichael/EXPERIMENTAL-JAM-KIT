@@ -16,14 +16,17 @@ globals: ^Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
+	// Reload
+	hot_reloaded_this_frame: bool,
 	hot_reload: proc (engine_globals: ^Globals, engine_pc: ^PC_State),
 	game_step:  proc (),
-	game_dll: dynlib.Library,
-	cursor: ^Entity,
-	sugar: sugar.Memory,
-	tick: f32,
-	dt:   f32,
-	avg_fps: f64,
+	game_dll:   dynlib.Library,
+	// General
+	cursor:     ^Entity,
+	sugar:      sugar.Memory,
+	tick:       f32,
+	dt:         f32,
+	avg_fps:    f64,
 	// Assets
 	assets: Asset_Bundle,
 	fonts: [Font_Usage][Font_Variant]Font,
@@ -147,6 +150,7 @@ Entity_Flag :: enum {
 	Physics_Skip_Integrate,
 	Skip_Interpolation,
 	Is_UI,
+	Shader_Reload_Failed,
 }
 
 Transform :: struct {
@@ -191,13 +195,13 @@ Collision :: struct {
 //////////////////////////////////////////////////////////////////////
 
 Ren :: struct {
-	canvas:      Render_Target,
-	prev_cmd:    Draw_Command,
-	frame_UBO:   gl.Buffer,
-	programs:    [Game_Shader]gl.Program, // constant
-	linear_sampler: gl.Sampler,
+	canvas:    Render_Target,
+	prev_cmd:  Draw_Command,
+	frame_UBO: gl.Buffer,
+	programs:  [Game_Shader]gl.Program,
+	textures:  [16]GPU_Texture,
+	linear_sampler:  gl.Sampler,
 	nearest_sampler: gl.Sampler,
-	textures:    [16]GPU_Texture
 }
 
 Game_Shader :: enum {

@@ -1,5 +1,8 @@
 // raddbg 0.9.24 project file
 
+recent_file: path: "src/ren.odin"
+recent_file: path: "src/nord_gl/interface.odin"
+recent_file: path: "src/nord_gl/impl_desktop.odin"
 recent_file: path: "src/main_framework.odin"
 recent_file: path: "../../Applications (Compilers)/odin/core/os/os2/stat_windows.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
@@ -22,7 +25,7 @@ target:
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66200805983562
+  timestamp: 66200950171108
 }
 debug_info:
 {
@@ -38,9 +41,4 @@ breakpoint:
 {
   source_location: "src/main_game_full_tilt.odin:12:1"
   hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/main_framework.odin:116:1"
-  hit_count: 1
 }

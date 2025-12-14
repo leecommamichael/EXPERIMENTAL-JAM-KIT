@@ -1,5 +1,7 @@
 package main
 
+import gl "nord_gl"
+
 circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(_loc)
 	if is_new {
@@ -24,7 +26,6 @@ rect :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	return entity, is_new
 }
 
-import gl "nord_gl"
 framebuffer_quad :: proc (from: gl.Framebuffer, to: gl.Framebuffer, _loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(_loc)
 	if is_new {

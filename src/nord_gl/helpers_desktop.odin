@@ -149,6 +149,13 @@ create_and_link_program :: proc(shader_ids: []Shader) -> (program_id: Program, o
 	return
 }
 
+// detach_and_delete_shaders :: proc (program: Program, shaders: []Shader) {
+// 	for shader in shaders {
+// 		glDetachShader(auto_cast program, auto_cast shader)
+// 		DeleteShader(shader)
+// 	}
+// }
+
 load_shaders_file :: proc(vs_filename, fs_filename: string) -> (program_id: Program, ok: bool) {
 	vs_data := os.read_entire_file(vs_filename) or_return
 	defer delete(vs_data)
@@ -160,7 +167,6 @@ load_shaders_file :: proc(vs_filename, fs_filename: string) -> (program_id: Prog
 }
 
 load_shaders_source :: proc(vs_source, fs_source: string) -> (program_id: Program, ok: bool) {
-	// actual function from here
 	vertex_shader_id := compile_shader_from_source(vs_source, EShader_Type.VERTEX_SHADER) or_return
 	defer DeleteShader(vertex_shader_id)
 
