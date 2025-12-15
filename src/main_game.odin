@@ -19,7 +19,7 @@ pc: ^PC_State
 game_init :: proc () {
 	pc = new(PC_State)
 
-	globals.draw_colliders = true
+	globals.draw_colliders = false
 	globals.canvas_size_px = {960, 720}
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretching = .Smooth_Aspect
@@ -171,10 +171,6 @@ game_step :: proc () {
 
 	pc_step(ball, hand)
 
-	if globals.draw_colliders {
-		e := text(fmt.tprintf("%#v", pc));
-		e.basis.position.y = globals.canvas_size_px.y - 20
-	}
 	ball.color = {0.2, 0.2, 0.8, 1.0} // TODO: BLENDING NOT WORKING (alpha can be anything.)
 }
 
