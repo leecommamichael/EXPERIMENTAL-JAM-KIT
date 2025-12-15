@@ -24,15 +24,16 @@ game_init :: proc () {
 	globals.canvas_scaling = .Fixed
 	globals.canvas_stretching = .Smooth_Aspect
 
-	globals.cursor = make_sprite(`berserker.aseprite`)
+	globals.cursor = make_circle()
 	globals.cursor.basis.position = 0
-	globals.cursor.basis.scale = 44
+	globals.cursor.basis.scale = 22
 	globals.cursor.flags += {.Collider_Enabled,}
 	globals.cursor.collider.shape = .Circle
 	globals.cursor.collider.layer += {.Terrain}
-	globals.cursor.collider.size = 44
+	globals.cursor.collider.size = 22
 	globals.cursor.scale = 1
-	globals.cursor.position.z = next_z()
+	globals.cursor.color.a = 0.6
+	globals.cursor.color.rgb = 1.0
 
 	pc.phase2_collisions = alias_slice_as_empty_dynamic(make([]Collision, MAX_COLLISIONS_PER_FRAME))
 }
@@ -48,6 +49,9 @@ hot_reload :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 	globals.hot_reloaded_this_frame = true
 }
 
+terrain_color :: Vec4 {0.1, 0.5, 0.4, 1}
+bg_color :: Vec4 {0.2, 0.3, 0.6, 1}
+
 @export
 game_step :: proc () {
 	clear(&pc.phase2_collisions)
@@ -57,49 +61,6 @@ game_step :: proc () {
 	}
 	globals.cursor.position.xy = globals.mouse_position
 
-	floor, new_floor := rect(); if new_floor {
-		floor.name = "Floor"
-		floor.color = {0.1, 0.1, 0.1, 0.3}
-		floor.basis.scale = 300
-		floor.position.xy = {160, 100}
-		floor.collider.size = floor.basis.scale
-		floor.collider.shape = .AABB
-		floor.flags += {.Collider_Enabled,}
-		floor.collider.layer += {.Terrain}
-	}
-
-	floor2, new_floor2 := rect(); if new_floor2 {
-		floor2.name = "Floor2"
-		floor2.color = {0.1, 0.1, 0.1, 0.3}
-		floor2.basis.scale = 300
-		floor2.position.xy = {600, 100}
-		floor2.collider.size = floor2.basis.scale
-		floor2.collider.shape = .AABB
-		floor2.flags += {.Collider_Enabled,}
-		floor2.collider.layer += {.Terrain}
-	}
-
-	wall, new_wall := rect(); if new_wall {
-		wall.name = "Wall"
-		wall.color = {0.1, 0.1, 0.1, 0.3}
-		wall.basis.scale = 300
-		wall.position.xy = 300+260
-		wall.collider.size = wall.basis.scale
-		wall.collider.shape = .AABB
-		wall.flags += {.Collider_Enabled,}
-		wall.collider.layer += {.Terrain}
-	}
-
-	bump, new_bump := rect(); if new_bump {
-		bump.name = "Bump"
-		bump.color = {0.1, 0.1, 0.1, 0.3}
-		bump.basis.scale = 30
-		bump.position.xy = 300+260 - {300,100}
-		bump.collider.size = bump.basis.scale
-		bump.collider.shape = .AABB
-		bump.flags += {.Collider_Enabled,}
-		bump.collider.layer += {.Terrain}
-	}
 
 	shaded_quad := rect();
 	hand, new_hand := circle(); if new_hand {
@@ -128,40 +89,112 @@ game_step :: proc () {
 		ball.position.xy = pc.initial_pos
 	}
 // Ball Shader /////////////////////////////////////////////////////////////////
-	ball_vertex_shader_source := vertex_preamble + basic_vertex_inputs +
+	blob_vert := vertex_preamble + basic_vertex_inputs +
 	`
-	//ball_vert
 		out vec4 io_color;
-		out vec2 io_pos;
+		out vec2 smooth_pos;
 		void main() {
-			io_pos = (i_model_mat * vec4(v_position, 1)).xy;
-			io_color = i_color;
+			io_color.rgb = i_color.rgb * i_color.a; // Convert to PMA
+			io_color.a = i_color.a; // Convert to PMA
+			smooth_pos = (i_model_mat * vec4(v_position, 1)).xy;
 			mat4 mvp = frame.projection * frame.view * i_model_mat;
 			gl_Position = mvp * vec4(v_position, 1);
 		}
 	`
 
-	ball_fragment_shader_source := fragment_preamble + `
-	//ball_frag
-		in vec2 io_pos;
+	blob_frag := fragment_preamble + `
+		// Credit: Inigo Quilez
+		float sdCircle( vec2 p, float r ) {
+		    return length(p) - r;
+		}
+		float sdSegment( in vec2 p, in vec2 a, in vec2 b ) {
+		    vec2 pa = p-a, ba = b-a;
+		    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+		    return length( pa - ba*h );
+		}
+		// exponential
+		float smin( float a, float b, float k ) {
+		    k *= 1.0;
+		    float r = exp2(-a/k) + exp2(-b/k);
+		    return -k*log2(r);
+		}
+
+		in vec2 smooth_pos;
 		in vec4 io_color;
 		out vec4 outColor;
 		void main() {
-			outColor = io_color;
-			vec2 ball_pos_norm = frame.ball_position;
-			float d = length(io_pos - ball_pos_norm) / frame.ball_size.x / 1.0;
-			float x = sin(d);
-			outColor = vec4(d*x, 0., 0.0, 1.0);
+			outColor = vec4(0.0);
+			vec2 p = smooth_pos;
+			float sz_ball = frame.ball_size.x;
+			float sz_hand = frame.hand_size.x;
+			float ball_sdf = sdCircle(frame.ball_position - p, sz_ball);
+			float hand_sdf = sdCircle(frame.hand_position - p, sz_hand);
+			float seg = sdSegment(p, frame.ball_position, frame.hand_position);
+			float x = smin(ball_sdf, hand_sdf, 5.0);
+			x = min(x, seg - frame.hand_size.x);
+			outColor = vec4(-1.0 * x);
+			// if (seg <= frame.hand_size.x) {
+			// 	outColor = vec4(seg);
+			// }
 		}
 	`
 // Ball Shaders ////////////////////////////////////////////////////////////////
-	hot_reloaded_shader(shaded_quad, ball_vertex_shader_source, ball_fragment_shader_source)
-	// hand.draw_command.program = ball.draw_command.program
+	hot_reloaded_shader(shaded_quad, blob_vert, blob_frag)
 
 	pc_step(ball, hand)
-	shaded_quad.position = (ball.position + hand.position) / 2
-	shaded_quad.basis.scale = (ball.basis.scale + hand.basis.scale)
+	shaded_quad.position.xy = (ball.position.xy + hand.position.xy) / 2
+	shaded_quad.basis.scale = (ball.basis.scale + hand.basis.scale) * sqrt(f32(2))
 
+	floor, new_floor := rect(); if new_floor {
+		floor.name = "Floor"
+		floor.color = terrain_color
+		floor.basis.scale = 300
+		floor.position.xy = {150, -140}
+		floor.collider.size = floor.basis.scale
+		floor.collider.shape = .AABB
+		floor.flags += {.Collider_Enabled,}
+		floor.collider.layer += {.Terrain}
+	}
+
+	floor2, new_floor2 := rect(); if new_floor2 {
+		floor2.name = "Floor2"
+		floor2.color = terrain_color
+		floor2.basis.scale = 300
+		floor2.position.xy = {600, 100}
+		floor2.collider.size = floor2.basis.scale
+		floor2.collider.shape = .AABB
+		floor2.flags += {.Collider_Enabled,}
+		floor2.collider.layer += {.Terrain}
+	}
+
+	wall, new_wall := rect(); if new_wall {
+		wall.name = "Wall"
+		wall.color = terrain_color
+		wall.basis.scale = 300
+		wall.position.xy = 300+260
+		wall.collider.size = wall.basis.scale
+		wall.collider.shape = .AABB
+		wall.flags += {.Collider_Enabled,}
+		wall.collider.layer += {.Terrain}
+	}
+
+	bump, new_bump := rect(); if new_bump {
+		bump.name = "Bump"
+		bump.color = terrain_color
+		bump.basis.scale = 30
+		bump.position.xy = 300+260 - {300,100}
+		bump.collider.size = bump.basis.scale
+		bump.collider.shape = .AABB
+		bump.flags += {.Collider_Enabled,}
+		bump.collider.layer += {.Terrain}
+	}
+
+	bg, new_bg := rect(); if new_bg {
+		bg.name = "BG"
+		bg.color = bg_color
+		bg.basis.scale.xy = globals.canvas_size_px
+		bg.position.xy = bg.basis.scale.xy / 2
+	}
 }
 
 PC_State :: struct {
@@ -176,7 +209,6 @@ PC_State :: struct {
 	rs_velocity:     Vec3, // % of a half-circle moved per second
 	phase2_collisions: [dynamic]Collision,
 }
-
 
 // Allowing the system to move objects with acceleration
 // will end in jank unless you fix the numbers to avoid it.
@@ -198,8 +230,6 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 
 	rs_vel := length(rs - pc.prev_rs)
 	if rs_vel > 0.2 do rs_vel = 1
-	hand.color.r = rs_vel
-	hand.color.a = rs_vel
 	defer pc.prev_rs = rs
 	if pc.blob_grounded && pc.hand_grounded {
 		blob.position = hand.position - (rs * 32) // potentially move blob into Terrain
@@ -330,7 +360,9 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
 	hand.position = blob.position + rs * 32
 	globals.uniforms.ball_position = blob.position.xy
-	globals.uniforms.ball_size = blob.basis.scale.xy
+	globals.uniforms.ball_size = blob.basis.scale.xy / 2
+	globals.uniforms.hand_position = hand.position.xy
+	globals.uniforms.hand_size = hand.basis.scale.xy / 2
 } // pc step
 
 game_check_phase2_collisions :: proc (entity: ^Entity) -> [dynamic]Collision {

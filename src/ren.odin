@@ -861,6 +861,8 @@ frame_uniforms :: `
 		float tau_time;
 		vec2  ball_position;
 		vec2  ball_size;
+		vec2  hand_position;
+		vec2  hand_size;
 		vec2  canvas_size_px;
 	} frame;
 `
@@ -893,7 +895,8 @@ basic_vertex_inputs +
 	out vec4 io_color;
 
 	void main() {
-		io_color = i_color;
+		io_color.rgb = i_color.rgb * i_color.a; // Convert to PMA
+		io_color.a = i_color.a; // Convert to PMA
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
 	}

@@ -228,6 +228,8 @@ Uniforms :: struct #align(16) {
 	tau_time:       f32,  // 1 slot
 	ball_position:  Vec2, // 2 slots
 	ball_size:      Vec2, // 2 slots
+	hand_position:  Vec2, // 2 slots
+	hand_size:      Vec2, // 2 slots
 	canvas_size_px: Vec2  // 2 slots
 }
 

@@ -74,7 +74,7 @@ framework_init :: proc () {
 	debug_colliders.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer,
 		cast(int) debug_colliders.id, {},{})
-	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.1)
+	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.55)
 	globals.collider_visualization = debug_colliders
 	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.linear_sampler)
 	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)

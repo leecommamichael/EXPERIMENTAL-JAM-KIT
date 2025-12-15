@@ -2,6 +2,13 @@ package main
 
 import gl "angle"
 
+make_circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
+	it, new := circle(); if new {
+		it.flags -= {.Immediate_Mode, .Immediate_In_Use}
+	}
+	return it, new
+}
+
 circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(_loc)
 	if is_new {
@@ -26,7 +33,11 @@ rect :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	return entity, is_new
 }
 
-framebuffer_quad :: proc (from: gl.Framebuffer, to: gl.Framebuffer, _loc := #caller_location) -> (^Entity, bool) #optional_ok {
+framebuffer_quad :: proc (
+	from: gl.Framebuffer, 
+	to: gl.Framebuffer, 
+	_loc := #caller_location
+) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(_loc)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(
