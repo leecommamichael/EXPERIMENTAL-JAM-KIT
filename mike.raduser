@@ -81,8 +81,8 @@ window:
       selected
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_entrypoint.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/main_entrypoint.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query: input: ""
         cursor_line: 30
         cursor_column: 1
@@ -91,8 +91,8 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_framework.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/main_framework.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query:
         {
           input: ""
@@ -105,8 +105,8 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/sugar/sugar.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/sugar/sugar.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query: input: ""
         cursor_line: 17
         cursor_column: 2
@@ -115,8 +115,8 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/nord_gl/impl_desktop.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/angle/impl_desktop.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query:
         {
           input: ""
@@ -129,8 +129,8 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/ren.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query:
         {
           input: ""
@@ -143,8 +143,8 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/main_game_full_tilt.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/main_game_full_tilt.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query:
         {
           input: ""
@@ -202,8 +202,8 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/nord_gl/src/ren_text.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\nord_gl\\game.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/ren_text.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\angle\\game.radproj"
         query: input: ""
         cursor_line: 55
         cursor_column: 11
@@ -358,6 +358,6 @@ keybindings:
 current_path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src"
 file_path_map:
 {
-  source: "C:/Users/thatl/usr/repositories/nord_gl/src/math.odin"
+  source: "C:/Users/thatl/usr/repositories/angle/src/math.odin"
   dest: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game_full_tilt.odin"
 }

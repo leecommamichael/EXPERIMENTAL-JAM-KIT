@@ -1,4 +1,4 @@
-package nord_gl
+package angle
 
 /* ClearBufferMask */
 DEPTH_BUFFER_BIT               :: GLenum(0x00000100)

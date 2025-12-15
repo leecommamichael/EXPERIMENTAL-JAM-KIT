@@ -1,4 +1,4 @@
-package nord_gl
+package angle
 
 foreign import "webgl"
 foreign import "webgl2"

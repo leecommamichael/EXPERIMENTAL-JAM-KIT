@@ -1,7 +1,7 @@
 package main
 
 import gl "vendor:OpenGL"
-import ngl "nord_gl"
+import ngl "angle"
 import "core:math/linalg"
 import "core:math"
 import "core:log"

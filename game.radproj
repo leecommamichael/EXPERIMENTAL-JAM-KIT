@@ -14,8 +14,8 @@ recent_file: path: "../../applications (compilers)/odin/base/runtime/entry_windo
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/exe_common.inl"
 recent_file: path: "src/asset_bundle_desktop.odin"
 recent_file: path: "src/ren.odin"
-recent_file: path: "src/nord_gl/impl_desktop.odin"
-recent_file: path: "src/nord_gl/interface.odin"
+recent_file: path: "src/angle/impl_desktop.odin"
+recent_file: path: "src/angle/interface.odin"
 recent_file: path: "../../applications (compilers)/odin/core/math/linalg/general.odin"
 recent_file: path: "src/main_game.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
@@ -47,7 +47,7 @@ recent_file: path: "../../applications (compilers)/odin/base/runtime/internal.od
 recent_file: path: "src/main_app.odin"
 recent_file: path: "src/main.odin"
 recent_file: path: "src/sugar/gl_windows.odin"
-recent_file: path: "src/nord_gl/loader_desktop.odin"
+recent_file: path: "src/angle/loader_desktop.odin"
 target:
 {
   executable: "game.exe"
@@ -68,7 +68,7 @@ type_view:
 }
 debug_info:
 {
-  path: "C:/Users/thatl/usr/Repositories/nord_gl/game.pdb"
+  path: "C:/Users/thatl/usr/Repositories/angle/game.pdb"
   timestamp: 66200687131728
 }
 type_view: expr: "geo3d("

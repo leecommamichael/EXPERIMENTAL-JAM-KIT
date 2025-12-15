@@ -88,7 +88,7 @@ step :: proc (dt: f64) -> bool {
 	return true
 }
 
-import gl "nord_gl"
+import gl "angle"
 import "core:math"
 import "core:math/linalg"
 import "core:math/linalg/glsl"

@@ -6,7 +6,7 @@ package main
 import "core:time"
 import "core:dynlib"
 import sugar "sugar"
-import gl "nord_gl"
+import gl "angle"
 
 //////////////////////////////////////////////////////////////////////
 // Section: Framework + App Data

@@ -3,7 +3,7 @@ package sugar
 import "core:c"
 import "core:log"
 import "core:sys/windows"
-import gl "../nord_gl"
+import gl "../angle"
 import win "../windows"
 
 CONTEXT_MAJOR:: 3

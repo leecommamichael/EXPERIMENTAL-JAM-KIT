@@ -26,7 +26,6 @@ game_init :: proc () {
 
 	globals.cursor = make_sprite(`berserker.aseprite`)
 	globals.cursor.basis.position = 0
-	globals.cursor.old_basis.scale = 0
 	globals.cursor.basis.scale = 44
 	globals.cursor.flags += {.Collider_Enabled,}
 	globals.cursor.collider.shape = .Circle
@@ -102,6 +101,7 @@ game_step :: proc () {
 		bump.collider.layer += {.Terrain}
 	}
 
+	shaded_quad := rect();
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
 		hand.color = {0.1, 0.1, 0.1, 0.1}
@@ -155,23 +155,13 @@ game_step :: proc () {
 		}
 	`
 // Ball Shaders ////////////////////////////////////////////////////////////////
-	hot_reloaded_shader(ball, ball_vertex_shader_source, ball_fragment_shader_source)
-	hand.draw_command.program = ball.draw_command.program
-
-	if pc.hand_grounded {
-		hand.color.a = 0.4
-	} else {
-		hand.color.a = 0.2
-	}
-	if pc.blob_grounded {
-		ball.color.a = 0.4
-	} else {
-		ball.color.a = 0.2
-	}
+	hot_reloaded_shader(shaded_quad, ball_vertex_shader_source, ball_fragment_shader_source)
+	// hand.draw_command.program = ball.draw_command.program
 
 	pc_step(ball, hand)
+	shaded_quad.position = (ball.position + hand.position) / 2
+	shaded_quad.basis.scale = (ball.basis.scale + hand.basis.scale)
 
-	ball.color = {0.2, 0.2, 0.8, 1.0} // TODO: BLENDING NOT WORKING (alpha can be anything.)
 }
 
 PC_State :: struct {

@@ -23,7 +23,7 @@ import stbi "vendor:stb/image"
 import stbv "vendor:stb/vorbis"
 import aseprite "third-party/odin-aseprite"
 import aseprite_utils "third-party/odin-aseprite/utils"
-import gl "nord_gl"
+import gl "angle"
 import "audio"
 
 font_cache_exists :: proc () -> bool {

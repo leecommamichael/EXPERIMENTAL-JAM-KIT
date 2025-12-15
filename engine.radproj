@@ -1,8 +1,8 @@
 // raddbg 0.9.24 project file
 
 recent_file: path: "src/ren.odin"
-recent_file: path: "src/nord_gl/interface.odin"
-recent_file: path: "src/nord_gl/impl_desktop.odin"
+recent_file: path: "src/angle/interface.odin"
+recent_file: path: "src/angle/impl_desktop.odin"
 recent_file: path: "src/main_framework.odin"
 recent_file: path: "../../Applications (Compilers)/odin/core/os/os2/stat_windows.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
@@ -13,7 +13,7 @@ recent_file: path: "../../Applications (Compilers)/odin/base/runtime/core.odin"
 recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/dll_dllmain.cpp"
 recent_file: path: "src/main_game_full_tilt.odin"
-recent_file: path: "src/nord_gl/loader_desktop.odin"
+recent_file: path: "src/angle/loader_desktop.odin"
 recent_file: path: "../../Applications (Compilers)/odin/core/sys/windows/wgl.odin"
 target:
 {

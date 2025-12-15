@@ -1,4 +1,4 @@
-package nord_gl
+package angle
 
 Clear_Buffer_Mask :: distinct bit_set[Clearable_Buffer; GLuint]
 Clearable_Buffer :: enum GLenum {

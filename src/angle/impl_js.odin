@@ -1,8 +1,4 @@
-#+build !js
-package nord_gl
-
-import "base:intrinsics"
-import "core:strings"
+package angle
 
 BufferData :: proc {
 	Buffer_Data_Many,
@@ -62,7 +58,7 @@ Buffer_SubData_Many :: #force_inline proc (
 			return
 		}
 	}
-	glBufferSubData(cast(GLuint) target, cast(int) offset, size_of(T) * len(src), raw_data(src))
+	glBufferSubData(cast(GLuint) target, offset, size_of(T) * len(src), raw_data(src))
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -78,7 +74,7 @@ Buffer_SubData_One :: #force_inline proc (
 			return
 		}
 	}
-	glBufferSubData(cast(GLuint) target, cast(int) offset, size_of(T), src)
+	glBufferSubData(cast(GLuint) target, offset, size_of(T), src)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -94,7 +90,6 @@ DrawElementsInstanced :: #force_inline proc (
 	instance_count: int,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	offset := cast(rawptr) cast(GLintptr) offset
 	glDrawElementsInstanced(
 		cast(GLuint) mode,
 		count,
@@ -127,17 +122,19 @@ DrawElements :: #force_inline proc (
 
 GenBuffers :: proc (
 	len: int,
-	out: [^]Buffer,
+	out: [^]Buffer, 
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenBuffers(len, cast([^]GLuint) out)
+	for i in 0..<len {
+		out[i] = glCreateBuffer()
+	}
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 CreateBuffer :: proc (
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR, buffer: Buffer) {
-	glGenBuffers(1, cast(^GLuint)&buffer)
+	buffer = glCreateBuffer()
 	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
@@ -149,14 +146,16 @@ GenVertexArrays :: proc (
 	out: [^]VertexArrayObject,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenVertexArrays(len, cast([^]GLuint)out)
+	for i in 0..<len {
+		out[i] = glCreateVertexArray()
+	}
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 CreateVertexArray :: proc (
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR, vao: VertexArrayObject) {
-	glGenVertexArrays(1, cast(^GLuint)&vao)
+	vao = glCreateVertexArray()
 	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
 
@@ -165,19 +164,21 @@ CreateVertexArray :: proc (
 
 GenTextures :: proc (
 	len: int,
-	out: [^]Texture,
+	out: []Texture,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenTextures(len, cast([^]GLuint) out)
+	for i in 0..<len {
+		out[i] = glCreateTexture()
+	}
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
-CreateTexture :: proc (
-	_loc := #caller_location
-) -> (err: Error = .NO_ERROR, tex: Texture) {
-	glGenTextures(1, cast(^GLuint)&tex)
+CreateTexture :: proc (_loc := #caller_location) -> (err: Error = .NO_ERROR, tex: Texture) {
+	tex = glCreateTexture()
 	when NGL_VALIDATE { err = validate(_loc); return } else { return }
 }
+
+
 
 
 BindBuffer :: proc (
@@ -185,7 +186,7 @@ BindBuffer :: proc (
 	buffer: Buffer,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindBuffer(cast(GLuint) target, cast(GLuint) buffer)
+	glBindBuffer(cast(GLuint) target, buffer)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -198,9 +199,10 @@ BindBufferBase :: proc (
 	buffer: Buffer,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindBufferBase(target, index, cast(GLuint)buffer)
+	glBindBufferBase(target, index, buffer)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
+
 
 
 
@@ -211,9 +213,10 @@ BindBufferRange :: proc (
 	offset, size: int,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindBufferRange(target, index, cast(GLuint)buffer, offset, size)
+	glBindBufferRange(target, index, buffer, offset, size)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
+
 
 
 
@@ -222,7 +225,7 @@ BindVertexArray :: proc (
 	vao: VertexArrayObject,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glBindVertexArray(cast(GLuint) vao)
+	glBindVertexArray(vao)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
@@ -296,9 +299,7 @@ Clear :: proc (mask: Clear_Buffer_Mask) {
 
 
 
-ClearColor :: proc (r,g,b,a: GLfloat) {
-	glClearColor(r,g,b,a)
-}
+ClearColor :: glClearColor
 
 
 
@@ -327,7 +328,7 @@ BlendFunc :: proc (src: Blending_Factor_Src, dst: Blending_Factor_Dest) -> Error
 
 
 /*
-The WebGL API does not support depth ranges with where the near plane is greater the far plane.
+The WebGL API does not support depth ranges where the near plane is greater the far plane.
 DepthRange will generate an INVALID_OPERATION error if zNear is greater than zFar.
 */
 DepthRange :: proc {
@@ -336,12 +337,12 @@ DepthRange :: proc {
 }
 
 _DepthRange :: proc (near, far: f64) -> Error {
-	glDepthRange(cast(GLfloat)near, cast(GLfloat)far)
+	glDepthRange(cast(f32)near, cast(f32)far)
 	return .NO_ERROR
 }
 
+// Emulated. DepthRangef is not available on web.
 DepthRangef :: proc (near, far: f32) -> Error {
-	// DepthRangef is not always available on desktop, easier to emulate.
 	glDepthRange(near, far)
 	return .NO_ERROR
 }
@@ -367,29 +368,29 @@ UseProgram :: proc (
 	program: Program,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glUseProgram(cast(GLuint) program)
+	glUseProgram(program)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
 
-GetProgramInfoLog :: proc (program: GLuint) -> string {
+GetProgramInfoLog :: proc (program: Program) -> string {
 	log_length: int
 	GetProgramiv(program, cast(GLuint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
 	log_bytes := make([]u8, log_length)
-	glGetProgramInfoLog(program, log_length, &log_length, raw_data(log_bytes))
+	glGetProgramInfoLog(program, log_bytes, &log_length)
 	return string(log_bytes[:log_length])
 }
 
 
 
 
-GetShaderInfoLog :: proc (shader: GLuint) -> string {
+GetShaderInfoLog :: proc (shader: Shader) -> string {
 	log_length: int
 	GetShaderiv(shader, cast(GLuint)Shader_Parameter_Name.INFO_LOG_LENGTH, &log_length)
 	log_bytes := make([]u8, log_length)
-	glGetShaderInfoLog(shader, log_length, &log_length, raw_data(log_bytes))
+	glGetShaderInfoLog(shader, log_bytes, &log_length)
 	return string(log_bytes[:log_length])
 }
 
@@ -409,78 +410,68 @@ CreateProgram :: proc () -> Program {
 
 
 
+// TODO: GetParameter functions that are enum-safe and portable.
+//       This is a polyfill approach to that, and not what I'm after.
+//       I want a better GLES3.
+// iv I guess means instance-variable???????
+GetProgramiv :: glGetProgramiv
 
-GetProgramiv :: proc (program: GLuint, pname: GLuint, params: [^]int) {
-	glGetProgramiv(program, pname, params)
-}
-
-
-
-
-GetShaderiv :: proc (shader: GLuint, pname: GLuint, params: [^]int) {
-	glGetShaderiv(shader, pname, params)
-}
+GetShaderiv :: glGetShaderiv // Emulated in JS. 
 
 
 
 
 DeleteShader :: proc (s: Shader) {
-	glDeleteShader(cast(GLuint)s)
+	glDeleteShader(s)
 }
 
 
 
-// WebGL can't do more than 1 at a time...
+// This temporary array is actually due to a bug in odin.js (their spec is wrong)
 ShaderSource :: proc (s: Shader, src: string) {
-	shader_data := cast(cstring) raw_data(src)
-	shader_len := cast(int) len(src)
-	glShaderSource(cast(GLuint)s, 1, &shader_data, &shader_len)
+	glShaderSource(s, src)
 }
 
 
 
 
 CompileShader :: proc (s: Shader) {
-	glCompileShader(cast(GLuint) s)
+	glCompileShader(s)
 }
 
 
 
 
 AttachShader :: proc (p: Program, s: Shader) {
-	glAttachShader(cast(GLuint)p, cast(GLuint)s)
+	glAttachShader(p, s)
 }
 
 
 
 
 LinkProgram :: proc (p: Program) {
-	glLinkProgram(cast(GLuint)p)
+	glLinkProgram(p)
 }
 
 
 
 
 UniformBlockBinding :: proc (p: Program, index, binding: GLuint) {
-	glUniformBlockBinding(cast(GLuint) p, index, binding)
+	glUniformBlockBinding(p, index, binding)
 }
 
 
 
 
 GetUniformBlockIndex :: proc (p: Program, block_name: string) -> GLuint {
-	block_name: cstring = strings.clone_to_cstring(block_name)
-	defer { delete(block_name) }
-	return glGetUniformBlockIndex(cast(GLuint)p, block_name)
+	return glGetUniformBlockIndex(p, block_name)
 }
 
 
 
 
-GetUniformLocation :: proc (p: Program, _name: string, allocator := context.allocator) -> int {
-	name := strings.clone_to_cstring(_name, allocator)
-	defer delete(name)
-	return cast(int) cast(i32) glGetUniformLocation(cast(GLuint)p, (name))
+GetUniformLocation :: proc (p: Program, name: string) -> int {
+	return glGetUniformLocation(p, name)
 }
 
 
@@ -491,9 +482,9 @@ TexImage2D_verbatim :: proc (
 	level: int,
 	internalformat: int,
 	width, height: int,
-	format: GLuint,
+	format,
 	type: GLuint,
-	data: []u8,
+	data: $Indistinct/[]$T,
 	_loc := #caller_location
 ) -> ( err: Error = .NO_ERROR ) {
 	glTexImage2D(
@@ -504,14 +495,14 @@ TexImage2D_verbatim :: proc (
 		0, // border
 		format,
 		type,
+		len(data) * size_of(T),
 		raw_data(data))
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
 
 
 
-// Desktop(target: GLuint, level: int, xoffset: int, yoffset: int, width: int, height: int, format: GLuint, type: GLuint,            pixels: rawptr)
-// JS     (target: GLuint, level: int, xoffset,      yoffset,      width,      height: int, format,       type: GLuint, size: int, data:   rawptr)
+
 TexSubImage2D :: proc (
 	target: Texture_2D_Target,
 	level: int,
@@ -529,6 +520,7 @@ TexSubImage2D :: proc (
 		width, height,
 		format,
 		type,
+		len(data) * size_of(T),
 		raw_data(data))
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
@@ -537,23 +529,23 @@ TexSubImage2D :: proc (
 
 
 BindTexture :: proc (binding: Texture_Target, tex: Texture) {
-	glBindTexture(cast(GLuint)binding, auto_cast tex)
+	glBindTexture(cast(GLuint) binding, tex)
 }
 
 
 
-
-CreateFramebuffer :: proc () -> (out: Framebuffer) {
-	glGenFramebuffers(1, cast(^GLuint)&out)
-	return
+CreateFramebuffer :: proc () -> (Framebuffer) {
+	return glCreateFramebuffer()
 }
 
 GenFramebuffers :: proc (len: int, out: [^]Framebuffer) {
-	glGenFramebuffers(len, cast(^GLuint)out)
+	for index in 0..<len {
+		out[index] = glCreateFramebuffer()
+	}
 }
 
 BindFramebuffer :: proc (target: Framebuffer_Target, fb: Framebuffer) {
-	glBindFramebuffer(cast(GLuint)target, cast(GLuint)fb)
+	glBindFramebuffer(cast(GLuint)target, fb)
 }
 
 FramebufferTexture2D :: proc (
@@ -568,7 +560,7 @@ FramebufferTexture2D :: proc (
 		cast(GLuint) target,
 		cast(GLuint) attachment,
 		cast(GLuint) textarget,
-		cast(GLuint) texture,
+		texture,
 		level)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
 }
@@ -576,9 +568,8 @@ FramebufferTexture2D :: proc (
 
 
 
-CreateSampler :: proc () -> (out: Sampler) {
-	glGenSamplers(1, cast(^GLuint)&out)
-	return
+CreateSampler :: proc () -> (Sampler) {
+	return glCreateSampler()
 }
 
 GenSamplers :: proc (
@@ -586,8 +577,11 @@ GenSamplers :: proc (
 	out: [^]Sampler,
 	_loc := #caller_location
 ) -> (err: Error = .NO_ERROR) {
-	glGenSamplers(len, cast(^GLuint) out)
-	when NGL_VALIDATE { return validate(_loc) } else { return }
+	for index in 0..<len {
+		out[index] = glCreateSampler()
+		when NGL_VALIDATE { return validate(_loc) } else { return }
+	}
+	return
 }
 
 
@@ -600,52 +594,37 @@ BindSampler :: proc (unit: GLuint, sampler: Sampler) {
 CheckFramebufferStatus :: proc (target: Framebuffer_Target) -> GLenum {
 	return glCheckFramebufferStatus(auto_cast target)
 }
-
-
-
-
-DeleteVertexArray :: proc (it: VertexArrayObject) {
-	it := it
-	glDeleteVertexArrays(1, auto_cast &it)
-}
-
-DeleteBuffer :: proc (it: Buffer) {
-	it := it
-	glDeleteBuffers(1, auto_cast &it)
-}
-
-DeleteProgram :: proc (it: Program) {
-	glDeleteProgram(auto_cast it)
-}
-
-
+// Get_Texture_Base_Level   :: proc (target: Texture_Parameter_Target) -> GLuint {}
+// Get_Texture_Max_Level    :: proc (target: Texture_Parameter_Target) -> GLuint {}
+// Get_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target) -> f32 {}
+// Get_Texture_Max_LOD      :: proc (target: Texture_Parameter_Target) -> f32 {}
+// Get_Texture_Mag_Filter   :: proc (target: Texture_Parameter_Target) -> Texture_Mag_Filter {}
+// Get_Texture_Min_Filter   :: proc (target: Texture_Parameter_Target) -> Texture_Min_Filter {}
+// Get_Texture_Compare_Func :: proc (target: Texture_Parameter_Target) -> Compare_Func {}
+// Get_Texture_Compare_Mode :: proc (target: Texture_Parameter_Target) -> Compare_Mode {}
+// Get_Texture_Wrap_S       :: proc (target: Texture_Parameter_Target) -> Texture_Wrap_Mode {}
+// Get_Texture_wrap_T       :: proc (target: Texture_Parameter_Target) -> Texture_Wrap_Mode {}
+// Get_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target) -> Texture_Wrap_Mode {}
 
 //////////////////////////////////////////////////////////////////////
 // Platform-Specific Stuff Below
 //////////////////////////////////////////////////////////////////////
 // Not Web, need unified way of querying support.
-MAJOR_VERSION :: 0x821B
-MINOR_VERSION :: 0x821C
 GetParameter :: proc {
 	GetIntegerv,
 	GetInteger64v,
 }
+
 GetIntegerv :: proc (pname: Integerv_Parameter) -> (value: int) {
-	glGetIntegerv(cast(GLuint)pname, &value)
+	value = glGetParameter(cast(GLuint)pname)
 	return
 }
 
 GetInteger64v :: proc (pname: Integer64v_Parameter) -> (value: i64) {
-	glGetInteger64v(cast(GLuint)pname, &value)
+	value = auto_cast glGetParameter(cast(GLuint)pname) // TODO: odin.js is wrong about this.
 	return
 }
 
 
-Viewport :: proc (x: int, y: int, width: int, height: int) {
-	glViewport(x, y, width, height)
-}
-
-GetError :: proc () -> Error {
-	return cast(Error)glGetError()
-}
+Viewport :: glViewport
 

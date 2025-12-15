@@ -4,7 +4,7 @@ import "base:runtime"
 import "core:log"
 import "core:sys/wasm/js"
 import "core:math/linalg"
-import gl "../nord_gl"
+import gl "../angle"
 
 platform_calls_step :: true
 js_should_capture_pointer := false

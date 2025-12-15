@@ -1,5 +1,5 @@
 #+build !js
-package nord_gl
+package angle
 
 import "base:runtime"
 import "core:fmt"

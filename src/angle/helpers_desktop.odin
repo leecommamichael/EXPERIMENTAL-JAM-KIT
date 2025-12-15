@@ -1,5 +1,5 @@
 #+build !js
-package nord_gl
+package angle
 // Helper for loading shaders into a program
 
 import "core:os"

@@ -132,6 +132,7 @@ atan2 :: math.atan2
 sin :: math.sin
 cos :: math.cos
 sign :: math.sign
+sqrt :: math.sqrt
 PI :: math.PI
 
 // Selects the quantity with the smaller absolute value,

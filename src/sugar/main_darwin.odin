@@ -6,7 +6,7 @@ import "core:log"
 import "core:sys/posix"
 import "core:dynlib"
 import os "core:os/os2"
-import gl "../nord_gl"
+import gl "../angle"
 import NS "core:sys/darwin/Foundation"
 import Metal "vendor:darwin/Metal"
 import MTK "vendor:darwin/MetalKit"
@@ -141,7 +141,7 @@ create_window :: proc (
   use_gl: bool
 ) -> bool {
   lib_ok: bool
-  g.platform.lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/nord_gl/src/libGLESv2.dylib`)
+  g.platform.lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/angle/src/libGLESv2.dylib`)
   ensure(lib_ok)
   NS.application_delegate_register_and_alloc({
     applicationShouldTerminateAfterLastWindowClosed = proc(app: ^NS.Application) -> NS.BOOL {

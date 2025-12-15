@@ -1,4 +1,4 @@
-package nord_gl
+package angle
 
 import "core:log"
 import "core:fmt"
@@ -229,7 +229,7 @@ import "base:runtime"
 _bad_input :: #force_inline proc (message: string, src_loc: runtime.Source_Code_Location) {
 	// TODO: Before sharing this code, introduce a when config here.
 	_, file := slashpath.split(src_loc.file_path)
-	log.debugf("nord_gl\n" +
+	log.debugf("angle\n" +
 		"  Text│ %s\n" +
 		"  File│ %s\n" +
 		"  Line│ %v",

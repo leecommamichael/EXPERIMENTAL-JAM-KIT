@@ -6,7 +6,7 @@ import "core:slice"
 import "core:strings"
 import "core:math/linalg"
 import "base:runtime"
-import gl "nord_gl"
+import gl "angle"
 
 //////////////////////////////////////////////////////////////////////
 // Section: Renderer

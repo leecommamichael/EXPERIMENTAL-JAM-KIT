@@ -1,4 +1,4 @@
-package nord_gl
+package angle
 
 import "core:fmt"
 

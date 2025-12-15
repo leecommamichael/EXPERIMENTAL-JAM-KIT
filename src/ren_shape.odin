@@ -1,6 +1,6 @@
 package main
 
-import gl "nord_gl"
+import gl "angle"
 
 circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(_loc)

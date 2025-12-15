@@ -3,7 +3,7 @@ package main
 import "core:mem"
 import "core:log"
 import "base:runtime"
-import ngl "nord_gl"
+import ngl "angle"
 
 ////////////////////////////////////////////////////////////////////////////////
 // A fixed array whose elements are padded to stride perfectly along an alignment.
