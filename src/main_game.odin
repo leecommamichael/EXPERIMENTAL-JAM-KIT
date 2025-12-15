@@ -104,7 +104,7 @@ game_step :: proc () {
 
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
-		hand.color = {0.4, 0.4, 1.0, 0.1}
+		hand.color = {0.1, 0.1, 0.1, 0.1}
 		hand.basis.scale = 22
 		hand.position.xy = {100, 400}
 		hand.collider.size = hand.basis.scale
@@ -122,6 +122,10 @@ game_step :: proc () {
 		ball.flags += {.Collider_Enabled, .Physics_Skip_Integrate}
 
 		ball.acceleration = gravity
+		pc.initial_pos = ball.position.xy
+	}
+	if sugar.on_button_press(.Start) {
+		ball.position.xy = pc.initial_pos
 	}
 // Ball Shader /////////////////////////////////////////////////////////////////
 	ball_vertex_shader_source := vertex_preamble + basic_vertex_inputs +
@@ -130,13 +134,10 @@ game_step :: proc () {
 		out vec4 io_color;
 		out vec2 io_pos;
 		void main() {
+			io_pos = (i_model_mat * vec4(v_position, 1)).xy;
 			io_color = i_color;
 			mat4 mvp = frame.projection * frame.view * i_model_mat;
-			vec2 vpm = v_position.xy;
-			vpm.x = min(vpm.x, 0.4*sin(frame.tau_time));
-			vpm.y = max(vpm.y, 0.4*cos(frame.tau_time));
-			gl_Position = mvp * vec4(vec3(vpm, 1.0), 1);
-			io_pos = gl_Position.xy;
+			gl_Position = mvp * vec4(v_position, 1);
 		}
 	`
 
@@ -147,30 +148,15 @@ game_step :: proc () {
 		out vec4 outColor;
 		void main() {
 			outColor = io_color;
-			vec2 portion = frame.ball_position / frame.canvas_size_px;
-			if (portion.x != portion.x) {
-				outColor = vec4(1.,0.,0.,1.);
-				return;
-			}
-			if (portion.y != portion.y) {
-				outColor = vec4(1.,0.,0.,1.);
-				return;
-			}
-			if (portion.x <= 0.00001) {
-				outColor = vec4(1.,1.,0.,1.);
-				return;
-			}
-			if (portion.y <= 0.00001) {
-				outColor = vec4(1.,1.,0.,1.);
-				return;
-			}
-			float x = sin(2.0*frame.time);
-			float y = cos(2.0*frame.time);
-			outColor = vec4(x, y, portion.y, 1.0);
+			vec2 ball_pos_norm = frame.ball_position;
+			float d = length(io_pos - ball_pos_norm) / frame.ball_size.x / 1.0;
+			float x = sin(d);
+			outColor = vec4(d*x, 0., 0.0, 1.0);
 		}
 	`
 // Ball Shaders ////////////////////////////////////////////////////////////////
 	hot_reloaded_shader(ball, ball_vertex_shader_source, ball_fragment_shader_source)
+	hand.draw_command.program = ball.draw_command.program
 
 	if pc.hand_grounded {
 		hand.color.a = 0.4
@@ -193,6 +179,7 @@ game_step :: proc () {
 }
 
 PC_State :: struct {
+	initial_pos:     Vec2,
 	ball_mode:       bool, // else sticky blob
 	blob_grounded:   bool, // in terrain, corrected.
 	hand_grounded:   bool, // in terrain (assumes grabbing at all times) (no RT yet.)
@@ -357,7 +344,7 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 	do_physics_integrate_tick(blob) // commit changes for t1 checking + adjustment.
 	hand.position = blob.position + rs * 32
 	globals.uniforms.ball_position = blob.position.xy
-	globals.uniforms.ball_size = blob.scale.xy
+	globals.uniforms.ball_size = blob.basis.scale.xy
 } // pc step
 
 game_check_phase2_collisions :: proc (entity: ^Entity) -> [dynamic]Collision {
