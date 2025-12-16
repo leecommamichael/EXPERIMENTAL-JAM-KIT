@@ -28,6 +28,9 @@ framework_init :: proc () {
 		log.infof("OpenGL Platform Constants ---\n%#v", globals.gl_standard)
 	}
 	init_gl_constants()
+	if size_of(Uniforms) >= 1<<14 {
+		log.warn("2^16 is fine; but this is getting large and might not support all modern GPUs.")
+	}
 	globals.hot_reloaded_this_frame = true // INTENT: load live shaders
 	globals.hot_reload = hot_reload
 	globals.game_step = game_step
@@ -89,12 +92,12 @@ framework_step :: proc (dt: f32) {
 	globals.ui_mouse_position = (globals.sugar.mouse_position / globals.canvas_stretch) 
 	globals.mouse_position = (globals.sugar.mouse_position / globals.canvas_stretch)  // TODO camera offset
 	globals.dt = dt
+	globals.uniforms.time += f32(globals.dt)
 	globals.uniforms.tau_time += f32(globals.dt)
 	overflow := linalg.TAU - globals.uniforms.tau_time
 	if overflow >= 0 {
 		globals.uniforms.tau_time = overflow
 	}
-	globals.uniforms.time += f32(globals.dt)
 
 	clear(&globals.entities)
 	clear(&globals.entities_2D)

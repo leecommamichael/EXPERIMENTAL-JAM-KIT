@@ -61,8 +61,7 @@ game_step :: proc () {
 	}
 	globals.cursor.position.xy = globals.mouse_position
 
-
-	shaded_quad := rect();
+	blob_overlay := rect();
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
 		hand.color = {0.1, 0.1, 0.1, 0.1}
@@ -75,7 +74,7 @@ game_step :: proc () {
 
 	ball, new_ball := circle(); if new_ball {
 		ball.name = "Ball"
-		ball.color = {0.0, 0.2, 0.5, 0.1}
+		ball.color = {0.0, 0.2, 0.5, 0.0}
 		ball.basis.scale = 44
 		ball.position.xy = {100, 400}
 		ball.collider.size = ball.basis.scale
@@ -85,6 +84,7 @@ game_step :: proc () {
 		ball.acceleration = gravity
 		pc.initial_pos = ball.position.xy
 	}
+
 	if sugar.on_button_press(.Start) {
 		ball.position.xy = pc.initial_pos
 	}
@@ -96,14 +96,13 @@ game_step :: proc () {
 		void main() {
 			io_color.rgb = i_color.rgb * i_color.a; // Convert to PMA
 			io_color.a = i_color.a; // Convert to PMA
-			smooth_pos = (i_model_mat * vec4(v_position, 1)).xy;
+			smooth_pos = (i_model_mat * vec4(v_position, 1.0)).xy;
 			mat4 mvp = frame.projection * frame.view * i_model_mat;
-			gl_Position = mvp * vec4(v_position, 1);
+			gl_Position = mvp * vec4(v_position, 1.0);
 		}
 	`
 
 	blob_frag := fragment_preamble + `
-		// Credit: Inigo Quilez
 		float sdCircle( vec2 p, float r ) {
 		    return length(p) - r;
 		}
@@ -112,7 +111,6 @@ game_step :: proc () {
 		    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
 		    return length( pa - ba*h );
 		}
-		// exponential
 		float smin( float a, float b, float k ) {
 		    k *= 1.0;
 		    float r = exp2(-a/k) + exp2(-b/k);
@@ -129,21 +127,24 @@ game_step :: proc () {
 			float sz_hand = frame.hand_size.x;
 			float ball_sdf = sdCircle(frame.ball_position - p, sz_ball);
 			float hand_sdf = sdCircle(frame.hand_position - p, sz_hand);
-			float seg = sdSegment(p, frame.ball_position, frame.hand_position);
-			float x = smin(ball_sdf, hand_sdf, 5.0);
-			x = min(x, seg - frame.hand_size.x);
-			outColor = vec4(-1.0 * x);
-			// if (seg <= frame.hand_size.x) {
-			// 	outColor = vec4(seg);
-			// }
+			float seg_width = sz_hand;
+			float seg = sdSegment(p, frame.ball_position, frame.hand_position) - seg_width;
+			float blob = min(ball_sdf, hand_sdf);
+			      blob = smin(blob, seg, 2.0);
+			outColor = vec4(-1.0 * blob);
+			if (blob <= 0.0) {
+				// outColor = vec4(-1.0 * blob / 15.0);
+				// invert the SDF for the internal SDF.
+				outColor = vec4(0.8 - (-1.0 * blob / 15.0));
+			}
 		}
 	`
 // Ball Shaders ////////////////////////////////////////////////////////////////
-	hot_reloaded_shader(shaded_quad, blob_vert, blob_frag)
-
+	hot_reloaded_shader(blob_overlay, blob_vert, blob_frag)
+ 
 	pc_step(ball, hand)
-	shaded_quad.position.xy = (ball.position.xy + hand.position.xy) / 2
-	shaded_quad.basis.scale = (ball.basis.scale + hand.basis.scale) * sqrt(f32(2))
+	blob_overlay.position.xy = (ball.position.xy + hand.position.xy) / 2
+	blob_overlay.basis.scale = (ball.basis.scale + hand.basis.scale) * sqrt(f32(2))
 
 	floor, new_floor := rect(); if new_floor {
 		floor.name = "Floor"
@@ -195,6 +196,56 @@ game_step :: proc () {
 		bg.basis.scale.xy = globals.canvas_size_px
 		bg.position.xy = bg.basis.scale.xy / 2
 	}
+
+	// The goal is to get the terrain to look a little interesting....
+	// maybe something kind of transparent? Outline?
+	// More sort of "amoeba" theming?
+	// Bounce/wiggling when the blob collides?
+	// How would a wave ripple from a collision? Keep uniform point and time. seems good!
+	hot_reloaded_shader(floor2,
+		vertex_preamble + basic_vertex_inputs + `
+		out vec4 io_color;
+		out vec2 center;
+		out vec2 size;
+		out vec2 p;
+
+		void main() {
+			io_color.rgb = i_color.rgb * i_color.a; // Convert to PMA
+			io_color.a = i_color.a; // Convert to PMA
+			p = (i_model_mat * vec4(v_position, 1.0)).xy;
+			center = (i_model_mat * vec4( vec3(0.0), 1.0)).xy;
+			size = (i_model_mat * vec4( vec3(1.0), 1.0)).xy - center;
+			mat4 mvp = frame.projection * frame.view * i_model_mat;
+			gl_Position = mvp * vec4(v_position, 1.0);
+		}
+		`,
+		fragment_preamble + `
+		in vec2 p;
+		in vec2 center;
+		in vec2 size;
+		in vec4 io_color;
+
+		float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r) {
+	    r.xy = (p.x>0.0)?r.xy : r.zw;
+	    r.x  = (p.y>0.0)?r.x  : r.y;
+	    vec2 q = abs(p)-b+r.x;
+	    return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
+		}
+
+		out vec4 outColor;
+
+		void main() {
+			outColor = vec4(0.0);
+			float box = sdRoundedBox(p-center, size/2.0, vec4(8.0));
+			float box_interior = -1.0 * box;
+			if (box <= 0.0) {
+				outColor = vec4(0.0, 0.25, 0.0, 0.25);
+				if (box >= -5.0) { // OUTLINE
+					outColor = vec4(0.0, 0.5, 0.0, 0.5);
+				}
+			}
+		}
+		`)
 }
 
 PC_State :: struct {
@@ -280,6 +331,15 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		pc.blob_on_surface = collision_position + (normal * blob.collider.size.x/2)
 		pc.blob_grounded = true
 		blob.position = pc.blob_on_surface
+		// The physical integation doesn't have mass yet (all mass is 1) so I'm just calling this velocity.
+		vel_into_surface := length(dot(blob.velocity, normal) * normal) // force into surface
+		if vel_into_surface > 0 {
+			// This force is AROUND the order of 10-1000
+			// If we want it to last ~300ms, could only take 3 steps...
+			globals.uniforms.collision_position = pc.blob_on_surface.xy
+			globals.uniforms.collision_force = vel_into_surface
+			globals.uniforms.collision_time = globals.uniforms.time
+		}
 	} // for collision(blob)
 
 	pc.hand_striking = false

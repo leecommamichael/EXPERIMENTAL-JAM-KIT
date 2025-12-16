@@ -864,6 +864,9 @@ frame_uniforms :: `
 		vec2  hand_position;
 		vec2  hand_size;
 		vec2  canvas_size_px;
+		vec2  collision_position;
+		float collision_force;
+		float collision_time;
 	} frame;
 `
 

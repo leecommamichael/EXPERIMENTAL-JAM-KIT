@@ -230,7 +230,10 @@ Uniforms :: struct #align(16) {
 	ball_size:      Vec2, // 2 slots
 	hand_position:  Vec2, // 2 slots
 	hand_size:      Vec2, // 2 slots
-	canvas_size_px: Vec2  // 2 slots
+	canvas_size_px: Vec2, // 2 slots
+	collision_position: Vec2, // 2 slots
+	collision_force:    f32, // 1 slots
+	collision_time:     f32, // 1 slots
 }
 
 Ren_Vertex_Base :: struct {
