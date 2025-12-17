@@ -257,7 +257,10 @@ game_step :: proc () {
 			      alpha        = clamp(alpha, -0.0, 1.0);
 	// outColor = vec4(vec3(alpha), 1.0); return;
 			float progress     = clamp((frame.time - frame.collision_time) / SHAKE_SECONDS, 0.0, 1.0);
-			float wave         = mix(0.0, (1.0 - progress) * 15.0 * cos(alpha * PI), alpha);
+			float force = clamp(frame.collision_force / 400.0, 0.0, 1.0); // 400 is an estimate for max practical collision force
+			float power = 14.0 * force;
+			float wobble = 1.0 * exp2(force);
+			float wave         = mix(0.0, (1.0 - progress) * power * cos(progress * wobble * alpha * PI), alpha);
 	// outColor = vec4(vec3(progress), 1.0); return;
 	// outColor = vec4(vec3(wave), 1.0); return;
 
