@@ -870,15 +870,21 @@ frame_uniforms :: `
 	} frame;
 `
 
+glsl_constants :: `
+const float PI = 3.141592653589793;
+`
+
 vertex_preamble :: 
 	version +
 	"#pragma STDGL invariance(all)\n" +
 	precision_defaults +
+	glsl_constants +
 	frame_uniforms
 
 fragment_preamble ::
 	version +
 	precision_defaults +
+	glsl_constants +
 	frame_uniforms
 
 // Basic ///////////////////////////////////////////////////////////////////////

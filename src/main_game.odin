@@ -160,9 +160,9 @@ game_step :: proc () {
 	floor2, new_floor2 := rect(); if new_floor2 {
 		floor2.name = "Floor2"
 		floor2.color = terrain_color
-		floor2.basis.scale = 300
+		floor2.basis.scale = 330
 		floor2.position.xy = {600, 100}
-		floor2.collider.size = floor2.basis.scale
+		floor2.collider.size = floor2.basis.scale * 0.9
 		floor2.collider.shape = .AABB
 		floor2.flags += {.Collider_Enabled,}
 		floor2.collider.layer += {.Terrain}
@@ -214,7 +214,7 @@ game_step :: proc () {
 			io_color.a = i_color.a; // Convert to PMA
 			p = (i_model_mat * vec4(v_position, 1.0)).xy;
 			center = (i_model_mat * vec4( vec3(0.0), 1.0)).xy;
-			size = (i_model_mat * vec4( vec3(1.0), 1.0)).xy - center;
+			size = 0.9 * ((i_model_mat * vec4( vec3(1.0), 1.0)).xy - center);
 			mat4 mvp = frame.projection * frame.view * i_model_mat;
 			gl_Position = mvp * vec4(v_position, 1.0);
 		}
@@ -226,21 +226,47 @@ game_step :: proc () {
 		in vec4 io_color;
 
 		float sdRoundedBox(in vec2 p, in vec2 b, in vec4 r) {
-	    r.xy = (p.x>0.0)?r.xy : r.zw;
-	    r.x  = (p.y>0.0)?r.x  : r.y;
-	    vec2 q = abs(p)-b+r.x;
-	    return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
+			r.xy = (p.x>0.0)?r.xy : r.zw;
+			r.x  = (p.y>0.0)?r.x  : r.y;
+			vec2 q = abs(p)-b+r.x;
+			return min(max(q.x,q.y),0.0) + length(max(q,0.0)) - r.x;
+		}
+
+		float sdCircle( vec2 p, float r ) {
+		    return length(p) - r;
+		}
+
+		float smin( float a, float b, float k ) {
+		    k *= 1.0;
+		    float r = exp2(-a/k) + exp2(-b/k);
+		    return -k*log2(r);
 		}
 
 		out vec4 outColor;
 
 		void main() {
 			outColor = vec4(0.0);
-			float box = sdRoundedBox(p-center, size/2.0, vec4(8.0));
-			float box_interior = -1.0 * box;
-			if (box <= 0.0) {
+
+			vec2  rect_to_coll = (frame.collision_position - center);
+			vec2  frag_to_coll = (frame.collision_position - p);
+			vec2  dir_rect_to_coll = normalize(rect_to_coll);
+			vec2  dir_frag_to_coll = normalize(frag_to_coll);
+			const float MIN_SHAKE_RADIUS = 1.0/100.0;
+			const float SHAKE_SECONDS = 0.6;
+			float alpha        = 1.0 - length(frag_to_coll) * MIN_SHAKE_RADIUS;
+			      alpha        = clamp(alpha, -0.0, 1.0);
+	// outColor = vec4(vec3(alpha), 1.0); return;
+			float progress     = clamp((frame.time - frame.collision_time) / SHAKE_SECONDS, 0.0, 1.0);
+			float wave         = mix(0.0, (1.0 - progress) * 15.0 * cos(alpha * PI), alpha);
+	// outColor = vec4(vec3(progress), 1.0); return;
+	// outColor = vec4(vec3(wave), 1.0); return;
+
+
+			float box = sdRoundedBox(p-center, size/2.0, vec4(10.0));
+			box -= wave;
+			if (box <= 0.0) { // INTERIOR
 				outColor = vec4(0.0, 0.25, 0.0, 0.25);
-				if (box >= -5.0) { // OUTLINE
+				if (box >= -5.0) { // INTERIOR OUTLINE
 					outColor = vec4(0.0, 0.5, 0.0, 0.5);
 				}
 			}
@@ -336,7 +362,7 @@ pc_step :: proc (blob: ^Entity, hand: ^Entity) {
 		if vel_into_surface > 0 {
 			// This force is AROUND the order of 10-1000
 			// If we want it to last ~300ms, could only take 3 steps...
-			globals.uniforms.collision_position = pc.blob_on_surface.xy
+			globals.uniforms.collision_position = collision_position.xy
 			globals.uniforms.collision_force = vel_into_surface
 			globals.uniforms.collision_time = globals.uniforms.time
 		}
