@@ -105,7 +105,7 @@ window_resized :: proc () {
 	case .Integer_Aspect:
 		integer_scales := trunc(viewport_size / globals.canvas_size_px)
 		globals.canvas_scale = vec_min(integer_scales)
-	case .Fixed:
+	case .None:
 	}
 	////////////////////////////////////////////////////////////////////////////
 	scaled_canvas_px := globals.canvas_scale * globals.canvas_size_px
@@ -126,8 +126,9 @@ window_resized :: proc () {
 	case .Integer_Aspect:
 		integer_scales := trunc(viewport_size / scaled_canvas_px)
 		globals.canvas_stretch = vec_min(integer_scales)
-	case .Fixed:
+	case .None:
 	}
+	// framebuffer is the actual scaled & stretched rect we're drawing
 	globals.framebuffer_size_px = globals.canvas_size_px *
 	                              globals.canvas_scale *
 	                              globals.canvas_stretch
@@ -139,6 +140,8 @@ window_resized :: proc () {
   build_camera()
 }
 
+// Takes a size in pixels for the framebuffer.
+// If you're just stretching, and not scaling, this doesn't need to be used.
 set_canvas_size :: proc (size_px: [2]int, _loc := #caller_location) {
 	make_or_resize_render_target(&globals.ren.canvas, size_px, _loc)
 	globals.uniforms.canvas_size_px = globals.canvas_size_px

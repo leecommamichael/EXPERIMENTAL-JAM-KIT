@@ -91,3 +91,29 @@ log_runtime :: proc (message: string) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+import "core:hash/xxhash"
+code_location_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
+	loc := declaration
+	hash_input := make([dynamic]u8, 0, len(loc.file_path) + 2*size_of(i32), context.temp_allocator)
+	append(&hash_input, loc.file_path)
+	append(&hash_input, ..(cast(^[4]u8)&loc.line)^[:])
+	append(&hash_input, ..(cast(^[4]u8)&loc.column)^[:])
+	hash := xxhash.XXH3_64(hash_input[:])
+	delete(hash_input)
+	return hash
+}
+
+// Idiom (for WIP code) to do somethin despite re-entry.
+// if under_run_limit(1) do stuff()
+over_run_limit :: proc (limit: int, loc := #caller_location) -> bool {
+	@static tickets: map[u64]int
+	hash := code_location_hash(loc)
+	val, found := tickets[hash]; if !found {
+		tickets[hash] = 0
+	}
+	if val >= limit {
+		tickets[hash] += 1
+		return true
+	}
+	return false
+}

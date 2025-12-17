@@ -21,7 +21,7 @@ game_init :: proc () {
 
 	globals.draw_colliders = false
 	globals.canvas_size_px = {960, 720}
-	globals.canvas_scaling = .Fixed
+	globals.canvas_scaling = .None
 	globals.canvas_stretching = .Smooth_Aspect
 
 	globals.cursor = make_circle()

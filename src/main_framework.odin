@@ -36,7 +36,7 @@ framework_init :: proc () {
 	globals.game_step = game_step
 	globals.tick = 1./120.
 	globals.canvas_scale = 1
-	globals.canvas_scaling = .Fixed
+	globals.canvas_scaling = .None
 	globals.canvas_stretch = 1
 	globals.canvas_stretching = .Integer_Aspect
 	globals.camera.zoom = 1.0

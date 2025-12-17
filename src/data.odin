@@ -95,7 +95,7 @@ GL_Standard :: struct {                 // RTX-4070 ,          ,
 
 Canvas_Scaling :: enum {
 	// The framework will not set the `canvas_scale` as the window resizes.
-	Fixed,
+	None,
 	// `canvas_scale` changes as the OS window changes. Keeps base resolution aspect ratio.
 	Smooth_Aspect,
 	// `canvas_scale` changes as the OS window changes. Completely fills the window.
