@@ -171,9 +171,10 @@ set_canvas_size :: proc (size_px: [2]int, _loc := #caller_location) {
 	globals.uniforms.canvas_size_px = globals.canvas_size_px
 }
 
-// YES, I KNOW. These are opposite the near/far args in matrix procs.
-MIN_Z  :: -10000 // nearest.
-MAX_Z  :: 10000 // furthest.
+// As Z is greater, depth values are lesser, and sorted to draw later.
+// So the Z cursor for UI should probably start far (near) and come near.
+FAR_Z  :: -10000 // furthest.
+NEAR_Z  :: 10000 // nearest.
 
 build_camera :: proc () {
 	viewport_size := array_cast(globals.sugar.viewport_size,f32)
@@ -191,8 +192,8 @@ build_camera :: proc () {
 		right  = viewport_size.x,
 		top    = viewport_size.y,
 		bottom = 0,
-		near   = MIN_Z,
-		far    = MAX_Z
+		near   = FAR_Z, // yes, it's flipped
+		far    = NEAR_Z
 	)
 
 	offset := globals.camera.offset
@@ -202,8 +203,8 @@ build_camera :: proc () {
 		right  = viewport_size.x,
 		top    = viewport_size.y,
 		bottom = 0,
-		near   = MIN_Z,
-		far    = MAX_Z
+		near   = FAR_Z, // yes, it's flipped
+		far    = NEAR_Z
 	)
 	globals.orthographic_view = linalg.matrix4_translate_f32({offset.x, offset.y, 0})\
 	                          * linalg.matrix4_scale_f32({zoom, zoom, 1})

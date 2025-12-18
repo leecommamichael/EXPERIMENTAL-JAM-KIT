@@ -156,9 +156,9 @@ game_step :: proc () {
 	floor, new_floor := rect(); if new_floor {
 		floor.name = "Floor"
 		floor.color = terrain_color
-		floor.basis.scale = 300
+		floor.basis.scale = 350
 		floor.position.xy = {150, -140}
-		floor.collider.size = floor.basis.scale
+		floor.collider.size = floor.basis.scale * 0.9
 		floor.collider.shape = .AABB
 		floor.flags += {.Collider_Enabled,}
 		floor.collider.layer += {.Terrain}
@@ -167,7 +167,7 @@ game_step :: proc () {
 	floor2, new_floor2 := rect(); if new_floor2 {
 		floor2.name = "Floor2"
 		floor2.color = terrain_color
-		floor2.basis.scale = 330
+		floor2.basis.scale = 350
 		floor2.position.xy = {600, 100}
 		floor2.collider.size = floor2.basis.scale * 0.9
 		floor2.collider.shape = .AABB
@@ -180,7 +180,7 @@ game_step :: proc () {
 		wall.color = terrain_color
 		wall.basis.scale = 300
 		wall.position.xy = 300+260
-		wall.collider.size = wall.basis.scale
+		wall.collider.size = wall.basis.scale * 0.9
 		wall.collider.shape = .AABB
 		wall.flags += {.Collider_Enabled,}
 		wall.collider.layer += {.Terrain}
@@ -189,9 +189,9 @@ game_step :: proc () {
 	bump, new_bump := rect(); if new_bump {
 		bump.name = "Bump"
 		bump.color = terrain_color
-		bump.basis.scale = 30
+		bump.basis.scale = 60
 		bump.position.xy = 300+260 - {300,100}
-		bump.collider.size = bump.basis.scale
+		bump.collider.size = bump.basis.scale * 0.9
 		bump.collider.shape = .AABB
 		bump.flags += {.Collider_Enabled,}
 		bump.collider.layer += {.Terrain}
@@ -276,6 +276,9 @@ game_step :: proc () {
 			}
 		}
 	`)
+	floor.draw_command.program = floor2.draw_command.program
+	wall.draw_command.program = floor2.draw_command.program
+	bump.draw_command.program = floor2.draw_command.program
 }
 
 PC_State :: struct {

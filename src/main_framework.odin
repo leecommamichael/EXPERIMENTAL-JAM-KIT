@@ -39,7 +39,6 @@ framework_init :: proc () {
 	globals.canvas_scaling = .None
 	globals.canvas_stretch = 1
 	globals.canvas_stretching = .Integer_Aspect
-	globals.camera.position.z = MIN_Z
 	globals.camera.zoom = 1.0
 
 	globals.perspective_view = 1
@@ -73,6 +72,7 @@ framework_init :: proc () {
 	ren_init(globals.ren)
 	log.info("---------------------------------------- framework initialized.")
 	debug_colliders := make_entity()
+	debug_colliders.position.z = NEAR_Z - 10.0
 	debug_colliders.name = "Collider Visualization"
 	debug_colliders.flags += {.Hidden}
 	debug_colliders.draw_command = ren_make_basic_draw_cmd(
@@ -341,13 +341,13 @@ framework_draw :: proc (alpha: f32) {
 next_z :: proc () -> f32 {
 	z := globals.z_cursor
 	globals.z_cursor += 1.0 // after orthographic projection, adding is even LESS deep.
-	assert(globals.z_cursor <= MAX_Z && globals.z_cursor >= MIN_Z)
+	assert(globals.z_cursor <= NEAR_Z && globals.z_cursor >= FAR_Z)
 	return z
 }
 
 reset_z_cursor :: proc () {
-	globals.z_cursor = 0.0
-	assert(globals.z_cursor <= MAX_Z && globals.z_cursor >= MIN_Z)
+	globals.z_cursor = FAR_Z + 10.0 // starts far.
+	assert(globals.z_cursor <= NEAR_Z && globals.z_cursor >= FAR_Z)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,7 +358,6 @@ reset_z_cursor :: proc () {
 collider_size :: proc (entity: ^Entity) -> Vec3 {
 	return entity.scale * entity.collider.size/2
 }
-
 
 they_touch :: proc (e1, e2: ^Entity) -> bool {
 	return find_collision_involving_entities(globals.collisions[:], e1, e2)
