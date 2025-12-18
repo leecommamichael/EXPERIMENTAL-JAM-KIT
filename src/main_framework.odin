@@ -39,6 +39,7 @@ framework_init :: proc () {
 	globals.canvas_scaling = .None
 	globals.canvas_stretch = 1
 	globals.canvas_stretching = .Integer_Aspect
+	globals.camera.position.z = MIN_Z
 	globals.camera.zoom = 1.0
 
 	globals.perspective_view = 1
@@ -173,12 +174,13 @@ when !sugar.platform_calls_step { // When !web
 }
 	globals.game_step()
 	globals.hot_reloaded_this_frame = false
-	rect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)
-	rect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
-	rect.basis.scale.y = -1 // because textures are flipped...
-	rect.basis.position.xy = rect.scale.xy/2
-	rect.flags += {.Is_UI, .Skip_Interpolation}
-	rect.name = "Canvas Rect"
+	fbrect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)
+	fbrect.name = "Framebuffer Rect"
+	fbrect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
+	fbrect.basis.scale.y = -1 // because textures are flipped...
+	fbrect.basis.position.xy = fbrect.scale.xy/2
+	fbrect.flags += {.Is_UI, .Skip_Interpolation}
+	fbrect.name = "Canvas Rect"
 ////////////////////////////////////////////////////////////////////////////////
 	reset_z_cursor()
 	build_camera()
@@ -311,12 +313,12 @@ framework_draw :: proc (alpha: f32) {
 	// ASSUME: Centroid is 0,0,0 in model coordinates
 			centroid: Vec4 : { 0, 0, 0, 1 }
 	    entity_centroid_in_world := instance.model_transform * centroid
-			entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+			entity.distance_from_camera = distance(entity_centroid_in_world.xyz, globals.camera.position)
 		} else {
 			// 2D sort will deviate especially with things like Y-sort
 			centroid: Vec4 : { 0, 0, 0, 1 }
 	    entity_centroid_in_world := instance.model_transform * centroid
-			entity.distance_from_camera = glsl.distance(entity_centroid_in_world.xyz, globals.camera.position)
+			entity.distance_from_camera = distance(entity_centroid_in_world.xyz, globals.camera.position)
 		}
 	}
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,14 +337,17 @@ framework_draw :: proc (alpha: f32) {
 	gl.glFinish()
 }
 
+// "next" in the sense that it will be in front of the prior draw's Z.
 next_z :: proc () -> f32 {
 	z := globals.z_cursor
-	globals.z_cursor += 1.0
+	globals.z_cursor -= 1.0 // Because Depth test passes LESS z's
+	assert(globals.z_cursor <= MAX_Z && globals.z_cursor >= MIN_Z)
 	return z
 }
 
 reset_z_cursor :: proc () {
-	globals.z_cursor = MIN_Z + 1.0
+	globals.z_cursor = 0.0
+	assert(globals.z_cursor <= MAX_Z && globals.z_cursor >= MIN_Z)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

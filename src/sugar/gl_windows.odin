@@ -31,7 +31,10 @@ init_gl :: proc () -> bool {
     log.error("Lacking Modern GL. How old is this device?")
     return false
   }
-  debug_flags: c.int = windows.WGL_CONTEXT_DEBUG_BIT_ARB | windows.WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB when ODIN_DEBUG else 0
+  debug_flags: c.int
+when ODIN_DEBUG {
+  debug_flags = windows.WGL_CONTEXT_DEBUG_BIT_ARB | windows.WGL_CONTEXT_ROBUST_ACCESS_BIT_ARB
+}
   ctx_attribs: []c.int = {
     windows.CONTEXT_MAJOR_VERSION_ARB, CONTEXT_MAJOR,
     windows.CONTEXT_MINOR_VERSION_ARB, CONTEXT_MINOR,
@@ -46,7 +49,6 @@ init_gl :: proc () -> bool {
 
   g.platform.gl_context = modern_ctx
   load_gl()
-  // TODO: Version check the context.
   gl.glGetIntegerv(gl.MAJOR_VERSION, &actual_version[0])
   gl.glGetIntegerv(gl.MINOR_VERSION, &actual_version[1])
   if actual_version.x < CONTEXT_MAJOR || actual_version.y < CONTEXT_MINOR {

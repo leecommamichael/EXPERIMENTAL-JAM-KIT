@@ -54,7 +54,7 @@ glDrawBuffer:             proc "c" (buf: GLuint)
 glClear:                  proc "c" (mask: GLuint)
 glClearColor:             proc "c" (red: GLfloat, green: GLfloat, blue: GLfloat, alpha: GLfloat)
 glClearStencil:           proc "c" (s: int)
-glClearDepth:             proc "c" (depth: GLfloat)
+glClearDepth:             proc "c" (depth: GLdouble)
 glStencilMask:            proc "c" (mask: GLuint)
 glColorMask:              proc "c" (red: bool, green: bool, blue: bool, alpha: bool)
 glDepthMask:              proc "c" (flag: bool)
@@ -713,8 +713,13 @@ glTexImage3DMultisample:           proc "c" (target: GLuint, samples: int, inter
 glGetMultisamplefv:                proc "c" (pname: GLuint, index: GLuint, val: ^GLfloat)
 glSampleMaski:                     proc "c" (maskNumber: GLuint, mask: GLuint)
 
-// debug_proc_t :: #type proc "c" (source: GLuint, type: GLuint, id: GLuint, severity: GLuint, length: int, message: cstring, userParam: rawptr)
-// glDebugMessageCallback:        proc "c" (callback: debug_proc_t, userParam: rawptr)
+debug_proc_t :: #type proc "c" (source: GLuint, type: GLuint, id: GLuint, severity: GLuint, length: int, message: cstring, userParam: rawptr)
+glDebugMessageCallback:        proc "c" (callback: debug_proc_t, userParam: rawptr)
+DEBUG_OUTPUT_SYNCHRONOUS :: 0x8242
+DEBUG_SEVERITY_HIGH :: 0x9146
+DEBUG_SEVERITY_MEDIUM :: 0x9147
+DEBUG_SEVERITY_LOW :: 0x9148
+
 load_3_2 :: proc(set_proc_address: Set_Proc_Address_Type) {
 	set_proc_address(&glDrawElementsBaseVertex,          "glDrawElementsBaseVertex")
 	set_proc_address(&glDrawRangeElementsBaseVertex,     "glDrawRangeElementsBaseVertex")
@@ -736,8 +741,8 @@ load_3_2 :: proc(set_proc_address: Set_Proc_Address_Type) {
 	set_proc_address(&glGetMultisamplefv,                "glGetMultisamplefv")
 	set_proc_address(&glSampleMaski,                     "glSampleMaski")
 	// ES AMMENDED
-	set_proc_address(&glVertexAttribDivisor,         "glVertexAttribDivisor")
-	// set_proc_address(&glDebugMessageCallback,            "glDebugMessageCallback")
+	set_proc_address(&glVertexAttribDivisor,             "glVertexAttribDivisor")
+	set_proc_address(&glDebugMessageCallback,            "glDebugMessageCallback")
 }
 
 

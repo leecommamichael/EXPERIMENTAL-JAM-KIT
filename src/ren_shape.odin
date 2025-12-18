@@ -73,13 +73,14 @@ framebuffer_quad_vertex_shader_source :: vertex_preamble + `
 framebuffer_quad_fragment_shader_source :: fragment_preamble + `
 	uniform sampler2D framebuffer_color;
 
-	in vec4 io_color; in vec2 uv;
+	in vec4 io_color;
+	in vec2 uv;
 
 	out vec4 outColor;
 
 	void main() {
 		vec4 glyph_alpha = texture(framebuffer_color, uv);
-		outColor = glyph_alpha;
-		// outColor = mix(vec4(0.0), io_color, io_color.a * glyph_alpha.r);
+		outColor.rgb = glyph_alpha.rgb * glyph_alpha.a;
+		outColor.a = glyph_alpha.a;
 	}
 `

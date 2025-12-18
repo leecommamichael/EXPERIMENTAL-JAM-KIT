@@ -1,6 +1,7 @@
 package angle
 
 Clear_Buffer_Mask :: distinct bit_set[Clearable_Buffer; GLuint]
+
 Clearable_Buffer :: enum GLenum {
 	DEPTH_BUFFER_BIT = 8,
 	STENCIL_BUFFER_BIT = 10,

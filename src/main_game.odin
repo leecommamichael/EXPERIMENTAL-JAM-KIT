@@ -61,7 +61,15 @@ game_step :: proc () {
 	}
 	globals.cursor.position.xy = globals.mouse_position
 
-	blob_overlay := rect();
+	bg, new_bg := rect(); if new_bg {
+		bg.name = "BG"
+		bg.color = bg_color
+		bg.basis.scale.xy = globals.canvas_size_px
+		bg.position.xy = bg.basis.scale.xy / 2
+	}
+	blob_overlay, new_overlay := rect(); if new_overlay {
+		blob_overlay.name = "Blob Overlay"
+	}
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
 		hand.color = {0.1, 0.1, 0.1, 0.1}
@@ -190,12 +198,6 @@ game_step :: proc () {
 		bump.collider.layer += {.Terrain}
 	}
 
-	bg, new_bg := rect(); if new_bg {
-		bg.name = "BG"
-		bg.color = bg_color
-		bg.basis.scale.xy = globals.canvas_size_px
-		bg.position.xy = bg.basis.scale.xy / 2
-	}
 
 	// The goal is to get the terrain to look a little interesting....
 	// maybe something kind of transparent? Outline?

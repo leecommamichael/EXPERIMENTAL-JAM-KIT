@@ -5,8 +5,10 @@ import "core:time"
 import "core:log"
 import "sugar"
 import "audio"
+import gl "angle"
 
 EJK_DLL :: #config(EJK_DLL, false)
+
 
 main :: proc() {
 	when EJK_DLL do return // compiling with -no-entry-point failed to link.
@@ -33,10 +35,32 @@ main :: proc() {
 	)
 	if !ok { panic("Window creation failed.") }
 
+
 	asset_upload()
 	framework_init()
 
 	when sugar.platform_calls_step { return }
+	
+	gl_debug_proc :: proc "c" (
+		source: gl.GLuint,
+		type: gl.GLuint,
+		id: gl.GLuint,
+		severity: gl.GLuint,
+		length: int,
+		message: cstring,
+		userParam: rawptr,
+	) {
+		context = (cast(^runtime.Context) userParam)^
+		if type == gl.DEBUG_SEVERITY_MEDIUM {
+			log.warnf("%v", message)
+		} else if type == gl.DEBUG_SEVERITY_HIGH {
+			log.errorf("%v", message)
+		} else {
+			// log.infof("%v", message)
+		}
+	}
+	ctx := context
+	gl.glDebugMessageCallback(gl_debug_proc, &ctx)
 
 	tick := time.tick_now()
 	dt: f64
@@ -88,10 +112,10 @@ step :: proc (dt: f64) -> bool {
 	return true
 }
 
-import gl "angle"
 import "core:math"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
+// INTENT: To set the framebuffer_size_px of the render target, and resize the GL.Viewport.
 window_resized :: proc () {
 	viewport_size := array_cast(globals.sugar.viewport_size,f32)
 	////////////////////////////////////////////////////////////////////////////
@@ -167,8 +191,8 @@ build_camera :: proc () {
 		right  = viewport_size.x,
 		top    = viewport_size.y,
 		bottom = 0,
-		near   = MAX_Z,
-		far    = MIN_Z
+		near   = MIN_Z,
+		far    = MAX_Z
 	)
 
 	offset := globals.camera.offset
@@ -178,8 +202,8 @@ build_camera :: proc () {
 		right  = viewport_size.x,
 		top    = viewport_size.y,
 		bottom = 0,
-		near   = MAX_Z,
-		far    = MIN_Z // the parameter label says "far" but I'm inverting it.
+		near   = MIN_Z,
+		far    = MAX_Z
 	)
 	globals.orthographic_view = linalg.matrix4_translate_f32({offset.x, offset.y, 0})\
 	                          * linalg.matrix4_scale_f32({zoom, zoom, 1})

@@ -48,6 +48,7 @@ GLsizei :: int // Spec: Non-negative binary integer size
 GLenum :: GLuint // Spec: Enumerated binary integer value
 GLbitfield :: GLuint
 GLfloat :: f32
+GLdouble :: f64
 GLclampf :: f32 // float clamped to [0,1]
 GLintptr :: uintptr
 GLsizeiptr :: GLuint

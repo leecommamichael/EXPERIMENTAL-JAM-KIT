@@ -52,11 +52,11 @@ ren_init :: proc (ren: ^Ren) {
 	set_canvas_size([2]int{2,2}) // arbitrary non-zero number creates the canvas.
 	gl.FrontFace(.CCW)
 	gl.ClearColor(0.0, 0.0, 0.0, 0.0)
-	// gl.glClearDepth(0) // Makes black screen.
-	// gl.DepthRangef(0,1)
+	gl.glClearDepth(1.0)
+	// gl.glClearStencil(0.0)
 	gl.glDepthMask(true)
 	gl.Enable(.DEPTH_TEST)
-	gl.glDepthFunc(gl.LESS) // TODO: Why need LEQUAL? Depth buffer must be wrong.
+	gl.glDepthFunc(gl.LESS)
 	gl.Enable(.BLEND)
 	gl.BlendFunc(.ONE, .ONE_MINUS_SRC_ALPHA)
 	globals.unit_circle_mesh = make_circle_2D(0.5, 64, context.allocator)
