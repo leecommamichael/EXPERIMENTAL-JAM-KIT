@@ -51,7 +51,6 @@ hot_reload :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 
 terrain_color :: Vec4 {0.1, 0.5, 0.4, 1}
 bg_color :: Vec4 {0.2, 0.3, 0.6, 1}
-
 @export
 game_step :: proc () {
 	clear(&pc.phase2_collisions)
@@ -66,9 +65,6 @@ game_step :: proc () {
 		bg.color = bg_color
 		bg.basis.scale.xy = globals.canvas_size_px
 		bg.position.xy = bg.basis.scale.xy / 2
-	}
-	blob_overlay, new_overlay := rect(); if new_overlay {
-		blob_overlay.name = "Blob Overlay"
 	}
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
@@ -92,10 +88,13 @@ game_step :: proc () {
 		ball.acceleration = gravity
 		pc.initial_pos = ball.position.xy
 	}
-
 	if sugar.on_button_press(.Start) {
 		ball.position.xy = pc.initial_pos
 	}
+	blob_overlay, new_overlay := rect(); if new_overlay {
+		blob_overlay.name = "Blob Overlay"
+	}
+
 // Ball Shader /////////////////////////////////////////////////////////////////
 	blob_vert := vertex_preamble + basic_vertex_inputs +
 	`
@@ -276,7 +275,7 @@ game_step :: proc () {
 				}
 			}
 		}
-		`)
+	`)
 }
 
 PC_State :: struct {

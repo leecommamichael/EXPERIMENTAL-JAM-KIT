@@ -328,7 +328,7 @@ framework_draw :: proc (alpha: f32) {
     return i.distance_from_camera > j.distance_from_camera
   })
   slice.sort_by(globals.entities_2D[:], proc (i,j: ^Entity) -> bool {
-    return i.position.z > j.position.z
+    return i.position.z < j.position.z
   })
 
 	ren_clear()
@@ -340,7 +340,7 @@ framework_draw :: proc (alpha: f32) {
 // "next" in the sense that it will be in front of the prior draw's Z.
 next_z :: proc () -> f32 {
 	z := globals.z_cursor
-	globals.z_cursor -= 1.0 // Because Depth test passes LESS z's
+	globals.z_cursor += 1.0 // after orthographic projection, adding is even LESS deep.
 	assert(globals.z_cursor <= MAX_Z && globals.z_cursor >= MIN_Z)
 	return z
 }
