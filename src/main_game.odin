@@ -21,8 +21,8 @@ game_init :: proc () {
 
 	globals.draw_colliders = false
 	globals.canvas_size_px = {960, 720}
-	globals.canvas_scaling = .None
-	globals.canvas_stretching = .Smooth_Aspect
+	globals.canvas_scaling = .Smooth_Aspect
+	globals.canvas_stretching = .None
 
 	globals.cursor = make_circle()
 	globals.cursor.basis.position = 0
@@ -49,7 +49,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_pc: ^PC_State) {
 	globals.hot_reloaded_this_frame = true
 }
 
-terrain_color :: Vec4 {0.1, 0.5, 0.4, 1}
+terrain_color :: Vec4 {0.1, 0.5, 0.4, 0.3}
 bg_color :: Vec4 {0.2, 0.3, 0.6, 1}
 @export
 game_step :: proc () {
@@ -66,6 +66,78 @@ game_step :: proc () {
 		bg.basis.scale.xy = globals.canvas_size_px
 		bg.position.xy = bg.basis.scale.xy / 2
 	}
+	hot_reloaded_shader(bg,
+		vertex_preamble + basic_vertex_inputs + `
+		out vec4 io_color;
+		out vec2 center;
+		out vec2 size;
+		out vec2 p;
+
+		void main() {
+			io_color.rgb = i_color.rgb * i_color.a; // Convert to PMA
+			io_color.a = i_color.a; // Convert to PMA
+			p = (i_model_mat * vec4(v_position, 1.0)).xy;
+			center = (i_model_mat * vec4( vec3(0.0), 1.0)).xy;
+			size = ((i_model_mat * vec4( vec3(1.0), 1.0)).xy - center);
+			mat4 mvp = frame.projection * frame.view * i_model_mat;
+			gl_Position = mvp * vec4(v_position, 1.0);
+		}
+		`,
+		fragment_preamble + sl_snoise + `
+		in vec2 p;
+		in vec2 center;
+		in vec2 size;
+		in vec4 io_color;
+
+		out vec4 outColor;
+
+		float smin( float a, float b, float k ) {
+		    k *= 1.0;
+		    float r = exp2(-a/k) + exp2(-b/k);
+		    return -k*log2(r);
+		}
+
+		void main() {
+			// outColor = vec4(0.0);
+			// vec2 pt = p;
+			// pt.x += 50.5 * frame.time; // * cos(PI * frame.tau_time);
+			// pt.y += 50.5 * frame.time; // * sin(PI * frame.tau_time);
+			// float coarse =  0.5  * snoise(0.03 * pt);
+			// float fine   =  0.18 * snoise(0.20 * pt);
+			// float n = min(coarse, fine);
+			// outColor = vec4(n);
+
+			// outColor = vec4(0.0);
+			// vec2 pt = p;
+			// float coarse =  0.5  * snoise(0.01 * pt);
+			// float middle =  0.5  * snoise(0.03 * pt);
+			// float fine   =  0.9 * snoise(0.30 * pt);
+			// float n = coarse + middle + fine;
+			// n = mix(coarse, middle, fine);
+			// n += min(n, fine);
+			// n += max(n, fine) / 2.0;
+			// n /= 9.0;
+			// outColor = vec4(n);
+
+			outColor = vec4(0.0);
+			vec2 pt = p;
+			float coarse =  0.5 * snoise(0.01 * pt);
+			float middle =  0.5 * snoise(0.03 * pt);
+			float fine   =  0.9 * snoise(0.30 * pt);
+			float n = coarse + middle + fine;
+			n = mix(coarse, middle, fine);
+
+			vec2 next_pt = p;
+			next_pt.x += 1.5 * frame.time; // * cos(PI * frame.tau_time);
+			next_pt.y += 5.5 * frame.time; // * sin(PI * frame.tau_time);
+			float carse =  0.5 * snoise(0.01 * next_pt);
+			// n -= carse;
+			n = smin(n, 30.0 *carse, 1.0);
+			outColor.a = n;
+			outColor.g = n;
+			// outColor = vec4(n);
+		}
+	`)
 	hand, new_hand := circle(); if new_hand {
 		hand.name = "Hand"
 		hand.color = {0.1, 0.1, 0.1, 0.1}
@@ -268,10 +340,21 @@ game_step :: proc () {
 
 			float box = sdRoundedBox(p-center, size/2.0, vec4(10.0));
 			box -= wave;
+			vec4 fill_color = vec4(0.0, 0.25, 0.0, 0.25);
+			vec4 line_color = vec4(0.0, 0.35, 0.0, 0.35);
+
 			if (box <= 0.0) { // INTERIOR
 				outColor = vec4(0.0, 0.25, 0.0, 0.25);
-				if (box >= -5.0) { // INTERIOR OUTLINE
-					outColor = vec4(0.0, 0.5, 0.0, 0.5);
+				bool in_line = box >= -5.0;
+				if (in_line) { // INTERIOR OUTLINE
+					outColor = vec4(0.0, 0.35, 0.0, 0.35);
+				}
+
+				if (wave > 0.0) {
+					float lo = in_line?line_color.g : fill_color.g;
+					float c = mix(fill_color.g, line_color.g, wave) / 24.0;
+					outColor.g += c;
+					outColor.a += c;
 				}
 			}
 		}
