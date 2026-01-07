@@ -15,6 +15,23 @@ import "core:math/linalg"
 find :: slice.linear_search
 contains :: slice.contains
 
+// Returns a slice of the `n` elements from the end of `slice`.
+slice_end :: proc "contextless" (slice: $Indistinct/[]$T, n: int) -> []T {
+	slclen := len(slice)
+	if n >= slclen {
+		return slice
+	}
+	return slice[slclen-1 - n : n]
+}
+
+string_end :: proc "contextless" (str: string, n: int) -> string {
+	strlen := len(str)
+	if n >= strlen {
+		return str
+	}
+	return str[strlen-1 - n : n]
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // Generics
@@ -92,12 +109,51 @@ log_runtime :: proc (message: string) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 import "core:hash/xxhash"
+import "core:reflect"
+
+pointee_bytes :: #force_inline proc "contextless" (data: ^$T) -> []u8 {
+	return (cast([^]u8)data)[:size_of(T)]
+}
+
+// WARNING: Strings, slices, pointers won't hash their actual data.
+hash240_values :: proc (args: ..any) -> u64 {
+	buf: [240]u8
+	offset: int = 0
+	for arg in args {
+		str, is_str := arg.(string)
+		if is_str {
+
+		} else {
+
+		}
+		slice := reflect.as_bytes(arg)
+		size := len(slice)
+		copy(buf[offset:size], slice)
+		offset += size
+	}
+	return xxhash.XXH3_64(buf[:])
+}
+
+import "core:bufio"
+hash240 :: proc (buf: []u8) -> u64 {
+	ensure(len(buf) <= 240)
+  hash := xxhash.XXH3_64(buf)
+  return hash
+}
+
+// Hashes a Source_Code_Location using the line, column, and file_path.
+// CAVEAT: Only the final 56 bytes of the file_path are hashed.
 code_location_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
 	loc := declaration
 	hash_input := make([dynamic]u8, 0, len(loc.file_path) + 2*size_of(i32), context.temp_allocator)
-	append(&hash_input, loc.file_path)
-	append(&hash_input, ..(cast(^[4]u8)&loc.line)^[:])
-	append(&hash_input, ..(cast(^[4]u8)&loc.column)^[:])
+	#assert(size_of(loc.line) == 4)
+	#assert(size_of(loc.column) == 4)
+	line := (transmute(^[4]u8) &loc.line)^[:]
+	column := (transmute(^[4]u8) &loc.column)^[:]
+	path_end := slice_end(transmute([]u8)loc.file_path, 64-8)
+	append(&hash_input, ..line)
+	append(&hash_input, ..column)
+	append(&hash_input, ..path_end)
 	hash := xxhash.XXH3_64(hash_input[:])
 	delete(hash_input)
 	return hash

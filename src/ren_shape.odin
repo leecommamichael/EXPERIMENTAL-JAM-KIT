@@ -2,15 +2,15 @@ package main
 
 import gl "angle"
 
-make_circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
+make_circle :: proc () -> (^Entity, bool) #optional_ok {
 	it, new := circle(); if new {
 		it.flags -= {.Immediate_Mode, .Immediate_In_Use}
 	}
 	return it, new
 }
 
-circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
-	entity, is_new := do_entity(_loc)
+circle :: proc (hash: Immediate_Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+	entity, is_new := do_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer, cast(int) entity.id,
@@ -21,8 +21,8 @@ circle :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
 	return entity, is_new
 }
 
-rect :: proc (_loc := #caller_location) -> (^Entity, bool) #optional_ok {
-	entity, is_new := do_entity(_loc)
+rect :: proc (hash: Immediate_Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+	entity, is_new := do_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer, cast(int) entity.id,

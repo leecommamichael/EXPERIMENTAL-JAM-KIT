@@ -18,7 +18,7 @@ MAX_COLLISIONS_PER_FRAME :: 100
 Globals :: struct {
 	// Reload
 	hot_reloaded_this_frame: bool,
-	hot_reload: proc (engine_globals: ^Globals, engine_pc: ^PC_State),
+	hot_reload: proc (engine_globals: ^Globals, engine_pc: ^Game_State),
 	game_step:  proc (),
 	game_dll:   dynlib.Library,
 	// General

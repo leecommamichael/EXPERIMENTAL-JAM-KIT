@@ -8,8 +8,8 @@ package main
 import "base:runtime"
 import "core:log"
 import "core:slice"
+import "core:strings"
 import "core:dynlib"
-import "core:hash/xxhash"
 import "core:time"
 import gl "angle"
 import linalg "core:math/linalg"
@@ -163,7 +163,7 @@ when !sugar.platform_calls_step { // When !web
 			globals.game_dll = lib
 			globals.game_step = auto_cast new_game_step
 			globals.hot_reload = auto_cast new_hot_reload
-			globals.hot_reload(globals, pc)
+			globals.hot_reload(globals, gs)
 			log.infof("Hot reloaded the game.")
 		} else {
 			log.errorf("Failed to compile new DLL.")
@@ -584,9 +584,37 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider.mask  = { .Default }
 }
 
-// YOU ARE FIRED IF YOU COPY THIS POINTER. IT IS TO BE A LOCAL IN A step :: proc
-do_entity :: proc (loc := #caller_location) -> (entity: ^Entity, is_new: bool) {
-	hash := entity_hash(loc)
+Immediate_Hash :: union #no_nil {
+	runtime.Source_Code_Location,
+	u64
+}
+
+index_hash :: proc (index: int, loc := #caller_location) -> u64 {
+	index:  i32 = cast(i32) index
+	line:   i32 = loc.line
+	column: i32 = loc.column
+	file_path := string_end(loc.file_path, 240 - 3*size_of(i32))
+
+	@static backing: [240]u8
+	builder := strings.builder_from_bytes(backing[:])
+	strings.write_bytes(&builder, pointee_bytes(&line))
+	strings.write_bytes(&builder, pointee_bytes(&column))
+	strings.write_bytes(&builder, pointee_bytes(&index))
+	return hash240(builder.buf[:])
+}
+
+// YOU ARE FIRED IF YOU PERSIST THIS POINTER BETWEEN FRAMES.
+do_entity :: proc (
+	hash_source: Immediate_Hash = #caller_location,
+) -> (entity: ^Entity, is_new: bool) {
+	hash: u64
+	loc, is_loc := hash_source.(runtime.Source_Code_Location)
+	if is_loc {
+		hash = code_location_hash(loc)
+	} else {
+		hash = hash_source.(u64)
+	}
+
 	value, found := globals.immediate_entities[hash]
 	if !found {
 		value = make_entity()
@@ -597,17 +625,6 @@ do_entity :: proc (loc := #caller_location) -> (entity: ^Entity, is_new: bool) {
 	}
 	value.flags += { .Immediate_In_Use }
 	return value, false
-}
-
-entity_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
-	loc := declaration
-	hash_input := make([dynamic]u8, 0, len(loc.file_path) + 2*size_of(i32), context.temp_allocator)
-	append(&hash_input, loc.file_path)
-	append(&hash_input, ..(cast(^[4]u8)&loc.line)^[:])
-	append(&hash_input, ..(cast(^[4]u8)&loc.column)^[:])
-	hash := xxhash.XXH3_64(hash_input[:])
-	delete(hash_input)
-	return hash
 }
 
 entity_with_id :: proc (id: Entity_ID) -> ^Entity {
