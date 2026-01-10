@@ -21,13 +21,11 @@ Text_State :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-Default_Font_Usage :: Font_Usage.mono
-Default_Font_Variant :: Font_Variant.regular
 
 make_text :: proc (
 	message: string,
-	usage := Default_Font_Usage,
-	variant := Default_Font_Variant,
+	usage: Font_Usage = nil,
+	variant: Font_Variant = nil,
 ) -> ^Entity {
 	entity: ^Entity = make_entity()
 	entity.flags += {.Skip_Interpolation}
@@ -42,8 +40,8 @@ make_text :: proc (
 
 text :: proc (
 	message: string,
-	usage := Default_Font_Usage,
-	variant := Default_Font_Variant,
+	usage: Font_Usage = nil,
+	variant: Font_Variant = nil,
 	loc := #caller_location,
 ) -> (^Entity) {
 	entity, is_new := do_entity(loc); if is_new {
@@ -79,7 +77,7 @@ Font_Variant :: enum {
 	regular,
 	bold,
 	italic,
-	bold_italic
+	bold_italic,
 }
 
 Font :: struct {

@@ -24,7 +24,10 @@ Globals :: struct {
 	// General
 	cursor:     ^Entity,
 	sugar:      sugar.Memory,
+	// Milliseconds in one tick.
 	tick:       f32,
+	tick_counter: int,
+	// Milliseconds since last game-loop iteration.
 	dt:         f32,
 	avg_fps:    f64,
 	// Assets
@@ -214,6 +217,8 @@ Game_Shader :: enum {
 	Framebuffer_Texture,
 }
 
+Color3 :: Vec3
+Color4 :: Vec4
 Any_Instance :: struct {
 	model_transform: Mat4,
 	uv_transform:    Vec4,

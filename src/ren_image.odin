@@ -1,6 +1,7 @@
 package main
 
 import gl "angle"
+import "core:log"
 
 //////////////////////////////////////////////////////////////////////
 // Entity Variant
@@ -22,7 +23,7 @@ Image_Asset :: struct {
 // Immediate Interface
 //////////////////////////////////////////////////////////////////////
 
-image :: proc (filename: string, loc := #caller_location) -> (^Entity, bool) {
+image :: proc (filename: string, loc: Immediate_Hash = #caller_location) -> (^Entity, bool) {
 // This way I don't have to explode the API into retained/immediate
 // The storage can be in the system, only necessary copies.
 	entity, is_new := do_entity(loc)
@@ -54,12 +55,15 @@ init_image :: proc (entity: ^Entity) {
 }
 
 set_image :: proc (entity: ^Entity, filename: string) {
+	asset, found := &globals.assets.images[filename]
+	log.assertf(found, "ASSET NOT FOUND %s", filename)
 	image := Image_State {
-		asset = &globals.assets.images[filename]
+		asset = asset
 	}
 	entity.variant = image
 	entity.basis.scale.xy = array_cast(image.asset.size_px, f32)
 	entity.basis.position.xy = array_cast(image.asset.size_px/2, f32)
+	globals.instance_staging[cast(int) entity.id].uv_transform = asset.uv_rect
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -93,12 +97,6 @@ image_fragment_shader_source :: fragment_preamble +
 		outColor = tex_color;
 	}
 `
-
-step_image :: proc (entity: ^Entity) {
-	variant := entity.variant.(Image_State)
-	globals.instance_staging[cast(int) entity.id].uv_transform = variant.asset.uv_rect
-	// ...
-}
 
 image_make_draw_command :: proc (
 	instance_buffer: gl.Buffer,

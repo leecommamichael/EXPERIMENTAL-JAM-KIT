@@ -6,21 +6,30 @@ recent_project: path: "../dukengine/proj"
 recent_project: path: game
 window:
 {
-  size: 2847 1629
+  size: 2884 1700
+  pos: 2398 194
+  monitor: "\\\\.\\DISPLAY1"
+  hint_ui_text: 1
+  smooth_code_text: 0
+  hint_code_text: 1
+  smooth_ui_text: 1
+  font_size: 14
+  split_x
   panels:
   {
     0.405666:
     {
-      0.360632:
+      0.226774:
       {
         watch: expression: "query:types"
         watch:
         {
+          selected
           expression: "query:locals"
           normal: 0.317437 0.442995 0.239568
           sub_type: 0.350000 0.200317 0.177406 0.272277
         }
-        watch: selected expression: "query:type_views"
+        watch: expression: "query:type_views"
         watch:
         {
           expression: "query:globals"
@@ -31,15 +40,14 @@ window:
           }
         }
       }
-      0.241860:
+      0.375718:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
-        watch: expression: "query:breakpoints"
+        watch: selected expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
-          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
@@ -48,6 +56,10 @@ window:
           watch: reflected_velocity
           watch: normal
           watch: p
+          watch: asset
+          watch: value
+          watch: "globals.immediate_entities"
+          watch: "globals.tick_counter"
         }
       }
       0.123260: text:
@@ -62,9 +74,10 @@ window:
       }
       0.274248:
       {
-        watch: selected expression: "query:call_stack"
+        watch: expression: "query:call_stack"
         disasm:
         {
+          selected
           expression: ""
           query: input: ""
         }
@@ -167,17 +180,6 @@ window:
       }
       text:
       {
-        selected
-        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren.odin\".data"
-        auto: 1
-        query: input: ""
-        cursor_line: 199
-        cursor_column: 8
-        mark_line: 199
-        mark_column: 8
-      }
-      text:
-      {
         expression: "file:\"C:/Users/thatl/usr/Repositories/dukengine/src/main.odin\".data"
         project: "C:/Users/thatl/usr/Repositories/dukengine/proj"
         query: input: ""
@@ -212,28 +214,41 @@ window:
       }
       text:
       {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_entrypoint.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 104
+        cursor_column: 1
+        mark_line: 104
+        mark_column: 1
+      }
+      text:
+      {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_framework.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query:
         {
-          input: ""
+          input: free_en
           cmd: search
         }
-        cursor_line: 119
+        cursor_line: 684
+        cursor_column: 8
+        mark_line: 684
+        mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 23
         cursor_column: 1
-        mark_line: 119
+        mark_line: 23
         mark_column: 1
       }
     }
   }
-  split_x
-  pos: 1576 229
-  monitor: "\\\\.\\DISPLAY1"
-  hint_ui_text: 1
-  smooth_code_text: 0
-  hint_code_text: 1
-  smooth_ui_text: 1
-  font_size: 14
 }
 keybindings:
 {

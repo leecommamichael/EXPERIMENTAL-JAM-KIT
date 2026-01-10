@@ -1,15 +1,13 @@
 package main
 
-// Purpose: This file provides resources to various subsystems.
-// 						e.g. Rendering, Entities, Physics, Audio
-//          It also integrates these resources such that the game
-//          can make use of them with a smaller API.
+// Purpose: Provide small, simple, APIs to the game. Define `Entity`.
 
 import "base:runtime"
 import "core:log"
 import "core:slice"
 import "core:strings"
 import "core:dynlib"
+import "core:reflect"
 import "core:time"
 import gl "angle"
 import linalg "core:math/linalg"
@@ -88,7 +86,6 @@ framework_init :: proc () {
 	set_canvas_size(array_cast(globals.canvas_size_px, int))
 }
 
-// Mixed-scope between renderer and game entities.
 framework_step :: proc (dt: f32) {
 	globals.ui_mouse_position = (globals.sugar.mouse_position / globals.canvas_stretch) 
 	globals.mouse_position = (globals.sugar.mouse_position / globals.canvas_stretch)  // TODO camera offset
@@ -202,7 +199,7 @@ when !sugar.platform_calls_step { // When !web
 			switch &variant in entity.variant {
 			case nil: // general-purpose entity
 			case Text_State:
-			case Image_State:  step_image(entity)
+			case Image_State:
 			case Sprite_State: step_sprite(entity)
 			case Timed_Effect_State(Empty_Struct): step_timed_effect(entity)
 			}
@@ -589,6 +586,8 @@ Immediate_Hash :: union #no_nil {
 	u64
 }
 
+// Forms a hash from the #caller_location and an index.
+// Use this to keep hashes unique in a loop.
 index_hash :: proc (index: int, loc := #caller_location) -> u64 {
 	index:  i32 = cast(i32) index
 	line:   i32 = loc.line
@@ -600,7 +599,38 @@ index_hash :: proc (index: int, loc := #caller_location) -> u64 {
 	strings.write_bytes(&builder, pointee_bytes(&line))
 	strings.write_bytes(&builder, pointee_bytes(&column))
 	strings.write_bytes(&builder, pointee_bytes(&index))
+	strings.write_string(&builder, file_path)
 	return hash240(builder.buf[:])
+}
+
+// Forms a hash from a string and int.
+// Use this to keep "sub-entities" unique when the parent is built in a loop.
+string_index_hash :: proc (str: string, index: int) -> u64 {
+	index: i32 = cast(i32) index
+	str := string_end(str, 240 - 1*size_of(i32))
+
+	@static backing: [240]u8
+	builder := strings.builder_from_bytes(backing[:])
+	strings.write_bytes(&builder, pointee_bytes(&index))
+	strings.write_string(&builder, str)
+	return hash240(builder.buf[:])
+}
+
+// Forms a hash from a varying number of value-types.
+// Use this to prototype when provided hash-builders are insufficient.
+//
+// WARNING: Strings, slices, pointers won't hash their actual data.
+// NOTE: Arrays are value-types.
+any_values_hash :: proc (args: ..any) -> u64 {
+	@static buf: [240]u8
+	offset: int = 0
+	for arg in args {
+		bytes: []u8 = reflect.as_bytes(arg)
+		size := len(bytes)
+		copy(buf[offset:size], bytes)
+		offset += size
+	}
+	return hash240(buf[:])
 }
 
 // YOU ARE FIRED IF YOU PERSIST THIS POINTER BETWEEN FRAMES.
@@ -637,6 +667,9 @@ entity_with_id :: proc (id: Entity_ID) -> ^Entity {
 }
 
 make_entity :: proc () -> ^Entity {
+	if globals.tick_counter > 0 {
+		panic("creating entity on second frame")
+	}
 	for &mem, i in globals._entity_storage {
 		if .Allocated not_in mem.flags {
 			init_entity_memory(&mem, cast(Entity_ID) i)

@@ -1,5 +1,20 @@
 package main
 
+// Purposes:
+// - General Initialization
+// - Establishing the input/simulate/render loop.
+//
+// The platform-layer (main_entrypoint.odin) hides OS details such that
+// the framework-layer (main_framework.odin) can hide subsystem-details for
+// the game-layer (main_game.odin) to leverage seamlessly.
+//
+// A "subsystem" might be something like rendering or collision-detection.
+//
+// Major structs defined by each layer:
+// - Platform:  sugar.Memory
+// - Framework: Globals, Entity, Ren, Any_Instance, Collision
+// - Game:      Game_State
+
 import "base:runtime"
 import "core:time"
 import "core:log"
@@ -8,7 +23,6 @@ import "audio"
 import gl "angle"
 
 EJK_DLL :: #config(EJK_DLL, false)
-
 
 main :: proc() {
 	when EJK_DLL do return // compiling with -no-entry-point failed to link.
@@ -29,8 +43,8 @@ main :: proc() {
 	ok := sugar.create_window(
 		[4]int{
 			display.top_left.x,
-			display.top_left.y, 0,0} + {2,44,0,0} + (1*{0,0,960,720}),
-		"Tonic",
+			display.top_left.y, 0,0} + {2,44,0,0} + ({0,0, 640, 400}),
+		"SimSettlement",
 		use_gl = true
 	)
 	if !ok { panic("Window creation failed.") }
@@ -77,16 +91,14 @@ step :: proc (dt: f64) -> bool {
 	dt: f32 = f32(dt)
 ////////////////////////////////////////////////////////////////////////////////
 	@static start_time: time.Tick
-	@static frame_number: uint = 0
-	if frame_number == 1 {
+	if globals.tick_counter == 1 {
 		log_runtime("first_paint")
 		start_time = time.tick_now()
 	}
-	globals.avg_fps = f64(frame_number) / time.duration_seconds(time.tick_since(start_time))
-	if frame_number % 300 == 0 {
+	globals.avg_fps = f64(globals.tick_counter) / time.duration_seconds(time.tick_since(start_time))
+	if globals.tick_counter % 300 == 0 {
 		// log.infof("[FPS] %v", globals.avg_fps)
 	}
-	frame_number += 1
 ////////////////////////////////////////////////////////////////////////////////
 	@static tick_buildup: f32
 	for tick_buildup += dt; tick_buildup >= globals.tick; tick_buildup -= globals.tick {
@@ -104,6 +116,7 @@ step :: proc (dt: f64) -> bool {
 		}
 		framework_step(dt)
 		sugar.end_input_frame()
+		globals.tick_counter += 1
 		// when ODIN_DEBUG do break
 	}
 

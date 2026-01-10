@@ -32,6 +32,15 @@ string_end :: proc "contextless" (str: string, n: int) -> string {
 	return str[strlen-1 - n : n]
 }
 
+// Cast a pointer to a byte-slice.
+pointee_bytes :: #force_inline proc "contextless" (data: ^$T) -> []u8 {
+	return (cast([^]u8)data)[:size_of(T)]
+}
+
+case_string :: proc () {
+	// reflect.enum_string
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // Generics
@@ -111,21 +120,11 @@ log_runtime :: proc (message: string) {
 import "core:hash/xxhash"
 import "core:reflect"
 
-pointee_bytes :: #force_inline proc "contextless" (data: ^$T) -> []u8 {
-	return (cast([^]u8)data)[:size_of(T)]
-}
-
 // WARNING: Strings, slices, pointers won't hash their actual data.
 hash240_values :: proc (args: ..any) -> u64 {
-	buf: [240]u8
+	@static buf: [240]u8
 	offset: int = 0
 	for arg in args {
-		str, is_str := arg.(string)
-		if is_str {
-
-		} else {
-
-		}
 		slice := reflect.as_bytes(arg)
 		size := len(slice)
 		copy(buf[offset:size], slice)
@@ -135,6 +134,11 @@ hash240_values :: proc (args: ..any) -> u64 {
 }
 
 import "core:bufio"
+// The underlying hash algorithm can take longer inputs than 240 bytes.
+// 240 bytes is the largest input with the fewest tradeoffs in terms of:
+// - collision-rate
+// - performance
+// - portability (32 bit support)
 hash240 :: proc (buf: []u8) -> u64 {
 	ensure(len(buf) <= 240)
   hash := xxhash.XXH3_64(buf)
