@@ -5,6 +5,7 @@ package main
 
 import "core:time"
 import "core:dynlib"
+import "core:mem"
 import sugar "sugar"
 import gl "angle"
 
@@ -15,6 +16,7 @@ import gl "angle"
 globals: ^Globals
 MAX_GLYPHS_PER_FRAME :: 1 << 13 // 8K
 MAX_COLLISIONS_PER_FRAME :: 100
+DEBUG_NAME_BYTES :: 128
 Globals :: struct {
 	// Reload
 	hot_reloaded_this_frame: bool,
@@ -38,6 +40,7 @@ Globals :: struct {
 	ren:         ^Ren,
 	// Entity Service
 	// ubo_instance_data: Aligned_Array(Any_Instance), // TODO: Unused. Make it lights some day?
+	_debug_name_storage: [max(Entity_ID)][DEBUG_NAME_BYTES]u8,
 	_entity_storage: [max(Entity_ID)]Entity,
 	entities:        [dynamic]^Entity,
 	entities_2D:     [dynamic]^Entity,
@@ -115,9 +118,11 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	name:            string,
-	immediate_hash:  u64,
-	id:              Entity_ID,  // index in storage.
+	debug_name:     string, // automatically computed to identify the entity's code.
+	hash_source:     Entity_Hash_Input, // retained to lazy-compute the debug_name
+	hash:  u64,
+	create_tick:     int, // TODO: use to check collisions.
+	id:              Entity_ID, // index in storage.
 	flags:           bit_set[Entity_Flag; u64],
 	time_scale:      f32,
 	basis:           Transform,
@@ -133,15 +138,17 @@ Entity :: struct {
 	using instance:  ^Any_Instance, // rendered visual representation of transforms
 	draw_command:    Draw_Command,
 	ui: UI_Element,
-	variant: union {
+	variant: Entity_Variant,
+	parent: ^Entity,
+	children: []^Entity,
+}
+
+Entity_Variant :: union {
 		Text_State,
 		Image_State,
 		Sprite_State,
 		Timed_Effect_State(Empty_Struct),
-	},
-	parent: ^Entity,
-	children: []^Entity,
-}
+	}
 
 Entity_Flag :: enum {
 	Allocated,

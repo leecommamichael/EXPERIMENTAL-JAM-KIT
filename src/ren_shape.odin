@@ -9,7 +9,7 @@ make_circle :: proc () -> (^Entity, bool) #optional_ok {
 	return it, new
 }
 
-circle :: proc (hash: Immediate_Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+circle :: proc (hash: Entity_Hash_Input = #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(
@@ -21,7 +21,7 @@ circle :: proc (hash: Immediate_Hash = #caller_location) -> (^Entity, bool) #opt
 	return entity, is_new
 }
 
-rect :: proc (hash: Immediate_Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+rect :: proc (hash: Entity_Hash_Input = #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := do_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(

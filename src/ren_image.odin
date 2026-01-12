@@ -23,7 +23,7 @@ Image_Asset :: struct {
 // Immediate Interface
 //////////////////////////////////////////////////////////////////////
 
-image :: proc (filename: string, loc: Immediate_Hash = #caller_location) -> (^Entity, bool) {
+image :: proc (filename: string, loc: Entity_Hash_Input = #caller_location) -> (^Entity, bool) {
 // This way I don't have to explode the API into retained/immediate
 // The storage can be in the system, only necessary copies.
 	entity, is_new := do_entity(loc)

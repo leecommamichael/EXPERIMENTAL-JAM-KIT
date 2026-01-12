@@ -96,7 +96,11 @@ hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
 
 	new_program, ok := ren_maybe_make_basic_shader(globals.ren, vert, frag)
 	if !ok {
-		log.infof("[RELOADER] failed to reload a shader for entity %d: %s", entity.id, entity.name)
+		log.infof(
+			"[RELOADER] failed to reload a shader for entity %d: %s",
+			entity.id,
+			entity.debug_name
+		)
 		// If we failed to compile, don't change the shader from one that works.
 		entity.flags += {.Shader_Reload_Failed}
 		return 
@@ -109,7 +113,11 @@ hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
 		gl.DeleteProgram(old_program)
 	}
 	entity.draw_command.program = new_program
-	log.infof("[RELOADER] reloaded a shader for entity %d: %s", entity.id, entity.name)
+	log.infof(
+		"[RELOADER] reloaded a shader for entity %d: %s",
+		entity.id,
+		entity.debug_name
+	)
 }
 
 ren_maybe_make_basic_shader :: proc (

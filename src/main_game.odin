@@ -159,10 +159,11 @@ game_step :: proc () {
 	globals.cursor.position.xy = globals.mouse_position
 
 	for i in 0..<TILES {
-		it := tile_entity(&gs.tiles[i])
+		grid: Transform
+		grid.scale = TILE_SIZE_PX * tile_scale()
+		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
+		it := tile_entity(grid, &gs.tiles[i])
 		if i == gs.focused_tile {
-			it.color.rgb = 1
-			it.color.a = 0.5
 			text(fmt.tprintf("Tile: %v", gs.tiles[i].resource))
 		}
 	}
@@ -170,27 +171,26 @@ game_step :: proc () {
 
 tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
 
-tile_entity :: proc (tile: ^Tile) -> (^Entity, bool) #optional_ok {
-	// if tile.resource == .Ore {
-	// 	img, new_ore := image("ore16.ase", string_index_hash("ore", tile.index))
-	// 	return img, new_ore
-	// }
-	it, is_new := rect(string_index_hash("tile", tile.index))
+tile_entity :: proc (
+	basis: Transform,
+	tile: ^Tile,
+	loc := #caller_location,
+) -> (^Entity, bool) #optional_ok {
+	it, is_new := rect(Tagged_Index{"tile", tile.index})
+	it.basis = basis
 	row := tile.index % COLUMNS
 	column := tile.index / COLUMNS
-	it.basis.scale = TILE_SIZE_PX * tile_scale()
-	it.basis.position.xy = it.basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
-	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + it.basis.scale.x)
+	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
 	it.color.rgb = resource_colors[tile.resource]
 	if tile.resource == .Ore {
-		img, new_ore := image("ore16.ase", string_index_hash("ore", tile.index))
-		img.basis = it.basis
-		img.transform = it.transform
+		img, new_ore := image("ore16.ase", Tagged_Index{"ore", tile.index})
+		img.basis = basis
+		img.position.xy = it.position.xy
 		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Food {
-		img, new_food := image("food16.ase", string_index_hash("food", tile.index))
-		img.basis = it.basis
-		img.transform = it.transform
+		img, new_food := image("food16.ase", Tagged_Index{"food", tile.index})
+		img.basis = basis
+		img.position.xy = it.position.xy
 		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Water {
 	} else if tile.resource == .Grass {

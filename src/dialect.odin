@@ -21,7 +21,15 @@ slice_end :: proc "contextless" (slice: $Indistinct/[]$T, n: int) -> []T {
 	if n >= slclen {
 		return slice
 	}
-	return slice[slclen-1 - n : n]
+	return slice[slclen - n:][:n]
+}
+
+string_start :: proc "contextless" (str: string, n: int) -> string {
+	strlen := len(str)
+	if n >= strlen {
+		return str
+	}
+	return str[0 : n]
 }
 
 string_end :: proc "contextless" (str: string, n: int) -> string {
@@ -29,7 +37,7 @@ string_end :: proc "contextless" (str: string, n: int) -> string {
 	if n >= strlen {
 		return str
 	}
-	return str[strlen-1 - n : n]
+	return str[strlen - n:][:n]
 }
 
 // Cast a pointer to a byte-slice.

@@ -7,6 +7,8 @@ import "core:log"
 import "core:slice"
 import "core:strings"
 import "core:dynlib"
+import "core:mem"
+import "core:fmt"
 import "core:reflect"
 import "core:time"
 import gl "angle"
@@ -71,7 +73,7 @@ framework_init :: proc () {
 	log.info("---------------------------------------- framework initialized.")
 	debug_colliders := make_entity()
 	debug_colliders.position.z = NEAR_Z - 10.0
-	debug_colliders.name = "Collider Visualization"
+	debug_colliders.debug_name = "Collider Visualization"
 	debug_colliders.flags += {.Hidden}
 	debug_colliders.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer,
@@ -172,12 +174,12 @@ when !sugar.platform_calls_step { // When !web
 	globals.game_step()
 	globals.hot_reloaded_this_frame = false
 	fbrect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)
-	fbrect.name = "Framebuffer Rect"
+	fbrect.debug_name = "Framebuffer Rect"
 	fbrect.scale.xy = array_cast(globals.framebuffer_size_px, f32)
 	fbrect.basis.scale.y = -1 // because textures are flipped...
 	fbrect.basis.position.xy = fbrect.scale.xy/2
 	fbrect.flags += {.Is_UI, .Skip_Interpolation}
-	fbrect.name = "Canvas Rect"
+	fbrect.debug_name = "Canvas Rect"
 ////////////////////////////////////////////////////////////////////////////////
 	reset_z_cursor()
 	build_camera()
@@ -185,7 +187,7 @@ when !sugar.platform_calls_step { // When !web
 	#reverse for &entity in globals.entities {
 		if .Immediate_Mode in entity.flags \
 		&& .Immediate_In_Use not_in entity.flags {
-			delete_key(&globals.immediate_entities, entity.immediate_hash)
+			delete_key(&globals.immediate_entities, entity.hash)
 			free_entity(entity) // mutates this array, hence the #reverse.
 		}
 
@@ -301,6 +303,18 @@ framework_draw :: proc (alpha: f32) {
 			xform = lerp_transform(entity.old_transform, entity.transform, alpha)
 			basis = lerp_transform(entity.old_basis,     entity.basis,     alpha)
 		}
+when ODIN_DEBUG {
+		if .Is_3D not_in entity.flags {
+			#assert(NEAR_Z > 0); #assert(FAR_Z < 0);
+			z := xform.position.z + basis.position.z
+			if z < FAR_Z || z > NEAR_Z {
+				log.errorf(
+					`%s is outside depth range. (basis.z=%f, position.z=%f)`,
+					entity.debug_name, entity.basis.position.z, entity.position.z
+				)
+			}
+		}
+}
 		instance.model_transform =
 			linalg.matrix4_translate(xform.position + basis.position)\
 			* linalg.matrix4_from_euler_angles_xyz(expand_values(xform.rotation + basis.rotation))\
@@ -565,7 +579,7 @@ entity_contains_entity :: proc (entity, other: ^Entity) -> bool {
 // Entity 
 ////////////////////////////////////////////////////////////////////////////////
 
-init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
+init_entity :: proc (entity: ^Entity, id: Entity_ID) {
 	entity^ = {} // zero all fields
 	entity.id = id
 	entity.flags = { .Allocated }
@@ -581,9 +595,18 @@ init_entity_memory :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider.mask  = { .Default }
 }
 
-Immediate_Hash :: union #no_nil {
+Tagged_Index :: struct {
+	tag: string,
+	index: int,
+}
+Entity_Hash_Input :: union #no_nil {
+	Tagged_Index,
 	runtime.Source_Code_Location,
-	u64
+	u64,
+}
+
+Context :: struct {
+	using basis: Transform,
 }
 
 // Forms a hash from the #caller_location and an index.
@@ -633,28 +656,91 @@ any_values_hash :: proc (args: ..any) -> u64 {
 	return hash240(buf[:])
 }
 
-// YOU ARE FIRED IF YOU PERSIST THIS POINTER BETWEEN FRAMES.
-do_entity :: proc (
-	hash_source: Immediate_Hash = #caller_location,
-) -> (entity: ^Entity, is_new: bool) {
-	hash: u64
-	loc, is_loc := hash_source.(runtime.Source_Code_Location)
-	if is_loc {
-		hash = code_location_hash(loc)
-	} else {
-		hash = hash_source.(u64)
+// "ore 22 at main_framework:row:col"
+// "main_framework:row:col" // if this happens many times per frame, that's bad.
+// 2931293192393
+set_debug_name_from_hash_inputs :: proc (
+	entity: ^Entity,
+	hash_input: Entity_Hash_Input,
+) {
+	switch it in hash_input {
+	case Tagged_Index:
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			`Entity(tag="%s", index=%d)`,
+			it.tag,
+			it.index,
+		);
+	case runtime.Source_Code_Location:
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			"Entity(from_proc=%s...,line=%d, file=...%s)",
+			string_start(it.procedure, 40),
+			it.line,
+			string_end(it.file_path, 40),
+		);
+	case u64:
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			"Entity(hash=%d)",
+			entity.hash,
+		);
 	}
 
-	value, found := globals.immediate_entities[hash]
-	if !found {
-		value = make_entity()
-		value.flags += { .Immediate_Mode, .Immediate_In_Use }
-		value.immediate_hash = hash
-		globals.immediate_entities[hash] = value
-		return value, true
+}
+
+// Don't persist the returned pointer between frames unless you know the lifetime.
+do_entity :: proc (
+	hash_input: Entity_Hash_Input = #caller_location,
+	loc := #caller_location
+) -> (entity: ^Entity, is_new: bool) {
+	hash: u64
+	switch it in hash_input {
+	case Tagged_Index: 
+		hash = string_index_hash(it.tag, it.index)
+	case runtime.Source_Code_Location:
+		hash = code_location_hash(loc)
+	case u64:
+		hash = hash_input.(u64)
 	}
-	value.flags += { .Immediate_In_Use }
-	return value, false
+
+	exists: bool
+	entity, exists = globals.immediate_entities[hash]
+	if exists {
+		if entity.create_tick == globals.tick_counter {
+			// It was created this tick, but is in cache! Thus we have:
+			// - 1. two entities with the same hash (logical error.)
+			// - 2. one entity whose code was run twice in one step (API misuse.)
+			log.panicf(
+				"Entity hash collision found.\n" +
+				"%s is both:\n" +
+				" - 1. Entity(id=%d)\n" +
+				" - 2. This_Call(from_proc=\"%s...\", line=%d, file=\"...%s\")",
+				entity.debug_name,
+				entity.id,
+				string_start(loc.procedure, 40), loc.line, string_end(loc.file_path, 40),
+			)
+		}
+	} else {
+		entity = make_entity()
+		set_debug_name_from_hash_inputs(entity, hash_input)
+
+		switch it in hash_input {
+		case Tagged_Index: 
+			hash = string_index_hash(it.tag, it.index)
+		case runtime.Source_Code_Location:
+			hash = code_location_hash(loc)
+		case u64:
+			hash = hash_input.(u64)
+		}
+
+		entity.flags += { .Immediate_Mode, .Immediate_In_Use }
+		entity.hash = hash
+		globals.immediate_entities[hash] = entity
+		return entity, true
+	}
+	entity.flags += { .Immediate_In_Use }
+	return entity, false
 }
 
 entity_with_id :: proc (id: Entity_ID) -> ^Entity {
@@ -667,13 +753,11 @@ entity_with_id :: proc (id: Entity_ID) -> ^Entity {
 }
 
 make_entity :: proc () -> ^Entity {
-	if globals.tick_counter > 0 {
-		panic("creating entity on second frame")
-	}
 	for &mem, i in globals._entity_storage {
 		if .Allocated not_in mem.flags {
-			init_entity_memory(&mem, cast(Entity_ID) i)
+			init_entity(&mem, cast(Entity_ID) i)
 			entity := &mem
+			entity.create_tick = globals.tick_counter
 			append(&globals.entities, &mem)
 			return entity
 		}
