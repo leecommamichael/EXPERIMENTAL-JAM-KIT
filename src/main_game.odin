@@ -177,7 +177,7 @@ tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
 tile_entity :: proc (
 	basis: Transform,
 	tile: ^Tile,
-	hash: Located_Hash_Input = #caller_location,
+	hash: Hash = #caller_location,
 ) -> (^Entity, bool) #optional_ok {
 	it, is_new := rect(hash)
 	it.basis = basis
@@ -186,7 +186,7 @@ tile_entity :: proc (
 	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
 	it.color.rgb = resource_colors[tile.resource]
 	if tile.resource == .Ore {
-		img, new_ore := image("ore16.ase", loop_hash("tile", tile.index))
+		img, new_ore := image("ore16.ase", loop_hash("ore", tile.index))
 		img.basis = basis
 		img.position.xy = it.position.xy
 		it.color.rgb = resource_colors[tile.resource]

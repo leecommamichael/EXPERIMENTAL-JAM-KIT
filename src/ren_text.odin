@@ -44,7 +44,7 @@ text :: proc (
 	variant: Font_Variant = nil,
 	loc := #caller_location,
 ) -> (^Entity) {
-	entity, is_new := do_entity(loc); if is_new {
+	entity, is_new := get_entity(loc); if is_new {
 		entity.flags += {.Skip_Interpolation}
 		entity.variant = Text_State {}
 		entity.color = 1

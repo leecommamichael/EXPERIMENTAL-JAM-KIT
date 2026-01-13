@@ -50,7 +50,7 @@ Sprite_Asset :: struct {
 //////////////////////////////////////////////////////////////////////
 
 sprite :: proc (filename: string) -> ^Entity {
-	entity, is_new := do_entity()
+	entity, is_new := get_entity()
 	if is_new {
 		init_sprite(entity)
 		set_sprite(entity, filename)

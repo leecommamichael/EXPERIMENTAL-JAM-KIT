@@ -596,6 +596,14 @@ init_entity :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider.mask  = { .Default }
 }
 
+// External (game) name
+Hash :: Located_Hash_Input
+Located_Hash_Input :: union {
+	runtime.Source_Code_Location,
+	Located(Tagged_Index),
+	Located(u64),
+}
+
 Located :: struct($T: typeid) {
 	value: T,
 	location: runtime.Source_Code_Location
@@ -604,12 +612,6 @@ Located :: struct($T: typeid) {
 Tagged_Index :: struct {
 	tag: string,
 	index: int,
-}
-
-Located_Hash_Input :: union {
-	runtime.Source_Code_Location,
-	Located(Tagged_Index),
-	Located(u64),
 }
 
 locate_hash_input_source :: proc (
@@ -761,7 +763,7 @@ any_values_hash :: proc (args: ..any) -> u64 {
 //       pass a hash_input_source.
 //
 // NOTE: Don't persist the ^Entity between frames unless you know when it frees.
-do_entity :: proc (
+get_entity :: proc (
 	hash_input: Located_Hash_Input = #caller_location
 ) -> (entity: ^Entity, is_new: bool) {
 	hash: u64 = compute_entity_hash(hash_input)

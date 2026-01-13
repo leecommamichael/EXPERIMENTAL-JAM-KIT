@@ -26,7 +26,7 @@ Image_Asset :: struct {
 image :: proc (filename: string, loc: Located_Hash_Input = #caller_location) -> (^Entity, bool) {
 // This way I don't have to explode the API into retained/immediate
 // The storage can be in the system, only necessary copies.
-	entity, is_new := do_entity(loc)
+	entity, is_new := get_entity(loc)
 	if is_new {
 		init_image(entity)
 		set_image(entity, filename)

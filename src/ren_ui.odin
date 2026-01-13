@@ -23,7 +23,7 @@ UI_Element :: struct {
 
 // Marks this part of the tree as a layout subtree.
 ui_element :: proc (child: ^Entity, loc := #caller_location) -> ^Entity {
-	// entity, is_new := do_entity(loc)
+	// entity, is_new := get_entity(loc)
 	// entity.children = make([]^Entity, 1, context.temp_allocator)
 	// entity.children[0] = child
 	// entity.ui = UI_Element {
@@ -52,7 +52,7 @@ init_list_children :: proc (entity: ^Entity, main_axis: Axis) {
 }
 
 row :: proc (children: ..^Entity, loc := #caller_location) -> ^Entity {
-	entity, is_new := do_entity(loc)
+	entity, is_new := get_entity(loc)
 	entity.ui.type = .Row
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	copy(entity.children, children)
@@ -62,7 +62,7 @@ row :: proc (children: ..^Entity, loc := #caller_location) -> ^Entity {
 }
 
 column :: proc (children: ..^Entity, loc := #caller_location) -> ^Entity {
-	entity, is_new := do_entity(loc)
+	entity, is_new := get_entity(loc)
 	entity.ui.type = .Column
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	copy(entity.children, children)
@@ -155,7 +155,7 @@ layout_subtree :: proc (root: ^Entity) {
 
 import "sugar"
 button :: proc (loc := #caller_location) -> ^Entity {
-	entity, is_new := do_entity(loc)
+	entity, is_new := get_entity(loc)
 	if is_new {
 		entity.ui = UI_Element {
 			type = .Box
