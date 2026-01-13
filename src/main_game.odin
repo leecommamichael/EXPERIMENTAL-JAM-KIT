@@ -159,10 +159,13 @@ game_step :: proc () {
 	globals.cursor.position.xy = globals.mouse_position
 
 	for i in 0..<TILES {
+		// ctx := build_context()
+		// ctx.scale =
+		// ctx.position =
 		grid: Transform
 		grid.scale = TILE_SIZE_PX * tile_scale()
 		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
-		it := tile_entity(grid, &gs.tiles[i])
+		it := tile_entity(grid, &gs.tiles[i], loop_hash("tile", i))
 		if i == gs.focused_tile {
 			text(fmt.tprintf("Tile: %v", gs.tiles[i].resource))
 		}
@@ -174,21 +177,21 @@ tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
 tile_entity :: proc (
 	basis: Transform,
 	tile: ^Tile,
-	loc := #caller_location,
+	hash: Located_Hash_Input = #caller_location,
 ) -> (^Entity, bool) #optional_ok {
-	it, is_new := rect(Tagged_Index{"tile", tile.index})
+	it, is_new := rect(hash)
 	it.basis = basis
 	row := tile.index % COLUMNS
 	column := tile.index / COLUMNS
 	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
 	it.color.rgb = resource_colors[tile.resource]
 	if tile.resource == .Ore {
-		img, new_ore := image("ore16.ase", Tagged_Index{"ore", tile.index})
+		img, new_ore := image("ore16.ase", loop_hash("tile", tile.index))
 		img.basis = basis
 		img.position.xy = it.position.xy
 		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Food {
-		img, new_food := image("food16.ase", Tagged_Index{"food", tile.index})
+		img, new_food := image("food16.ase", loop_hash("food", tile.index))
 		img.basis = basis
 		img.position.xy = it.position.xy
 		it.color.rgb = resource_colors[tile.resource]

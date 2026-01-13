@@ -118,9 +118,9 @@ Entity_ID :: u16
 INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
-	debug_name:     string, // automatically computed to identify the entity's code.
-	hash_source:     Entity_Hash_Input, // retained to lazy-compute the debug_name
-	hash:  u64,
+	debug_name:      string,
+	hash_source:     Located_Hash_Input, // retained to lazy-compute the debug_name
+	hash:            u64,
 	create_tick:     int, // TODO: use to check collisions.
 	id:              Entity_ID, // index in storage.
 	flags:           bit_set[Entity_Flag; u64],

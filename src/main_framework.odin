@@ -8,6 +8,7 @@ import "core:slice"
 import "core:strings"
 import "core:dynlib"
 import "core:mem"
+import "core:path/slashpath"
 import "core:fmt"
 import "core:reflect"
 import "core:time"
@@ -595,18 +596,113 @@ init_entity :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider.mask  = { .Default }
 }
 
+Located :: struct($T: typeid) {
+	value: T,
+	location: runtime.Source_Code_Location
+}
+
 Tagged_Index :: struct {
 	tag: string,
 	index: int,
 }
-Entity_Hash_Input :: union #no_nil {
-	Tagged_Index,
+
+Located_Hash_Input :: union {
 	runtime.Source_Code_Location,
-	u64,
+	Located(Tagged_Index),
+	Located(u64),
 }
 
-Context :: struct {
-	using basis: Transform,
+locate_hash_input_source :: proc (
+	input: Located_Hash_Input
+) -> (location: runtime.Source_Code_Location) {
+	switch it in input {
+	case runtime.Source_Code_Location: 
+		location = it
+	case Located(Tagged_Index):
+		location = it.location
+	case Located(u64):
+		location = it.location
+	}
+	return
+}
+
+hash :: proc {
+	raw_hash,
+	loop_hash,
+	string_hash,
+}
+
+raw_hash :: proc (
+	hash_input: u64,
+	loc := #caller_location,
+) -> Located(u64) {
+	return {
+		hash_input,
+		loc,
+	}
+}
+
+loop_hash :: proc (
+	tag: string,
+	index: int,
+	loc := #caller_location,
+) -> Located(Tagged_Index) {
+	return  {
+		Tagged_Index{tag,index},
+		loc,
+	}
+}
+
+string_hash :: proc (
+	tag: string, // This is used by-value, so it's safe to tprint into it.
+	loc := #caller_location,
+) -> Located(Tagged_Index) {
+	return {
+		Tagged_Index{tag, 0}, // TODO don't waste hash-space on that int.
+		loc,
+	}
+}
+
+compute_entity_hash :: proc (input: Located_Hash_Input) -> (hash: u64) {
+	switch it in input {
+	case runtime.Source_Code_Location:
+		hash = code_location_hash(it)
+	case Located(Tagged_Index): 
+		hash = string_index_hash(it.value.tag, it.value.index)
+	case Located(u64):
+		hash = it.value
+	}
+	return hash
+}
+
+set_debug_name_from_hash_inputs :: proc (
+	entity: ^Entity,
+	hash_input: Located_Hash_Input,
+) {
+	switch it in hash_input {
+	case runtime.Source_Code_Location:
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			"Entity(from_proc=%s, line=%d, file=%s)",
+			string_start(it.procedure, 40),
+			it.line,
+			string_end(it.file_path, 40),
+		);
+	case Located(Tagged_Index):
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			`Entity(tag="%s", index=%d)`,
+			it.value.tag,
+			it.value.index,
+		);
+	case Located(u64):
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			"Entity(hash=%d)",
+			it.value,
+		);
+		assert(entity.hash == it.value)
+	}
 }
 
 // Forms a hash from the #caller_location and an index.
@@ -656,53 +752,19 @@ any_values_hash :: proc (args: ..any) -> u64 {
 	return hash240(buf[:])
 }
 
-// "ore 22 at main_framework:row:col"
-// "main_framework:row:col" // if this happens many times per frame, that's bad.
-// 2931293192393
-set_debug_name_from_hash_inputs :: proc (
-	entity: ^Entity,
-	hash_input: Entity_Hash_Input,
-) {
-	switch it in hash_input {
-	case Tagged_Index:
-		entity.debug_name = fmt.bprintf(
-			globals._debug_name_storage[entity.id][:],
-			`Entity(tag="%s", index=%d)`,
-			it.tag,
-			it.index,
-		);
-	case runtime.Source_Code_Location:
-		entity.debug_name = fmt.bprintf(
-			globals._debug_name_storage[entity.id][:],
-			"Entity(from_proc=%s...,line=%d, file=...%s)",
-			string_start(it.procedure, 40),
-			it.line,
-			string_end(it.file_path, 40),
-		);
-	case u64:
-		entity.debug_name = fmt.bprintf(
-			globals._debug_name_storage[entity.id][:],
-			"Entity(hash=%d)",
-			entity.hash,
-		);
-	}
-
-}
-
-// Don't persist the returned pointer between frames unless you know the lifetime.
+// Creates or retrieves an entity based on a hash. Think of it as a map.
+// - `hash_input` uniquely identifies the entity you 
+// - `hash_input_creator_loc` is the location which will be implicated in an error
+//                            if the provided hash_input builds a duplicate hash.
+//
+// NOTE: If the caller supplies a (non-default) hash_input, they must not manually
+//       pass a hash_input_source.
+//
+// NOTE: Don't persist the ^Entity between frames unless you know when it frees.
 do_entity :: proc (
-	hash_input: Entity_Hash_Input = #caller_location,
-	loc := #caller_location
+	hash_input: Located_Hash_Input = #caller_location
 ) -> (entity: ^Entity, is_new: bool) {
-	hash: u64
-	switch it in hash_input {
-	case Tagged_Index: 
-		hash = string_index_hash(it.tag, it.index)
-	case runtime.Source_Code_Location:
-		hash = code_location_hash(loc)
-	case u64:
-		hash = hash_input.(u64)
-	}
+	hash: u64 = compute_entity_hash(hash_input)
 
 	exists: bool
 	entity, exists = globals.immediate_entities[hash]
@@ -711,28 +773,27 @@ do_entity :: proc (
 			// It was created this tick, but is in cache! Thus we have:
 			// - 1. two entities with the same hash (logical error.)
 			// - 2. one entity whose code was run twice in one step (API misuse.)
-			log.panicf(
-				"Entity hash collision found.\n" +
-				"%s is both:\n" +
-				" - 1. Entity(id=%d)\n" +
-				" - 2. This_Call(from_proc=\"%s...\", line=%d, file=\"...%s\")",
+			error_loc := locate_hash_input_source(hash_input)
+			filename := slashpath.name(error_loc.file_path, false, context.temp_allocator)
+			error_code := "HASH_COLLISION"
+			error_one_liner := "An entity created the same hash as an existing entity."
+			log.debugf(
+				"%s\n" +
+				"%s\n" +
+				" - Colliding: Entity created by \"%s :: proc\" in %s.odin(%d)\n" +
+				" -  Existing: %s\n" +
+				"Machine Output Below:\n" +
+				"%s %s: %s",
+				error_code,
+				error_one_liner,
+				string_start(error_loc.procedure, 40), string_end(filename, 40), error_loc.line,
 				entity.debug_name,
-				entity.id,
-				string_start(loc.procedure, 40), loc.line, string_end(loc.file_path, 40),
+				error_loc, error_code, error_one_liner
 			)
 		}
 	} else {
 		entity = make_entity()
 		set_debug_name_from_hash_inputs(entity, hash_input)
-
-		switch it in hash_input {
-		case Tagged_Index: 
-			hash = string_index_hash(it.tag, it.index)
-		case runtime.Source_Code_Location:
-			hash = code_location_hash(loc)
-		case u64:
-			hash = hash_input.(u64)
-		}
 
 		entity.flags += { .Immediate_Mode, .Immediate_In_Use }
 		entity.hash = hash
