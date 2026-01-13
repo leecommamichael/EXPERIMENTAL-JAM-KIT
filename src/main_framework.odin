@@ -596,164 +596,6 @@ init_entity :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider.mask  = { .Default }
 }
 
-// External (game) name
-Hash :: Located_Hash_Input
-Located_Hash_Input :: union {
-	runtime.Source_Code_Location,
-	Located(Tagged_Index),
-	Located(u64),
-}
-
-Located :: struct($T: typeid) {
-	value: T,
-	location: runtime.Source_Code_Location
-}
-
-Tagged_Index :: struct {
-	tag: string,
-	index: int,
-}
-
-locate_hash_input_source :: proc (
-	input: Located_Hash_Input
-) -> (location: runtime.Source_Code_Location) {
-	switch it in input {
-	case runtime.Source_Code_Location: 
-		location = it
-	case Located(Tagged_Index):
-		location = it.location
-	case Located(u64):
-		location = it.location
-	}
-	return
-}
-
-hash :: proc {
-	raw_hash,
-	loop_hash,
-	string_hash,
-}
-
-raw_hash :: proc (
-	hash_input: u64,
-	loc := #caller_location,
-) -> Located(u64) {
-	return {
-		hash_input,
-		loc,
-	}
-}
-
-loop_hash :: proc (
-	tag: string,
-	index: int,
-	loc := #caller_location,
-) -> Located(Tagged_Index) {
-	return  {
-		Tagged_Index{tag,index},
-		loc,
-	}
-}
-
-string_hash :: proc (
-	tag: string, // This is used by-value, so it's safe to tprint into it.
-	loc := #caller_location,
-) -> Located(Tagged_Index) {
-	return {
-		Tagged_Index{tag, 0}, // TODO don't waste hash-space on that int.
-		loc,
-	}
-}
-
-compute_entity_hash :: proc (input: Located_Hash_Input) -> (hash: u64) {
-	switch it in input {
-	case runtime.Source_Code_Location:
-		hash = code_location_hash(it)
-	case Located(Tagged_Index): 
-		hash = string_index_hash(it.value.tag, it.value.index)
-	case Located(u64):
-		hash = it.value
-	}
-	return hash
-}
-
-set_debug_name_from_hash_inputs :: proc (
-	entity: ^Entity,
-	hash_input: Located_Hash_Input,
-) {
-	switch it in hash_input {
-	case runtime.Source_Code_Location:
-		entity.debug_name = fmt.bprintf(
-			globals._debug_name_storage[entity.id][:],
-			"Entity(from_proc=%s, line=%d, file=%s)",
-			string_start(it.procedure, 40),
-			it.line,
-			string_end(it.file_path, 40),
-		);
-	case Located(Tagged_Index):
-		entity.debug_name = fmt.bprintf(
-			globals._debug_name_storage[entity.id][:],
-			`Entity(tag="%s", index=%d)`,
-			it.value.tag,
-			it.value.index,
-		);
-	case Located(u64):
-		entity.debug_name = fmt.bprintf(
-			globals._debug_name_storage[entity.id][:],
-			"Entity(hash=%d)",
-			it.value,
-		);
-		assert(entity.hash == it.value)
-	}
-}
-
-// Forms a hash from the #caller_location and an index.
-// Use this to keep hashes unique in a loop.
-index_hash :: proc (index: int, loc := #caller_location) -> u64 {
-	index:  i32 = cast(i32) index
-	line:   i32 = loc.line
-	column: i32 = loc.column
-	file_path := string_end(loc.file_path, 240 - 3*size_of(i32))
-
-	@static backing: [240]u8
-	builder := strings.builder_from_bytes(backing[:])
-	strings.write_bytes(&builder, pointee_bytes(&line))
-	strings.write_bytes(&builder, pointee_bytes(&column))
-	strings.write_bytes(&builder, pointee_bytes(&index))
-	strings.write_string(&builder, file_path)
-	return hash240(builder.buf[:])
-}
-
-// Forms a hash from a string and int.
-// Use this to keep "sub-entities" unique when the parent is built in a loop.
-string_index_hash :: proc (str: string, index: int) -> u64 {
-	index: i32 = cast(i32) index
-	str := string_end(str, 240 - 1*size_of(i32))
-
-	@static backing: [240]u8
-	builder := strings.builder_from_bytes(backing[:])
-	strings.write_bytes(&builder, pointee_bytes(&index))
-	strings.write_string(&builder, str)
-	return hash240(builder.buf[:])
-}
-
-// Forms a hash from a varying number of value-types.
-// Use this to prototype when provided hash-builders are insufficient.
-//
-// WARNING: Strings, slices, pointers won't hash their actual data.
-// NOTE: Arrays are value-types.
-any_values_hash :: proc (args: ..any) -> u64 {
-	@static buf: [240]u8
-	offset: int = 0
-	for arg in args {
-		bytes: []u8 = reflect.as_bytes(arg)
-		size := len(bytes)
-		copy(buf[offset:size], bytes)
-		offset += size
-	}
-	return hash240(buf[:])
-}
-
 // Creates or retrieves an entity based on a hash. Think of it as a map.
 // - `hash_input` uniquely identifies the entity you 
 // - `hash_input_creator_loc` is the location which will be implicated in an error
@@ -764,7 +606,7 @@ any_values_hash :: proc (args: ..any) -> u64 {
 //
 // NOTE: Don't persist the ^Entity between frames unless you know when it frees.
 get_entity :: proc (
-	hash_input: Located_Hash_Input = #caller_location
+	hash_input: Hash = #caller_location
 ) -> (entity: ^Entity, is_new: bool) {
 	hash: u64 = compute_entity_hash(hash_input)
 
@@ -834,6 +676,165 @@ free_entity :: proc (entity: ^Entity) {
 	assert(found)
 	unordered_remove(&globals.entities, index)
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Entity Hashing Interface
+////////////////////////////////////////////////////////////////////////////////
+Hash :: Located_Hash_Input
+
+raw_hash :: proc (
+	hash_input: u64,
+	loc := #caller_location,
+) -> Located(u64) {
+	return {
+		hash_input,
+		loc,
+	}
+}
+
+loop_hash :: proc (
+	tag: string,
+	index: int,
+	loc := #caller_location,
+) -> Located(Tagged_Index) {
+	return  {
+		Tagged_Index{tag,index},
+		loc,
+	}
+}
+
+string_hash :: proc (
+	tag: string, // This is used by-value, so it's safe to tprint into it.
+	loc := #caller_location,
+) -> Located(Tagged_Index) {
+	return {
+		Tagged_Index{tag, 0}, // TODO don't waste hash-space on that int.
+		loc,
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Entity Hashing Implementation
+////////////////////////////////////////////////////////////////////////////////
+Located_Hash_Input :: union {
+	runtime.Source_Code_Location,
+	Located(Tagged_Index),
+	Located(u64),
+}
+
+Located :: struct($T: typeid) {
+	value: T,
+	location: runtime.Source_Code_Location
+}
+
+Tagged_Index :: struct {
+	tag: string,
+	index: int,
+}
+
+locate_hash_input_source :: proc (
+	input: Located_Hash_Input
+) -> (location: runtime.Source_Code_Location) {
+	switch it in input {
+	case runtime.Source_Code_Location: 
+		location = it
+	case Located(Tagged_Index):
+		location = it.location
+	case Located(u64):
+		location = it.location
+	}
+	return
+}
+
+compute_entity_hash :: proc (input: Located_Hash_Input) -> (hash: u64) {
+	switch it in input {
+	case runtime.Source_Code_Location:
+		hash = code_location_hash(it)
+	case Located(Tagged_Index): 
+		hash = compute_string_index_hash(it.value.tag, it.value.index)
+	case Located(u64):
+		hash = it.value
+	}
+	return hash
+}
+
+set_debug_name_from_hash_inputs :: proc (
+	entity: ^Entity,
+	hash_input: Located_Hash_Input,
+) {
+	switch it in hash_input {
+	case runtime.Source_Code_Location:
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			"Entity(from_proc=%s, line=%d, file=%s)",
+			string_start(it.procedure, 40),
+			it.line,
+			string_end(it.file_path, 40),
+		);
+	case Located(Tagged_Index):
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			`Entity(tag="%s", index=%d)`,
+			it.value.tag,
+			it.value.index,
+		);
+	case Located(u64):
+		entity.debug_name = fmt.bprintf(
+			globals._debug_name_storage[entity.id][:],
+			"Entity(hash=%d)",
+			it.value,
+		);
+		assert(entity.hash == it.value)
+	}
+}
+
+// Forms a hash from the #caller_location and an index.
+// Use this to keep hashes unique in a loop.
+compute_index_hash :: proc (index: int, loc := #caller_location) -> u64 {
+	index:  i32 = cast(i32) index
+	line:   i32 = loc.line
+	column: i32 = loc.column
+	file_path := string_end(loc.file_path, 240 - 3*size_of(i32))
+
+	@static backing: [240]u8
+	builder := strings.builder_from_bytes(backing[:])
+	strings.write_bytes(&builder, pointee_bytes(&line))
+	strings.write_bytes(&builder, pointee_bytes(&column))
+	strings.write_bytes(&builder, pointee_bytes(&index))
+	strings.write_string(&builder, file_path)
+	return hash240(builder.buf[:])
+}
+
+// Forms a hash from a string and int.
+// Use this to keep "sub-entities" unique when the parent is built in a loop.
+compute_string_index_hash :: proc (str: string, index: int) -> u64 {
+	index: i32 = cast(i32) index
+	str := string_end(str, 240 - 1*size_of(i32))
+
+	@static backing: [240]u8
+	builder := strings.builder_from_bytes(backing[:])
+	strings.write_bytes(&builder, pointee_bytes(&index))
+	strings.write_string(&builder, str)
+	return hash240(builder.buf[:])
+}
+
+// Forms a hash from a varying number of value-types.
+// Use this to prototype when provided hash-builders are insufficient.
+//
+// WARNING: Strings, slices, pointers won't hash their actual data.
+// NOTE: Arrays are value-types.
+compute_any_values_hash :: proc (args: ..any) -> u64 {
+	@static buf: [240]u8
+	offset: int = 0
+	for arg in args {
+		bytes: []u8 = reflect.as_bytes(arg)
+		size := len(bytes)
+		copy(buf[offset:size], bytes)
+		offset += size
+	}
+	return hash240(buf[:])
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Timed_Effect

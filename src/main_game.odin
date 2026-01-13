@@ -159,15 +159,12 @@ game_step :: proc () {
 	globals.cursor.position.xy = globals.mouse_position
 
 	for i in 0..<TILES {
-		// ctx := build_context()
-		// ctx.scale =
-		// ctx.position =
 		grid: Transform
 		grid.scale = TILE_SIZE_PX * tile_scale()
 		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
 		it := tile_entity(grid, &gs.tiles[i], loop_hash("tile", i))
 		if i == gs.focused_tile {
-			text(fmt.tprintf("Tile: %v", gs.tiles[i].resource))
+			text(fmt.tprintf("Tile: %v", gs.tiles[i].resource), .pixel)
 		}
 	}
 }
