@@ -158,16 +158,41 @@ game_step :: proc () {
 
 	globals.cursor.position.xy = globals.mouse_position
 
-	for i in 0..<TILES {
+	for i in 0..< TILES {
 		grid: Transform
 		grid.scale = TILE_SIZE_PX * tile_scale()
 		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
 		it := tile_entity(grid, &gs.tiles[i], loop_hash("tile", i))
 		if i == gs.focused_tile {
-			text(fmt.tprintf("Tile: %v", gs.tiles[i].resource), .pixel)
+			selection := rect()
+			selection.basis = it.basis
+			selection.position.xy = it.position.xy
+			@static time: f32; time += globals.tick
+			selection.color.a = sinbh(2*time)
 		}
 	}
+	focused_tile := &gs.tiles[gs.focused_tile]
+	label := text("Tile: ", .bold_pixel)
+	value := text(fmt.tprintf("%v", focused_tile.resource), .bold_pixel)
+	label.scale.xy = 1.2
+	value.scale.xy = 1.5
+	col := ui_element(
+		column(
+			text("ORE: ", .bold_pixel),
+			text("WATER: ", .bold_pixel),
+			text("FOOD: ", .bold_pixel),
+			text("POPULATION: ", .bold_pixel),
+			text("- BUILD ROAD ", .bold_pixel),
+			label,
+			value,
+		)
+	)
+	col.position.y = 100
 }
+
+sin01 :: proc (theta: f32) -> f32 { return (sin(theta) + 1) / 2 }
+sinq2q :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.25 }
+sinbh :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.2 }
 
 tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
 
