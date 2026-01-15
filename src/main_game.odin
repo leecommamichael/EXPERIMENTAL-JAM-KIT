@@ -27,8 +27,8 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
 TILE_GAP :: 1
-ROWS :: 3
-COLUMNS :: 5
+ROWS :: 23
+COLUMNS :: 30
 TILES :: ROWS * COLUMNS
 TILE_SIZE_PX :: 16
 
@@ -172,21 +172,24 @@ game_step :: proc () {
 		}
 	}
 	focused_tile := &gs.tiles[gs.focused_tile]
-	label := text("Tile: ", .bold_pixel)
+	label := text("TILE:", .bold_pixel)
+	label.color = color("#446688ff")
+	label.color = color("#446688ff")
 	value := text(fmt.tprintf("%v", focused_tile.resource), .bold_pixel)
-	label.scale.xy = 1.2
-	value.scale.xy = 1.5
 	col := ui_element(
 		column(
 			text("ORE: ", .bold_pixel),
 			text("WATER: ", .bold_pixel),
 			text("FOOD: ", .bold_pixel),
 			text("POPULATION: ", .bold_pixel),
-			text("- BUILD ROAD ", .bold_pixel),
+			text("+ BUILD ROAD", .bold_pixel),
+			text("+ RAZE", .bold_pixel),
 			label,
 			value,
 		)
 	)
+	label.scale = 1.0
+	value.scale = 1.0
 	col.position.y = 100
 }
 
@@ -206,20 +209,25 @@ tile_entity :: proc (
 	row := tile.index % COLUMNS
 	column := tile.index / COLUMNS
 	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
-	it.color.rgb = resource_colors[tile.resource]
 	if tile.resource == .Ore {
-		img, new_ore := image("ore16.ase", loop_hash("ore", tile.index))
+		img := image("ore16.ase", loop_hash("ore", tile.index))
 		img.basis = basis
 		img.position.xy = it.position.xy
-		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Food {
-		img, new_food := image("food16.ase", loop_hash("food", tile.index))
+		img := image("food16.ase", loop_hash("food", tile.index))
 		img.basis = basis
 		img.position.xy = it.position.xy
-		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Water {
+		shape := circle(loop_hash("water", tile.index))
+		shape.basis = basis
+		shape.position.xy = it.position.xy
+		shape.color.rgb = resource_colors[.Water]
+		shape.basis.scale.xy += 0
+		it.color.rgb = 0
 	} else if tile.resource == .Grass {
+		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Barracks {
+		it.color.rgb = resource_colors[tile.resource]
 	} else {
 		log.infof("undecorated resource: %v", tile.resource)
 	}
@@ -241,6 +249,7 @@ finish_project :: proc (tile: ^Tile) {
 	ensure(found)
 	ordered_remove(&gs.projects, idx)
 }
+
 
 resource_colors: [Tile_Type]Color3 = {
 	.Grass    = {0.412, 0.651, 0.255},

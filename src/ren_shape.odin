@@ -10,7 +10,7 @@ make_circle :: proc () -> (^Entity, bool) #optional_ok {
 }
 
 circle :: proc (hash: Located_Hash_Input = #caller_location) -> (^Entity, bool) #optional_ok {
-	entity, is_new := get_entity({})
+	entity, is_new := get_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(
 		globals.instance_buffer, cast(int) entity.id,

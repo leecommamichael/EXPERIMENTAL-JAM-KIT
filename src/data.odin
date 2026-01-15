@@ -113,9 +113,9 @@ Canvas_Scaling :: enum {
 //////////////////////////////////////////////////////////////////////
 // Section: Entities
 //////////////////////////////////////////////////////////////////////
+INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity_ID :: u16
-INSTANCE_DATA_MAX_SIZE :: GLES_MAX_BINDINGS * size_of(Vec4)
 
 Entity :: struct {
 	debug_name:      string,
@@ -137,18 +137,18 @@ Entity :: struct {
 	distance_from_camera: f32,
 	using instance:  ^Any_Instance, // rendered visual representation of transforms
 	draw_command:    Draw_Command,
-	ui: UI_Element,
-	variant: Entity_Variant,
-	parent: ^Entity,
-	children: []^Entity,
+	ui:              UI_Element,
+	variant:         Entity_Variant,
+	parent:          ^Entity,
+	children:        []^Entity,
 }
 
 Entity_Variant :: union {
-		Text_State,
-		Image_State,
-		Sprite_State,
-		Timed_Effect_State(Empty_Struct),
-	}
+	Text_State,
+	Image_State,
+	Sprite_State,
+	Timed_Effect_State(Empty_Struct),
+}
 
 Entity_Flag :: enum {
 	Allocated,

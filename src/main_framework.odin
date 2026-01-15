@@ -634,6 +634,7 @@ get_entity :: proc (
 				entity.debug_name,
 				error_loc, error_code, error_one_liner
 			)
+			debug_trap()
 		}
 	} else {
 		entity = make_entity()
@@ -917,4 +918,81 @@ timed_lerp :: proc (
 	ent.variant = transmute(Timed_Effect_State(Empty_Struct))effect
 	ent.flags += {.Hidden}
 	return transmute(^Timed_Effect_State(Lerp)) &ent.variant.(Timed_Effect_State(Empty_Struct))
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Color
+////////////////////////////////////////////////////////////////////////////////
+// Entities take [4]f32 with elements in the range of 0..1
+// These functions build those values.
+
+// The examples are equivalent. They all produce solid-white.
+color :: proc {
+	_raw_color,  // color(1.0, 0.0, 0.0, 1.0)
+	color_bytes, // color(255, 0, 0, 255)
+	color_string,  // color("#f00")
+	color_hex,     // color(0xf00)
+}
+
+// This is here for refactoring/leverage so you don't have to delete your color() call.
+// You don't need a proc to assign 0..1 floats to an entity.
+_raw_color :: proc (r: f32, g: f32, b: f32, a: f32 = 1) -> Color4 {
+	return {r,g,b,a} 
+}
+
+color_bytes :: proc (r: u8, g: u8, b: u8, a: u8 = 1) -> Color4 {
+	return array_cast([4]u8{r,g,b,a}, f32) / 255
+}
+
+color_hex :: proc (hex: u32) -> Color4 {
+	bytes := transmute([4]u8) hex
+	return array_cast(bytes, f32) / 255
+}
+
+// "#fff"      => white
+// "#fff5"     => transparent white
+// "#ff00ff"   => purple
+// "#ff00ff55" => transparent purple
+color_string :: proc "contextless" (str: string) -> Color4 {
+	if len(str) == 0 do return {}
+	str := str
+	if str[0] == '#' do str = str[1:] // strip optional leading symbol
+
+	x :: hex_digit
+	bytes: [4]u8 = {0,0,0,max(u8)}
+	switch len(str) {
+	case 0 ..< 3:
+		for i in 0..< len(str) {
+			bytes[i] = x(str[i]) << NIBBLE | x(str[i])
+		}
+	case 3 ..< 4:
+		bytes.r = x(str[0]) << NIBBLE | x(str[0])
+		bytes.g = x(str[1]) << NIBBLE | x(str[1])
+		bytes.b = x(str[2]) << NIBBLE | x(str[2])
+	case 4 ..< 6:
+		bytes.r = x(str[0]) << NIBBLE | x(str[0])
+		bytes.g = x(str[1]) << NIBBLE | x(str[1])
+		bytes.b = x(str[2]) << NIBBLE | x(str[2])
+		bytes.a = x(str[3]) << NIBBLE | x(str[3])
+	case 6 ..< 8:
+		bytes.r = x(str[0]) << NIBBLE | x(str[1])
+		bytes.g = x(str[2]) << NIBBLE | x(str[3])
+		bytes.b = x(str[4]) << NIBBLE | x(str[5])
+	case:
+		bytes.r = x(str[0]) << NIBBLE | x(str[1])
+		bytes.g = x(str[2]) << NIBBLE | x(str[3])
+		bytes.b = x(str[4]) << NIBBLE | x(str[5])
+		bytes.a = x(str[6]) << NIBBLE | x(str[7])
+	}
+
+	return array_cast(bytes, f32) / 255
+}
+
+hex_digit :: proc "contextless" (char: u8) -> u8 {
+	switch char {
+	case '0' ..= '9': return char - '0'
+	case 'a' ..= 'f': return char - 'a' + 10
+	case 'A' ..= 'F': return char - 'A' + 10
+	}
+	return 0
 }
