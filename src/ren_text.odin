@@ -42,21 +42,21 @@ text :: proc (
 	message: string,
 	usage: Font_Usage = nil,
 	variant: Font_Variant = nil,
-	loc := #caller_location,
+	hash: Hash = #caller_location,
 ) -> (^Entity) {
-	entity, is_new := get_entity(loc); if is_new {
+	entity, is_new := get_entity(hash); if is_new {
 		entity.flags += {.Skip_Interpolation}
 		entity.variant = Text_State {}
 		entity.color = 1
 	}
-	message_changed := is_new || raw_data(message) != raw_data(entity.variant.(Text_State).text)
+	needs_rebuild := is_new\
+	|| raw_data(message) != raw_data(entity.variant.(Text_State).text)\
+	|| &globals.fonts[usage][variant] != entity.variant.(Text_State).font
 	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
 	}
-	if message_changed {
-		ts := entity.variant.(Text_State)
-		ts.text = message
+	if needs_rebuild {
 		set_text(entity, message)
 	}
 	entity.position.z = next_z()
@@ -103,6 +103,7 @@ Font :: struct {
 set_text :: proc (entity: ^Entity, message: string) {
 	text := entity.variant.(Text_State)
 	text.text = message
+	entity.basis.scale = text.font.line_height
 	verts_needed   := len(text.text) * 4
 	indices_needed := len(text.text) * 6
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)
@@ -141,10 +142,10 @@ set_text :: proc (entity: ^Entity, message: string) {
 		}
 
 		gnum := glyph_index+1
-		verts[(4*gnum)-4] = { position = {quad.x0,-quad.y0, 0,}, texcoord = {quad.s0,quad.t0} } // TL
-		verts[(4*gnum)-3] = { position = {quad.x1,-quad.y0, 0,}, texcoord = {quad.s1,quad.t0} } // TR
-		verts[(4*gnum)-2] = { position = {quad.x0,-quad.y1, 0,}, texcoord = {quad.s0,quad.t1} } // BL
-		verts[(4*gnum)-1] = { position = {quad.x1,-quad.y1, 0,}, texcoord = {quad.s1,quad.t1} } // BR
+		verts[(4*gnum)-4] = { position = ({quad.x0,-quad.y0, 0,} / text.font.line_height), texcoord = {quad.s0,quad.t0} } // TL
+		verts[(4*gnum)-3] = { position = ({quad.x1,-quad.y0, 0,} / text.font.line_height), texcoord = {quad.s1,quad.t0} } // TR
+		verts[(4*gnum)-2] = { position = ({quad.x0,-quad.y1, 0,} / text.font.line_height), texcoord = {quad.s0,quad.t1} } // BL
+		verts[(4*gnum)-1] = { position = ({quad.x1,-quad.y1, 0,} / text.font.line_height), texcoord = {quad.s1,quad.t1} } // BR
 
 		indices[(6*gnum)-6] = u32(4*glyph_index)+0 // TL
 		indices[(6*gnum)-5] = u32(4*glyph_index)+2 // BL
@@ -196,6 +197,7 @@ measure_text :: proc (entity: Entity) -> (out: Vec2) {
 	}
 	out.x = text_cursor.x + quad.x0 - quad.x1
 	out.y = text.font.line_height
-	out *= entity.basis.scale.xy * entity.scale.xy // This should be intrinsic size.
+	out.y = entity.basis.scale.y
+	// out *= entity.basis.scale.xy * entity.scale.xy // This should be intrinsic size.
 	return
 }
