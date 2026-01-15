@@ -46,10 +46,17 @@ pointee_bytes :: #force_inline proc "contextless" (data: ^$T) -> []u8 {
 	return (cast([^]u8)data)[:size_of(T)]
 }
 
+// TODO: Check if debugger connected, then debug_trap if so.
+debugger :: proc () {
+	when ODIN_DEBUG {
+		debug_trap()
+	}
+}
+
 // Idiom (for WIP code) to do something despite one-time while in a loop.
 // To run a statement only on the first iteration of the loop:
 // ```
-//   if under_run_limit(1) { STATEMENT }
+//   if !over_run_limit(1) { STATEMENT }
 // ```
 over_run_limit :: proc (limit: int, loc := #caller_location) -> bool {
 	@static tickets: map[u64]int

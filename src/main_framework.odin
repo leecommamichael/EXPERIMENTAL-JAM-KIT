@@ -8,7 +8,6 @@ import "core:slice"
 import "core:strings"
 import "core:dynlib"
 import "core:mem"
-import "core:path/slashpath"
 import "core:fmt"
 import "core:reflect"
 import "core:time"
@@ -371,30 +370,6 @@ collider_size :: proc (entity: ^Entity) -> Vec3 {
 	return entity.scale * entity.collider.size/2
 }
 
-they_touch :: proc (e1, e2: ^Entity) -> bool {
-	return find_collision_involving_entities(globals.collisions[:], e1, e2)
-}
-
-they_started_touching :: proc (e1, e2: ^Entity) -> bool {
-	return find_collision_involving_entities(globals.enter_collisions[:], e1, e2)
-}
-
-they_stopped_touching :: proc (e1, e2: ^Entity) -> bool {
-	return find_collision_involving_entities(globals.exit_collisions[:], e1, e2)
-}
-
-entity_collisions :: proc (entity: ^Entity) -> []Collision {
-	return find_collisions_involving_entity(globals.collisions[:], entity)
-}
-
-enter_events :: proc (entity: ^Entity) -> []Collision {
-	return find_collisions_involving_entity(globals.enter_collisions[:], entity)
-}
-
-exit_events :: proc (entity: ^Entity) -> []Collision {
-	return find_collisions_involving_entity(globals.exit_collisions[:], entity)
-}
-
 find_collision_involving_entities :: proc (array: []Collision, e1, e2: ^Entity) -> bool {
 	for it in array {
 		if it.ids[0] == e1.id && it.ids[1] == e2.id \
@@ -596,59 +571,6 @@ init_entity :: proc (entity: ^Entity, id: Entity_ID) {
 	entity.collider.mask  = { .Default }
 }
 
-// Creates or retrieves an entity based on a hash. Think of it as a map.
-// - `hash_input` uniquely identifies the entity you 
-// - `hash_input_creator_loc` is the location which will be implicated in an error
-//                            if the provided hash_input builds a duplicate hash.
-//
-// NOTE: If the caller supplies a (non-default) hash_input, they must not manually
-//       pass a hash_input_source.
-//
-// NOTE: Don't persist the ^Entity between frames unless you know when it frees.
-get_entity :: proc (
-	hash_input: Hash = #caller_location
-) -> (entity: ^Entity, is_new: bool) {
-	hash: u64 = compute_entity_hash(hash_input)
-
-	exists: bool
-	entity, exists = globals.immediate_entities[hash]
-	if exists {
-		if entity.create_tick == globals.tick_counter {
-			// It was created this tick, but is in cache! Thus we have:
-			// - 1. two entities with the same hash (logical error.)
-			// - 2. one entity whose code was run twice in one step (API misuse.)
-			error_loc := locate_hash_input_source(hash_input)
-			filename := slashpath.name(error_loc.file_path, false, context.temp_allocator)
-			error_code := "HASH_COLLISION"
-			error_one_liner := "An entity created the same hash as an existing entity."
-			log.debugf(
-				"%s\n" +
-				"%s\n" +
-				" - Colliding: Entity created by \"%s :: proc\" in %s.odin(%d)\n" +
-				" -  Existing: %s\n" +
-				"Machine Output Below:\n" +
-				"%s %s: %s",
-				error_code,
-				error_one_liner,
-				string_start(error_loc.procedure, 40), string_end(filename, 40), error_loc.line,
-				entity.debug_name,
-				error_loc, error_code, error_one_liner
-			)
-			debug_trap()
-		}
-	} else {
-		entity = make_entity()
-		set_debug_name_from_hash_inputs(entity, hash_input)
-
-		entity.flags += { .Immediate_Mode, .Immediate_In_Use }
-		entity.hash = hash
-		globals.immediate_entities[hash] = entity
-		return entity, true
-	}
-	entity.flags += { .Immediate_In_Use }
-	return entity, false
-}
-
 entity_with_id :: proc (id: Entity_ID) -> ^Entity {
 	it := &globals._entity_storage[id]
 	if .Allocated not_in it.flags {
@@ -676,42 +598,6 @@ free_entity :: proc (entity: ^Entity) {
 	index, found := slice.linear_search(globals.entities[:], entity)
 	assert(found)
 	unordered_remove(&globals.entities, index)
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Entity Hashing Interface
-////////////////////////////////////////////////////////////////////////////////
-Hash :: Located_Hash_Input
-
-raw_hash :: proc (
-	hash_input: u64,
-	loc := #caller_location,
-) -> Located(u64) {
-	return {
-		hash_input,
-		loc,
-	}
-}
-
-loop_hash :: proc (
-	tag: string,
-	index: int,
-	loc := #caller_location,
-) -> Located(Tagged_Index) {
-	return  {
-		Tagged_Index{tag,index},
-		loc,
-	}
-}
-
-string_hash :: proc (
-	tag: string, // This is used by-value, so it's safe to tprint into it.
-	loc := #caller_location,
-) -> Located(Tagged_Index) {
-	return {
-		Tagged_Index{tag, 0}, // TODO don't waste hash-space on that int.
-		loc,
-	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -834,165 +720,4 @@ compute_any_values_hash :: proc (args: ..any) -> u64 {
 		offset += size
 	}
 	return hash240(buf[:])
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Timed_Effect
-////////////////////////////////////////////////////////////////////////////////
-// this is an entity variant, so putting T here could inflate entities.
-// So some things are pointers that otherwise would not be.
-Timed_Effect_State :: struct ($T: typeid) {
-	data: ^T,
-	step: proc(data: ^T, percent: f32),
-	seconds_total: f32,
-	seconds_left: f32,
-	timeout: proc(^T),
-	allocator: runtime.Allocator,
-}
-
-step_timed_effect :: proc (entity: ^Entity, tick: f32 = globals.tick) {
-	it := &entity.variant.(Timed_Effect_State(Empty_Struct))
-
-	it.seconds_left -= tick
-	percent := clamp(1 - cast(f32) (it.seconds_left/it.seconds_total), 0, 1)
-	it.step(it.data, percent)
-
-	if it.seconds_left <= 0 {
-		if it.timeout != nil {
-			it.timeout(it.data)
-		}
-		free(it.data, it.allocator)
-		free_entity(entity)
-	}
-}
-
-timed_effect :: proc (
-	data: $T,
-	seconds_left: f32,
-	step: proc(data: ^T, percent: f32),
-	allocator := context.allocator
-) -> ^Timed_Effect_State(T) {
-	ent := make_entity()
-	data_copy := new(T, allocator)
-	data_copy^ = data
-	effect := Timed_Effect_State(T) {
-		data_copy,
-		step,
-		seconds_left,
-		seconds_left,
-		nil,
-		allocator,
-	}
-	ent.variant = transmute(Timed_Effect_State(Empty_Struct))effect
-	ent.flags += {.Hidden}
-	return transmute(^Timed_Effect_State(T)) &ent.variant.(Timed_Effect_State(Empty_Struct))
-}
-
-Lerp :: struct {
-	sink: ^f32,
-	start: f32,
-	target: f32,
-}
-
-Timed_Lerp :: Timed_Effect_State(Lerp)
-timed_lerp :: proc (
-	data: ^f32,
-	target: f32,
-	seconds_left: f32,
-	allocator := context.allocator
-) -> ^Timed_Lerp {
-	ent := make_entity()
-	managed_data := new(Lerp, allocator)
-	managed_data^ = Lerp { sink=data, start=data^, target=target }
-	effect := Timed_Effect_State(Lerp) {
-		managed_data,
-		proc (it: ^Lerp, percent: f32) {
-			it.sink^ = cast(f32) lerp(it.start, it.target, percent)
-		},
-		seconds_left,
-		seconds_left,
-		nil,
-		allocator,
-	}
-	ent.variant = transmute(Timed_Effect_State(Empty_Struct))effect
-	ent.flags += {.Hidden}
-	return transmute(^Timed_Effect_State(Lerp)) &ent.variant.(Timed_Effect_State(Empty_Struct))
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Color
-////////////////////////////////////////////////////////////////////////////////
-// Entities take [4]f32 with elements in the range of 0..1
-// These functions build those values.
-
-// The examples are equivalent. They all produce solid-white.
-color :: proc {
-	_raw_color,  // color(1.0, 0.0, 0.0, 1.0)
-	color_bytes, // color(255, 0, 0, 255)
-	color_string,  // color("#f00")
-	color_hex,     // color(0xf00)
-}
-
-// This is here for refactoring/leverage so you don't have to delete your color() call.
-// You don't need a proc to assign 0..1 floats to an entity.
-_raw_color :: proc (r: f32, g: f32, b: f32, a: f32 = 1) -> Color4 {
-	return {r,g,b,a} 
-}
-
-color_bytes :: proc (r: u8, g: u8, b: u8, a: u8 = 1) -> Color4 {
-	return array_cast([4]u8{r,g,b,a}, f32) / 255
-}
-
-color_hex :: proc (hex: u32) -> Color4 {
-	bytes := transmute([4]u8) hex
-	return array_cast(bytes, f32) / 255
-}
-
-// "#fff"      => white
-// "#fff5"     => transparent white
-// "#ff00ff"   => purple
-// "#ff00ff55" => transparent purple
-color_string :: proc "contextless" (str: string) -> Color4 {
-	if len(str) == 0 do return {}
-	str := str
-	if str[0] == '#' do str = str[1:] // strip optional leading symbol
-
-	x :: hex_digit
-	bytes: [4]u8 = {0,0,0,max(u8)}
-	switch len(str) {
-	case 0 ..< 3:
-		for i in 0..< len(str) {
-			bytes[i] = x(str[i]) << NIBBLE | x(str[i])
-		}
-	case 3 ..< 4:
-		bytes.r = x(str[0]) << NIBBLE | x(str[0])
-		bytes.g = x(str[1]) << NIBBLE | x(str[1])
-		bytes.b = x(str[2]) << NIBBLE | x(str[2])
-	case 4 ..< 6:
-		bytes.r = x(str[0]) << NIBBLE | x(str[0])
-		bytes.g = x(str[1]) << NIBBLE | x(str[1])
-		bytes.b = x(str[2]) << NIBBLE | x(str[2])
-		bytes.a = x(str[3]) << NIBBLE | x(str[3])
-	case 6 ..< 8:
-		bytes.r = x(str[0]) << NIBBLE | x(str[1])
-		bytes.g = x(str[2]) << NIBBLE | x(str[3])
-		bytes.b = x(str[4]) << NIBBLE | x(str[5])
-	case:
-		bytes.r = x(str[0]) << NIBBLE | x(str[1])
-		bytes.g = x(str[2]) << NIBBLE | x(str[3])
-		bytes.b = x(str[4]) << NIBBLE | x(str[5])
-		bytes.a = x(str[6]) << NIBBLE | x(str[7])
-	}
-
-	return array_cast(bytes, f32) / 255
-}
-
-hex_digit :: proc "contextless" (char: u8) -> u8 {
-	switch char {
-	case '0' ..= '9': return char - '0'
-	case 'a' ..= 'f': return char - 'a' + 10
-	case 'A' ..= 'F': return char - 'A' + 10
-	}
-	return 0
 }

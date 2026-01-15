@@ -39,11 +39,11 @@ main :: proc() {
 	sugar.init()
 	asset_init()
 	displays := sugar.list_displays()
-	display := displays[0] if len(displays) > 1 else displays[0]
+	display := displays[1] if len(displays) > 1 else displays[0]
 	ok := sugar.create_window(
 		[4]int{
-			display.top_left.x,
-			display.top_left.y, 0,0} + {2,44,0,0} + ({0,0, 640, 400}),
+			2 + display.top_left.x,
+			44+ display.top_left.y, 0,0} + ({430,430, 640, 400}),
 		"SimSettlement",
 		use_gl = true
 	)

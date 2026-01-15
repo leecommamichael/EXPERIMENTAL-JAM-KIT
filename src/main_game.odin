@@ -86,7 +86,19 @@ Project :: struct {
 	water_cost:   int,
 }
 
+import gl "angle"
 game_init :: proc () {
+	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.nearest_sampler)
+	globals.cursor = make_entity()
+	globals.cursor.flags += {.Hidden}
+	globals.draw_colliders = false
+	globals.canvas_size_px = {640,400}
+	globals.canvas_scaling = .None
+	globals.canvas_stretching = .Integer_Aspect
+	globals.canvas_stretching = .Integer_Aspect
+
 	r := rand.create(10)
 	context.random_generator = rand.default_random_generator(&r)
 	// How many ore, food, water to spawn?
@@ -102,12 +114,6 @@ game_init :: proc () {
 
 	gs = new(Game_State)
 
-	globals.cursor = make_entity()
-	globals.cursor.flags += {.Hidden}
-	globals.draw_colliders = false
-	globals.canvas_size_px = {640,400}
-	globals.canvas_scaling = .None
-	globals.canvas_stretching = .Integer_Aspect
 
 	for i in 0..<TILES {
 		tile: ^Tile = &gs.tiles[i]
@@ -166,16 +172,17 @@ game_step :: proc () {
 		if i == gs.focused_tile {
 			selection := rect()
 			selection.basis = it.basis
+			// selection.basis.scale.xy += 4
 			selection.position.xy = it.position.xy
+			selection.position.z += 100
 			@static time: f32; time += globals.tick
 			selection.color.a = sinbh(2*time)
 		}
 	}
 	focused_tile := &gs.tiles[gs.focused_tile]
-	label := text("TILE:", .bold_pixel)
-	label.color = color("#446688ff")
-	label.color = color("#446688ff")
-	value := text(fmt.tprintf("%v", focused_tile.resource), .bold_pixel)
+	tile_header := text("TILE:", .bold_pixel)
+	tile_header.color = color("#ddd")
+	tile_value := text(fmt.tprintf("%v", focused_tile.resource), .bold_pixel)
 	col := ui_element(
 		column(
 			text("ORE: ", .bold_pixel),
@@ -184,12 +191,11 @@ game_step :: proc () {
 			text("POPULATION: ", .bold_pixel),
 			text("+ BUILD ROAD", .bold_pixel),
 			text("+ RAZE", .bold_pixel),
-			label,
-			value,
+			tile_header,
+			tile_value,
 		)
 	)
-	label.scale = 1.0
-	value.scale = 1.0
+	// value.scale = 1.5
 	col.position.y = 100
 }
 
