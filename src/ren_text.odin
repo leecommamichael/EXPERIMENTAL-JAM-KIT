@@ -196,5 +196,6 @@ measure_text :: proc (entity: Entity) -> (out: Vec2) {
 	}
 	out.x = text_cursor.x + quad.x0 - quad.x1
 	out.y = text.font.line_height
+	out *= entity.basis.scale.xy * entity.scale.xy // This should be intrinsic size.
 	return
 }

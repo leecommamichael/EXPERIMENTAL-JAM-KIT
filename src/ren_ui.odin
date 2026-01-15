@@ -76,9 +76,9 @@ measure_entity :: proc (entity: ^Entity) -> Vec2 {
 	case .None: // Not a UI element, but some we can measure.
 		switch variant in entity.variant {
 		case Image_State:
-			return entity.basis.scale.xy + entity.scale.xy
+			return entity.basis.scale.xy * entity.scale.xy
 		case Sprite_State:
-			return entity.basis.scale.xy + entity.scale.xy
+			return entity.basis.scale.xy * entity.scale.xy
 		case Text_State:
 			return measure_text(entity^)
 		case Timed_Effect_State(Empty_Struct): // not visual
@@ -102,7 +102,7 @@ measure_entity :: proc (entity: ^Entity) -> Vec2 {
 		}
 		return size
 	case .Box:
-		return entity.basis.scale.xy + entity.scale.xy
+		return entity.basis.scale.xy * entity.scale.xy
 	}
 	
 	panic("Exhaustive Switch")
