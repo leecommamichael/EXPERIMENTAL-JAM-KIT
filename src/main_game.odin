@@ -217,21 +217,10 @@ tile_entity :: proc (
 	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
 	if tile.resource == .Ore {
 		img := image("ore16.ase", loop_hash("ore", tile.index))
-		copy_position(img, it^)
+		transform(img, it^)
 	} else if tile.resource == .Food {
 		img := image("food16.ase", loop_hash("food", tile.index))
-		// img.basis = &it.position
-		// basis is content-size
-		// 1. Copy and increment
-		// img.xform = it.xform
-		// it.position += 22
-		//
-		// 2. Functions push, `deferred_none` pops.
-		// it.basis = ctx
-		//
-		// 3. Use a "follow" property, defer incorporating it until fwk_step
-		// entity.basis = other_entity
-		copy_position(img, it^)
+		transform(img, it^)
 	} else if tile.resource == .Water {
 		shape := circle(loop_hash("water", tile.index))
 		shape.basis = basis

@@ -159,11 +159,6 @@ hex_digit :: proc "contextless" (char: u8) -> u8 {
 ////////////////////////////////////////////////////////////////////////////////
 // Positioning
 ////////////////////////////////////////////////////////////////////////////////
-copy_position :: proc (follower: ^Entity, leader: Entity) {
-	follower.basis.position = leader.basis.position
-	follower.position.xy = leader.position.xy // <---------- 2d
-}
-
 // For 2D things, I don't want this to overwrite Z
 transform :: proc {
 	transform_assign,
@@ -171,8 +166,10 @@ transform :: proc {
 }
 
 transform_assign :: proc "contextless" (child: ^Entity, parent: Entity) {
+	derived_z := child.position.z
 	child.basis = parent.basis
 	child.transform = parent.transform
+	child.position.z = derived_z
 }
 transform_offset :: proc "contextless" (child: ^Entity, parent: Entity, offset: Transform) {
 	transform_assign(child, parent)
