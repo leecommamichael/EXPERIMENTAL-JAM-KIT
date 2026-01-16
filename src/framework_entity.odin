@@ -26,8 +26,8 @@ get_entity :: proc (
 	exists: bool
 	entity, exists = globals.immediate_entities[hash]
 	if exists {
-		if entity.create_tick == globals.tick_counter {
-			raise_error_hash_collision(entity^, hash_input)
+		if invalid_entity_hash(entity) {
+			raise_error_hash_collision(entity, hash_input)
 		}
 	} else {
 		entity = make_entity()
@@ -43,7 +43,7 @@ get_entity :: proc (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Entity Hashing Interface
+// Entity Hashing
 ////////////////////////////////////////////////////////////////////////////////
 // Below are some convenient procs to build a unique hash for your entities.
 Hash :: Located_Hash_Input
@@ -154,6 +154,31 @@ hex_digit :: proc "contextless" (char: u8) -> u8 {
 	case 'A' ..= 'F': return char - 'A' + 10
 	}
 	return 0
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Positioning
+////////////////////////////////////////////////////////////////////////////////
+copy_position :: proc (follower: ^Entity, leader: Entity) {
+	follower.basis.position = leader.basis.position
+	follower.position.xy = leader.position.xy // <---------- 2d
+}
+
+// For 2D things, I don't want this to overwrite Z
+transform :: proc {
+	transform_assign,
+	transform_offset,
+}
+
+transform_assign :: proc "contextless" (child: ^Entity, parent: Entity) {
+	child.basis = parent.basis
+	child.transform = parent.transform
+}
+transform_offset :: proc "contextless" (child: ^Entity, parent: Entity, offset: Transform) {
+	transform_assign(child, parent)
+	child.position  += offset.position
+	child.scale     += offset.scale
+	child.rotation  += offset.rotation
 }
 
 ////////////////////////////////////////////////////////////////////////////////

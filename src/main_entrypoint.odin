@@ -188,6 +188,8 @@ set_canvas_size :: proc (size_px: [2]int, _loc := #caller_location) {
 // So the Z cursor for UI should probably start far (near) and come near.
 FAR_Z  :: -10000 // furthest.
 NEAR_Z  :: 10000 // nearest.
+// This assert protects range-checks.
+#assert(NEAR_Z > 0); #assert(FAR_Z < 0);
 
 build_camera :: proc () {
 	viewport_size := array_cast(globals.sugar.viewport_size,f32)

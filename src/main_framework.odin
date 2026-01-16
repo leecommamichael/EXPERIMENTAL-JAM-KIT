@@ -303,18 +303,11 @@ framework_draw :: proc (alpha: f32) {
 			xform = lerp_transform(entity.old_transform, entity.transform, alpha)
 			basis = lerp_transform(entity.old_basis,     entity.basis,     alpha)
 		}
-when ODIN_DEBUG {
 		if .Is_3D not_in entity.flags {
-			#assert(NEAR_Z > 0); #assert(FAR_Z < 0);
-			z := xform.position.z + basis.position.z
-			if z < FAR_Z || z > NEAR_Z {
-				log.errorf(
-					`%s is outside depth range. (basis.z=%f, position.z=%f)`,
-					entity.debug_name, entity.basis.position.z, entity.position.z
-				)
+			if invalid_entity_depth(entity) {
+				raise_warning_bad_depth(entity)
 			}
 		}
-}
 		instance.model_transform =
 			linalg.matrix4_translate(xform.position + basis.position)\
 			* linalg.matrix4_from_euler_angles_xyz(expand_values(xform.rotation + basis.rotation))\

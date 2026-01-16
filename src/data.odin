@@ -119,7 +119,6 @@ Entity_ID :: u16
 
 Entity :: struct {
 	debug_name:      string,
-	hash_source:     Located_Hash_Input, // retained to lazy-compute the debug_name
 	hash:            u64,
 	create_tick:     int, // TODO: use to check collisions.
 	id:              Entity_ID, // index in storage.
