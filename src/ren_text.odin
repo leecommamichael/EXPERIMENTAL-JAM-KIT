@@ -49,16 +49,11 @@ text :: proc (
 		entity.variant = Text_State {}
 		entity.color = 1
 	}
-	needs_rebuild := is_new\
-	|| raw_data(message) != raw_data(entity.variant.(Text_State).text)\
-	|| &globals.fonts[usage][variant] != entity.variant.(Text_State).font
 	entity.variant = Text_State {
 		message,
 		&globals.fonts[usage][variant],
 	}
-	if needs_rebuild {
-		set_text(entity, message)
-	}
+	set_text(entity, message)
 	entity.position.z = next_z()
 	return entity
 }
