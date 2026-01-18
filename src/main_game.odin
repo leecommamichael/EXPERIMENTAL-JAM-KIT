@@ -36,18 +36,10 @@ gs: ^Game_State
 
 Game_State :: struct {
 	focused_tile: int,
-	player:   Faction,
-	enemy:    Faction,
+	player:   Resources,
+	enemy:    Resources,
 	tiles:    [TILES]Tile,
-	projects: [dynamic]^Tile,
 	zoom:     bool,
-}
-
-Faction :: struct {
-	population: int,
-	ore:        int,
-	food:       int,
-	water:      int,
 }
 
 // The last user to work the improvement.
@@ -59,8 +51,8 @@ Tile_Owner :: enum {
 
 Tile :: struct {
 	index:    int,
-	owner:    Tile_Owner,
 	resource: Tile_Type,
+	owner:    Tile_Owner, // Determines who is doing the project.
 	project:  Project,
 }
 
@@ -77,13 +69,48 @@ Tile_Type :: enum {
 }
 
 Project :: struct {
-	in_progress:  bool,
-	start_time:   time.Tick,
-	max_time:     time.Duration,
-	temp_workers: int,
-	ore_cost:     int,
-	food_cost:    int,
-	water_cost:   int,
+	start_time: time.Tick,
+	max_time:   time.Duration,
+	cost:       Resources,
+	finished:   bool,
+}
+
+Resources :: struct {
+	ore:     int,
+	food:    int,
+	water:   int,
+	workers: int,
+}
+
+project_completion_pct :: proc (it: Project) -> f32 {
+	return f32(time.tick_diff(it.start_time, time.tick_now()) / it.max_time)
+}
+
+try_start_project :: proc (tile: ^Tile, project: Project) -> (started: bool) {
+	if gs.player.ore >= project.cost.ore\
+	&& gs.player.food >= project.cost.food\
+	&& gs.player.water >= project.cost.water\
+	&& gs.player.workers >= project.cost.workers {
+		start_project(tile, project)
+		return true
+	}
+	return false
+}
+
+start_project :: proc (tile: ^Tile, project: Project) {
+	ensure(tile.owner == .None && tile.project.finished)
+	tile.project = project
+	tile.owner = .Player
+	gs.player.ore -= tile.project.cost.ore
+	gs.player.food -= tile.project.cost.food
+	gs.player.water -= tile.project.cost.water
+	gs.player.workers -= tile.project.cost.workers
+}
+
+finish_project :: proc (tile: ^Tile) {
+	ensure(tile.owner == .Player && !tile.project.finished)
+	tile.project.finished = true
+	gs.player.workers += tile.project.cost.workers
 }
 
 import gl "angle"
@@ -114,7 +141,6 @@ game_init :: proc () {
 
 	gs = new(Game_State)
 
-
 	for i in 0..<TILES {
 		tile: ^Tile = &gs.tiles[i]
 		tile.index = i
@@ -135,7 +161,11 @@ game_init :: proc () {
 	gs.tiles[0].owner = .Player
 	gs.tiles[TILES-1].resource = .Barracks
 	gs.tiles[TILES-1].owner = .Enemy
+	gs.player.workers = 1
 }
+
+PANEL_SIZE: Vec2 = {120, 400}
+SPACER :: 16
 
 @export
 game_step :: proc () {
@@ -158,11 +188,23 @@ game_step :: proc () {
 		row_max := row_min + COLUMNS - 1
 		gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
 	}
-	if sugar.on_key_press(.Space) {
+	if sugar.on_key_press(.Q) {
 		gs.zoom = !gs.zoom
+	}
+	if sugar.on_key_press(.Space) {
+		// try_start_project()
 	}
 
 	globals.cursor.position.xy = globals.mouse_position
+	bg := rect()
+	bg.basis.scale.xy = globals.canvas_size_px
+	uncenter_rect(bg)
+	bg.color = color("#234")
+
+	panel := rect()
+	panel.basis.scale.xy = PANEL_SIZE
+	uncenter_rect(panel)
+	panel.color = color("#0126")
 
 	for i in 0..< TILES {
 		grid: Transform
@@ -176,27 +218,44 @@ game_step :: proc () {
 			selection.position.xy = it.position.xy
 			selection.position.z += 100
 			@static time: f32; time += globals.tick
+			selection.color = color("ff6")
 			selection.color.a = sinbh(2*time)
 		}
 	}
+
 	focused_tile := &gs.tiles[gs.focused_tile]
-	tile_header := text("TILE:", .bold_pixel)
-	tile_header.color = color("#ddd")
-	tile_value := text(fmt.tprintf("%v", focused_tile.resource), .bold_pixel)
+
 	col := ui_element(
 		column(
-			text("ORE: ", .bold_pixel),
-			text("WATER: ", .bold_pixel),
-			text("FOOD: ", .bold_pixel),
-			text("POPULATION: ", .bold_pixel),
-			text("+ BUILD ROAD", .bold_pixel),
-			text("+ RAZE", .bold_pixel),
-			tile_header,
-			tile_value,
-		)
+			pad_box(16),
+			text_list_item("ORE:", fmt.tprintf("%d/%d", gs.player.ore)),
+			text_list_item("FOOD:", fmt.tprintf("%d", gs.player.food)),
+			text_list_item("WATER:", fmt.tprintf("%d", gs.player.water)),
+			text_list_item("WORKER:", fmt.tprintf("%d", gs.player.workers)),
+			pad_box(16),
+			text_list_item("THIS TILE:", fmt.tprintf("%v", focused_tile.resource)),
+			pad_box(16),
+		),
+		position = Vec2{6, 100},
 	)
-	// value.scale = 1.5
-	col.position.y = 100
+	fmt.printfln("col.scale : %v", col.scale.xy)
+}
+
+text_list_item :: proc (
+	label: string,
+	value: string,
+	hash: Hash = #caller_location
+) -> ^Entity {
+	_label := text(label, .bold_pixel, hash=loop_hash(label, 1))
+	_label.color = color("#aaa")
+	_value := text(value, .bold_pixel, hash=loop_hash(label, 2))
+	return ui_element(
+		column(
+			_label,
+			_value,
+			hash = loop_hash(label, 3)
+		),
+	)
 }
 
 sin01 :: proc (theta: f32) -> f32 { return (sin(theta) + 1) / 2 }
@@ -237,23 +296,6 @@ tile_entity :: proc (
 	}
 	return it, is_new
 }
-
-project_completion_pct :: proc (it: Project) -> f32 {
-	return f32(time.tick_diff(it.start_time, time.tick_now()) / it.max_time)
-}
-
-start_project :: proc (tile: ^Tile, project: Project) {
-	tile.project = project
-	append(&gs.projects, tile)
-}
-
-finish_project :: proc (tile: ^Tile) {
-	ensure(tile.project.in_progress)
-	idx, found := find(gs.projects[:], tile)
-	ensure(found)
-	ordered_remove(&gs.projects, idx)
-}
-
 
 resource_colors: [Tile_Type]Color3 = {
 	.Grass    = {0.412, 0.651, 0.255},

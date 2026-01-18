@@ -177,6 +177,9 @@ transform_offset :: proc "contextless" (child: ^Entity, parent: Entity, offset: 
 	child.scale     += offset.scale
 	child.rotation  += offset.rotation
 }
+uncenter_rect :: proc "contextless" (entity: ^Entity) {
+	entity.basis.position.xy = entity.basis.scale.xy/2
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Collision Detection

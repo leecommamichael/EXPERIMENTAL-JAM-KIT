@@ -134,6 +134,8 @@ cos :: math.cos
 sign :: math.sign
 sqrt :: math.sqrt
 PI :: math.PI
+inf_f32 :: math.inf_f32
+inf_f64 :: math.inf_f64
 
 // Selects the quantity with the smaller absolute value,
 // but returns the quantity with sign included.
