@@ -177,7 +177,7 @@ lerp_vec :: proc "contextless" (l,r: Vec3, alpha: f32) -> Vec3 {
 	}
 }
 
-lerp_transform :: proc (l,r: Transform, alpha: f32) -> Transform {
+lerp_transform :: proc "contextless" (l,r: Transform, alpha: f32) -> Transform {
 	return {
 		lerp_vec(l.position, r.position, alpha),
 		lerp_vec(l.rotation, r.rotation, alpha),
@@ -185,7 +185,7 @@ lerp_transform :: proc (l,r: Transform, alpha: f32) -> Transform {
 	}
 }
 
-clamp_length :: proc (direction: Vec3, max_length: f32) -> Vec3 {
+clamp_length :: proc "contextless" (direction: Vec3, max_length: f32) -> Vec3 {
 	length := length(direction)
 	if length > max_length {
 		normalized := direction / length
