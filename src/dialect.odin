@@ -46,6 +46,48 @@ pointee_bytes :: #force_inline proc "contextless" (data: ^$T) -> []u8 {
 	return (cast([^]u8)data)[:size_of(T)]
 }
 
+enum_decrement_clamp :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	first_case := min(Enum)
+	dec := v^ - Enum(1)
+	if dec < first_case || dec > max(Enum) {
+		v^ = first_case // clamp
+	} else {
+		v^ = dec
+	}
+}
+
+enum_decrement_wrap :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	first_case := min(Enum)
+	last_case := max(Enum)
+	dec := v^ - Enum(1)
+	if dec < first_case || dec > last_case {
+		v^ = last_case
+	} else {
+		v^ = dec
+	}
+}
+
+enum_increment_clamp :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	last_case := max(Enum)
+	inc := v^ + Enum(1)
+	if inc > last_case || inc < min(Enum) {
+		v^ = last_case // clamp
+	} else {
+		v^ = inc
+	}
+}
+
+enum_increment_wrap :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	first_case := min(Enum)
+	last_case := max(Enum)
+	inc := v^ + Enum(1)
+	if inc > last_case || inc < first_case {
+		v^ = first_case
+	} else {
+		v^ = inc
+	}
+}
+
 // TODO: Check if debugger connected, then debug_trap if so.
 debugger :: proc () {
 	when ODIN_DEBUG {
@@ -74,12 +116,14 @@ over_run_limit :: proc (limit: int, loc := #caller_location) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 // Generics
 ////////////////////////////////////////////////////////////////////////////////
+enum_is_contiguous :: intrinsics.type_enum_is_contiguous
+base_type  :: intrinsics.type_base_type
+core_type  :: intrinsics.type_core_type
+elem_type  :: intrinsics.type_elem_type
 debug_trap :: intrinsics.debug_trap
 is_subtype :: intrinsics.type_is_subtype_of
 is_array   :: intrinsics.type_is_array
 is_float   :: intrinsics.type_is_float
-type_of_pointee :: intrinsics.type_elem_type
-elem_type       :: intrinsics.type_elem_type
 Empty_Struct :: struct {}
 
 ////////////////////////////////////////////////////////////////////////////////
