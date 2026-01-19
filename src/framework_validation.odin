@@ -66,8 +66,14 @@ raise_diagnostic :: proc (
 	strings.write_string(&fmtstr, "%s %s %s")
 	append(&args, error_loc, code, terse)
 
-	fmt.println(strings.to_string(fmtstr))
-	log.errorf(strings.to_string(fmtstr), ..args[:])
+	// fmt.println(strings.to_string(fmtstr))
+	switch level {
+	case .Off: return
+	case .Warning:
+		log.warnf(strings.to_string(fmtstr), ..args[:])
+	case .Error:
+		log.errorf(strings.to_string(fmtstr), ..args[:])
+	}
 	
 	debugger()
 }
@@ -85,16 +91,17 @@ invalid_entity_hash :: proc (entity: ^Entity) -> bool {
 	return entity.create_tick == globals.tick_counter
 }
 
-raise_warning_bad_depth :: proc (entity: ^Entity) {
+raise_warning_bad_depth :: proc (entity: ^Entity, e := #caller_location) {
 	raise_warning(
 		"Z COORDINATE OUT OF BOUNDS",
-		fmt.tprintf("%s won't be visible. Z is %f."),
+		fmt.tprintf("Entity will not be visible: %s", entity.debug_name),
 		fmt.tprintf(
-			"In the final transformed position, a Z outside of [%d,%d] is not drawn.",
-			`Transform(basis.z=%f, position.z=%f)`,
+			" - In the final transformed position, a Z outside of [%d,%d] is not drawn.\n"+
+			` - Transform(basis.z=%f, position.z=%f)`,
 			FAR_Z, NEAR_Z,
 			entity.basis.position.z, entity.position.z
-		)
+		),
+		error_loc = e
 	)
 }
 
