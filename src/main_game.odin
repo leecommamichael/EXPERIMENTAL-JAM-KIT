@@ -35,11 +35,20 @@ TILE_SIZE_PX :: 16
 gs: ^Game_State
 
 Game_State :: struct {
+	in_tile_menu:  bool,
+	tile_menu_selection: Tile_Menu_Option,
 	focused_tile: int,
 	player:   Resources,
 	enemy:    Resources,
 	tiles:    [TILES]Tile,
 	zoom:     bool,
+}
+
+Tile_Menu_Option :: enum {
+	Build_Structure,
+	Build_Transport,
+	Build_Upgrade,
+	Do_Mission,
 }
 
 // The last user to work the improvement.
@@ -54,6 +63,7 @@ Tile :: struct {
 	resource: Tile_Type,
 	owner:    Tile_Owner, // Determines who is doing the project.
 	project:  Project,
+	entity:   ^Entity,
 }
 
 Tile_Type :: enum {
@@ -120,6 +130,7 @@ game_init :: proc () {
 	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.nearest_sampler)
 	globals.cursor = make_entity()
 	globals.cursor.flags += {.Hidden}
+	globals.cursor.position.xy = globals.mouse_position.xy
 	globals.draw_colliders = false
 	globals.canvas_size_px = {640,400}
 	globals.canvas_scaling = .None
@@ -169,33 +180,59 @@ SPACER :: 16
 
 @export
 game_step :: proc () {
+	eph_in_tile_menu: bool
 	// TODO: Wraps to 0 and TILES-1 on vertical movement.
-	if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-		gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
+	if gs.in_tile_menu {
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.tile_menu_selection)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.tile_menu_selection)
+		}
+		if sugar.on_button_press(.Left) || sugar.on_key_press(.A) {
+		}
+		if sugar.on_button_press(.Right) || sugar.on_key_press(.D) {
+		}
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			gs.in_tile_menu = false
+		}
+	} else {
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			gs.focused_tile = clamp(gs.focused_tile - COLUMNS, 0, TILES-1)
+		}
+		if sugar.on_button_press(.Left) || sugar.on_key_press(.A) {
+			row := gs.focused_tile / COLUMNS 
+			row_min := row * COLUMNS
+			row_max := row_min + COLUMNS - 1
+			gs.focused_tile = clamp(gs.focused_tile - 1, row_min, row_max)
+		}
+		if sugar.on_button_press(.Right) || sugar.on_key_press(.D) {
+			row := gs.focused_tile / COLUMNS 
+			row_min := row * COLUMNS
+			row_max := row_min + COLUMNS - 1
+			gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
+		}
 	}
-	if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-		gs.focused_tile = clamp(gs.focused_tile - COLUMNS, 0, TILES-1)
-	}
-	if sugar.on_button_press(.Left) || sugar.on_key_press(.A) {
-		row := gs.focused_tile / COLUMNS 
-		row_min := row * COLUMNS
-		row_max := row_min + COLUMNS - 1
-		gs.focused_tile = clamp(gs.focused_tile - 1, row_min, row_max)
-	}
-	if sugar.on_button_press(.Right) || sugar.on_key_press(.D) {
-		row := gs.focused_tile / COLUMNS 
-		row_min := row * COLUMNS
-		row_max := row_min + COLUMNS - 1
-		gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
-	}
-	if sugar.on_key_press(.Q) {
+	if sugar.on_button_press(.Y) || sugar.on_key_press(.E) {
 		gs.zoom = !gs.zoom
 	}
-	if sugar.on_key_press(.Space) {
-		// try_start_project()
+	if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+
+	}
+	if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+		if !gs.in_tile_menu {
+			gs.in_tile_menu = true
+			eph_in_tile_menu = true
+		} else {
+			// INTENT: already in tile menu, select something.
+			fmt.printfln("Selected %v", gs.tile_menu_selection)
+			// try_start_project()
+		}
 	}
 
-	globals.cursor.position.xy = globals.mouse_position
 	bg := rect()
 	bg.basis.scale.xy = globals.canvas_size_px
 	uncenter_rect(bg)
@@ -207,38 +244,68 @@ game_step :: proc () {
 	panel.color = color("#0126")
 
 	for i in 0..< TILES {
-		grid: Transform
-		grid.scale = TILE_SIZE_PX * tile_scale()
-		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
-		it := tile_entity(grid, &gs.tiles[i], loop_hash("tile", i))
-		if i == gs.focused_tile {
-			selection := rect()
-			selection.basis = it.basis
-			// selection.basis.scale.xy += 4
-			selection.position.xy = it.position.xy
-			selection.position.z += 100
-			@static time: f32; time += globals.tick
-			selection.color = color("ff6")
-			selection.color.a = sinbh(2*time)
-		}
+		basis: Transform
+		basis.scale = TILE_SIZE_PX * tile_scale()
+		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
+		it := tile_entity(basis, &gs.tiles[i], loop_hash("tile", i))
+		gs.tiles[i].entity = it
 	}
 
 	focused_tile := &gs.tiles[gs.focused_tile]
+	tile_highlight := rect()
+	tile_highlight.basis = focused_tile.entity.basis
+	tile_highlight.position.xy = focused_tile.entity.position.xy
+	tile_highlight.position.z += 100 // KILL
+	// sin01 :: proc (theta: f32) -> f32 { return (sin(theta) + 1) / 2 }
+	// sinq2q :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.25 }
+	sinbh :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.2 }
+	@static time: f32; time += globals.tick
+	tile_highlight.color = color("ff6")
+	tile_highlight.color.a = sinbh(2*time)
+
+	menu_structure := text("+ Structure", .bold_pixel) // Barracks, Forge,
+	menu_transport := text("+ Transport", .bold_pixel) // Road, Aqueduct, Train
+	menu_upgrade := text("+ Upgrade", .bold_pixel)     // Barracks, Forge (unit stats, city stats)
+	menu_mission := text("+ Mission", .bold_pixel)     // Spy, Sabotage, Gather-Resource(N)
 
 	col := ui_element(
 		column(
 			pad_box(16),
-			text_list_item("ORE:", fmt.tprintf("%d/%d", gs.player.ore)),
+			text_list_item("ORE:", fmt.tprintf("%d", gs.player.ore)),
 			text_list_item("FOOD:", fmt.tprintf("%d", gs.player.food)),
 			text_list_item("WATER:", fmt.tprintf("%d", gs.player.water)),
 			text_list_item("WORKER:", fmt.tprintf("%d", gs.player.workers)),
 			pad_box(16),
 			text_list_item("THIS TILE:", fmt.tprintf("%v", focused_tile.resource)),
 			pad_box(16),
+			text("ACTIONS:", .bold_pixel),
+			menu_structure,
+			menu_transport,
+			menu_upgrade,
+			menu_mission,
+			pad_box(16),
 		),
 		position = Vec2{6, 100},
 	)
-	fmt.printfln("col.scale : %v", col.scale.xy)
+
+	// lerp a highlighter from the tile to the menu
+	menu_highlight := rect()
+	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
+	if eph_in_tile_menu {
+		lerp_data: Transform_Lerp_Data = {
+			sink  = &menu_highlight.transform,
+			start = transform_combine(tile_highlight.basis, tile_highlight.transform),
+			end   = transform_combine(menu_structure.basis, menu_structure.transform),
+		}
+		lerp_data.end.scale.xy = measure_text(menu_structure^)
+		lerp_data.end.position.x = lerp_data.end.scale.x / 2 + 6
+		timed_effect(lerp_data, 0.2, proc (data: ^Transform_Lerp_Data, percent: f32) {
+			data.sink^ = lerp_transform(data.start, data.end, percent)
+			// data.sink.position.z = next_z()
+		})
+	}
+	menu_highlight.color = color("ff6")
+	menu_highlight.color.a = sinbh(2*time)
 }
 
 text_list_item :: proc (
@@ -254,15 +321,25 @@ text_list_item :: proc (
 			_label,
 			_value,
 			hash = loop_hash(label, 3)
-		),
+		)
 	)
 }
 
-sin01 :: proc (theta: f32) -> f32 { return (sin(theta) + 1) / 2 }
-sinq2q :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.25 }
-sinbh :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.2 }
-
 tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
+// TBD
+// row_column_of_index :: proc (index: int) -> (row, column: int) {
+// 	row = index % COLUMNS
+// 	column = index / COLUMNS
+// }
+
+// position_of_tile_at_index :: proc () {
+// 		grid: Transform
+// 		grid.scale = TILE_SIZE_PX * tile_scale()
+// 		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
+// 		it := tile_entity(grid, &gs.tiles[i], loop_hash("tile", i))
+// 		it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
+// }
+
 
 tile_entity :: proc (
 	basis: Transform,
