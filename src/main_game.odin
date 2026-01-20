@@ -35,46 +35,55 @@ TILE_SIZE_PX :: 16
 gs: ^Game_State
 
 Game_State :: struct {
-	in_action_menu: bool,
-	in_submenu:     bool,
-	menu:     Enumerated_Union(Submenu),
-	focused_tile: int,
-	player:   Resources,
-	enemy:    Resources,
-	tiles:    [TILES]Tile,
-	zoom:     bool,
+	state_changed_this_frame: bool,
+	prev_state:     States,
+	state:          States,
+	panel_menu_state: Panel_Menu_State,
+	//
+	build_menu:     Build_Menu,
+	transport_menu: Transport_Menu,
+	upgrade_menu:   Upgrade_Menu,
+	mission_menu:   Mission_Menu,
+	//
+	focused_tile:   int,
+	player: Resources,
+	enemy:  Resources,
+	tiles:  [TILES]Tile,
+	zoom:   bool,
 }
 
-Tile_Menu_Option :: enum {
-	Build_Structure,
-	Build_Transport,
-	Build_Upgrade,
-	Do_Mission,
+States :: enum {
+	Overworld,
+	Panel_Menu,
+	Build_Menu,
+	Transport_Menu,
+	Upgrade_Menu,
+	Mission_Menu,
 }
 
-Submenu :: union #no_nil {
-	Structure_Menu_Option,
-	Transport_Menu_Option,
-	Barracks_Upgrade_Menu_Option,
-	Mission_Menu_Option,
+Panel_Menu_State :: enum {
+	Build_Menu,
+	Transport_Menu,
+	Upgrade_Menu,
+	Mission_Menu,
 }
 
-Structure_Menu_Option :: enum {
+Build_Menu :: enum {
 	Build_Barracks,
-	Build_Forge
+	Build_Forge,
 }
-Transport_Menu_Option :: enum {
+Transport_Menu :: enum {
 	Road,
 	Aqueduct,
 	Train,
 }
-Barracks_Upgrade_Menu_Option :: enum {
+Upgrade_Menu :: enum {
 	Unit_Speed,
 	Unit_Health,
 	Unit_Power,
 	Unit_Capacity,
 }
-Mission_Menu_Option :: enum {
+Mission_Menu :: enum {
 	Laner_Gather_Resource,
 	Laner_Fight, // Retreats at low health. If speed too low, can die.
 	Spy_Tile,
@@ -208,45 +217,29 @@ game_init :: proc () {
 PANEL_SIZE: Vec2 = {120, 400}
 SPACER :: 16
 
+set_state :: proc (new_state: States) {
+	if new_state != gs.state {
+		gs.state_changed_this_frame = true
+		gs.prev_state = gs.state
+		gs.state = new_state
+	}
+}
+
+state_changed :: proc () -> bool {
+	if !gs.state_changed_this_frame do return false
+	return gs.prev_state != gs.state
+}
+
+state_changed_from_to :: proc (prev, current: States) -> bool {
+	if !gs.state_changed_this_frame do return false
+	return prev == gs.prev_state && current == gs.state
+}
+
 @export
 game_step :: proc () {
-	eph_in_action_menu: bool
-	eph_in_submenu: bool
-	if gs.in_action_menu {
-		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			eu_prev_tag(&gs.menu)
-			eu_print(&gs.menu)
-		}
-		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-			eu_next_tag(&gs.menu)
-			eu_print(&gs.menu)
-			// fmt.printfln("Menu Case: %v", gs.menu)
-		}
-		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			gs.in_submenu = true
-			eph_in_submenu = true
-		}
-		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			gs.in_action_menu = false
-		}
-	} else if gs.in_submenu {
-		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			eu_add_to_case(&gs.menu, -1)
-			fmt.printfln("SubMenu Case: %v", gs.menu)
-		}
-		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-			eu_add_to_case(&gs.menu, +1)
-			fmt.printfln("SubMenu Case: %v", gs.menu)
-		}
-		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			fmt.printfln("Entered SubMenu %v", gs.menu)
-			// try_start_project()
-		}
-		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			gs.in_action_menu = true
-			eph_in_action_menu = true
-		}
-	} else /* In overworld */ {
+	gs.state_changed_this_frame = false
+	switch gs.state {
+	case .Overworld:
 		// TODO: Wraps to 0 and TILES-1 on vertical movement.
 		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
 			gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
@@ -267,14 +260,52 @@ game_step :: proc () {
 			gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
 		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			fmt.printfln("Entered Menu %v", gs.menu)
-			gs.in_action_menu = true
-			eph_in_action_menu = true
+			set_state(.Panel_Menu)
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			// On tiles, nothing to go back to.
 		}
-	}
+	//////////////////////////////////////////////////////////////////////////////
+	case .Panel_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.panel_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.panel_menu_state)
+		}
+
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			switch gs.panel_menu_state {
+			case .Build_Menu:     set_state(.Build_Menu)
+			case .Transport_Menu: set_state(.Transport_Menu)
+			case .Upgrade_Menu:   set_state(.Upgrade_Menu)
+			case .Mission_Menu:   set_state(.Mission_Menu)
+			}
+		}
+	//////////////////////////////////////////////////////////////////////////////
+	case .Build_Menu:
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+
+		}
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			set_state(.Panel_Menu)
+		}
+	//////////////////////////////////////////////////////////////////////////////
+	case .Transport_Menu:
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			set_state(.Panel_Menu)
+		}
+	//////////////////////////////////////////////////////////////////////////////
+	case .Upgrade_Menu:
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			set_state(.Panel_Menu)
+		}
+	//////////////////////////////////////////////////////////////////////////////
+	case .Mission_Menu:
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			set_state(.Panel_Menu)
+		}
+	} // switch //////////////////////////////////////////////////////////////////
 
 	if sugar.on_button_press(.Y) || sugar.on_key_press(.E) {
 		gs.zoom = !gs.zoom
@@ -311,6 +342,21 @@ game_step :: proc () {
 	tile_highlight.color = color("ff6")
 	tile_highlight.color.a = sinbh(2*time)
 
+	menu: []^Entity
+	switch gs.state {
+	case .Overworld:
+	//////////////////////////////////////////////////////////////////////////////
+	case .Panel_Menu:
+	//////////////////////////////////////////////////////////////////////////////
+	case .Build_Menu:
+	//////////////////////////////////////////////////////////////////////////////
+	case .Transport_Menu:
+	//////////////////////////////////////////////////////////////////////////////
+	case .Upgrade_Menu:
+	//////////////////////////////////////////////////////////////////////////////
+	case .Mission_Menu:
+	} // switch //////////////////////////////////////////////////////////////////
+
 	menu_structure := text("+ Structure", .bold_pixel) // Barracks, Forge,
 	menu_transport := text("+ Transport", .bold_pixel) // Road, Aqueduct, Train
 	menu_upgrade := text("+ Upgrade", .bold_pixel)     // Barracks, Forge (unit stats, city stats)
@@ -339,7 +385,7 @@ game_step :: proc () {
 	// lerp a highlighter from the tile to the menu
 	menu_highlight := rect()
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
-	if eph_in_action_menu {
+	if state_changed_from_to(.Overworld, .Panel_Menu) {
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
 			start = transform_combine(tile_highlight.basis, tile_highlight.transform),
@@ -355,13 +401,13 @@ game_step :: proc () {
 	menu_highlight.color = color("ff6")
 	menu_highlight.color.a = sinbh(2*time)
 
-	if gs.in_action_menu {
+	if gs.state == .Panel_Menu {
 		tile_highlight.color.a = 0.3
 	} else {
 		menu_highlight.color.a = 0	
 	}
 
-}// game step
+} // game step
 
 text_list_item :: proc (
 	label: string,
