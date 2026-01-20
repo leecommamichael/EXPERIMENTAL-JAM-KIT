@@ -46,48 +46,6 @@ pointee_bytes :: #force_inline proc "contextless" (data: ^$T) -> []u8 {
 	return (cast([^]u8)data)[:size_of(T)]
 }
 
-enum_decrement_clamp :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
-	first_case := min(Enum)
-	dec := v^ - Enum(1)
-	if dec < first_case || dec > max(Enum) {
-		v^ = first_case // clamp
-	} else {
-		v^ = dec
-	}
-}
-
-enum_decrement_wrap :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
-	first_case := min(Enum)
-	last_case := max(Enum)
-	dec := v^ - Enum(1)
-	if dec < first_case || dec > last_case {
-		v^ = last_case
-	} else {
-		v^ = dec
-	}
-}
-
-enum_increment_clamp :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
-	last_case := max(Enum)
-	inc := v^ + Enum(1)
-	if inc > last_case || inc < min(Enum) {
-		v^ = last_case // clamp
-	} else {
-		v^ = inc
-	}
-}
-
-enum_increment_wrap :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
-	first_case := min(Enum)
-	last_case := max(Enum)
-	inc := v^ + Enum(1)
-	if inc > last_case || inc < first_case {
-		v^ = first_case
-	} else {
-		v^ = inc
-	}
-}
-
 // TODO: Check if debugger connected, then debug_trap if so.
 debugger :: proc () {
 	when ODIN_DEBUG {
@@ -124,6 +82,9 @@ debug_trap :: intrinsics.debug_trap
 is_subtype :: intrinsics.type_is_subtype_of
 is_array   :: intrinsics.type_is_array
 is_float   :: intrinsics.type_is_float
+type_is_union :: intrinsics.type_is_union
+type_is_variant_of :: intrinsics.type_is_variant_of
+type_is_ordered_numeric :: intrinsics.type_is_ordered_numeric
 Empty_Struct :: struct {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,4 +198,135 @@ code_location_hash :: proc (declaration: runtime.Source_Code_Location) -> u64 {
 	hash := xxhash.XXH3_64(hash_input[:])
 	delete(hash_input)
 	return hash
+}
+////////////////////////////////////////////////////////////////////////////////
+// Niche Utilities
+////////////////////////////////////////////////////////////////////////////////
+
+enum_decrement_clamp :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	first_case := min(Enum)
+	dec := v^ - Enum(1)
+	if dec < first_case || dec > max(Enum) {
+		v^ = first_case // clamp
+	} else {
+		v^ = dec
+	}
+}
+
+enum_decrement_wrap :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	first_case := min(Enum)
+	last_case := max(Enum)
+	dec := v^ - Enum(1)
+	if dec < first_case || dec > last_case {
+		v^ = last_case
+	} else {
+		v^ = dec
+	}
+}
+
+enum_increment_clamp :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	last_case := max(Enum)
+	inc := v^ + Enum(1)
+	if inc > last_case || inc < min(Enum) {
+		v^ = last_case // clamp
+	} else {
+		v^ = inc
+	}
+}
+
+enum_increment_wrap :: proc (v: ^$Enum) where enum_is_contiguous(Enum) {
+	first_case := min(Enum)
+	last_case := max(Enum)
+	inc := v^ + Enum(1)
+	if inc > last_case || inc < first_case {
+		v^ = first_case
+	} else {
+		v^ = inc
+	}
+}
+
+// Wrapper on a union where all variants are enums.
+// Allows for treating the union tag and variant as integers.
+Enumerated_Union :: struct($U: typeid) #all_or_none {
+	value: U,
+	len: int,
+	min: int,
+	max: int,
+}
+
+enumerated_union :: proc (
+	$Union: typeid,
+	variant: $Enum
+) -> Enumerated_Union(Union)
+	where 
+	type_is_union(Union),
+	type_is_variant_of(Union, Enum),
+	type_is_ordered_numeric(Enum) 
+{
+	return {
+		variant,
+		len(Enum),
+		cast(int) min(Enum),
+		cast(int) max(Enum),
+	}
+}
+
+eu_next_case :: proc (it: ^Enumerated_Union($U)) {
+	eu_add_to_case(it, +1)
+}
+eu_prev_case :: proc (it: ^Enumerated_Union($U)) {
+	eu_add_to_case(it, -1)
+}
+eu_next_tag :: proc (it: ^Enumerated_Union($U)) {
+	eu_add_to_tag(it, +1)
+}
+eu_prev_tag :: proc (it: ^Enumerated_Union($U)) {
+	eu_add_to_tag(it, -1)
+}
+
+eu_set_case :: enumerated_union_add_to_case 
+// For whichever enum is current, sets the case.
+enumerated_union_set_case :: proc (it: ^Enumerated_Union($U), n: int)
+	where 
+	type_is_union(U)
+{
+	tag: int : intrinsics.type_union_base_tag_value(U)
+	Enum :: intrinsics.type_variant_type_of(U, tag)
+	it.value = cast(Enum) clamp(n, it.min, it.max)
+}
+
+eu_add_to_case :: enumerated_union_add_to_case 
+// For whichever enum is current, changes the case.
+enumerated_union_add_to_case :: proc (it: ^Enumerated_Union($U), n: int, clamp_or_wrap: bool = true) {
+	tag: int : intrinsics.type_union_base_tag_value(U)
+	Enum :: intrinsics.type_variant_type_of(U, tag)
+	int_value := cast(int) it.value.(Enum)
+	if clamp_or_wrap {
+		it.value = cast(Enum) clamp(int_value + n, it.min, it.max)
+	} else { // wrap
+		switch resulting_case := int_value + n; {
+		case resulting_case > it.max: it.value = cast(Enum) (it.min + (abs(n) % it.len))
+		case resulting_case < it.min: it.value = cast(Enum) (it.max - (abs(n) % it.len))
+		}
+	}
+}
+
+eu_add_to_tag :: enumerated_union_add_to_tag 
+// Changes the current variant of the union, resetting the case of that variant to the minimum value.
+enumerated_union_add_to_tag :: proc (it: ^Enumerated_Union($U), $n: int) {
+	tag_min: int : intrinsics.type_union_base_tag_value(U)
+	num_variants :: intrinsics.type_union_variant_count(U)
+	tag_offset: uintptr: intrinsics.type_union_tag_offset(U)
+	tag_type :: intrinsics.type_union_tag_type(U)
+	tag_ptr :: cast(^tag_type)tag_offset
+	// variant_type :: U,V
+	// variant_index :: U,V
+	// x :: tag_min - int(tag_ptr^) + n
+	// new_tag := clamp(int(tag_ptr^) + n, tag_min, num_variants-1)
+	// it^ = enumerated_union(U, min(Computed_Variant))
+}
+
+eu_print :: proc (it: ^Enumerated_Union($U)) {
+	tag: int : intrinsics.type_union_base_tag_value(U)
+	fmt.printfln("%v %v", tag, it.value)
 }

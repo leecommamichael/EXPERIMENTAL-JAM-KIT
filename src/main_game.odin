@@ -35,8 +35,9 @@ TILE_SIZE_PX :: 16
 gs: ^Game_State
 
 Game_State :: struct {
-	in_tile_menu:  bool,
-	tile_menu_selection: Tile_Menu_Option,
+	in_action_menu: bool,
+	in_submenu:     bool,
+	menu:     Enumerated_Union(Submenu),
 	focused_tile: int,
 	player:   Resources,
 	enemy:    Resources,
@@ -49,6 +50,35 @@ Tile_Menu_Option :: enum {
 	Build_Transport,
 	Build_Upgrade,
 	Do_Mission,
+}
+
+Submenu :: union #no_nil {
+	Structure_Menu_Option,
+	Transport_Menu_Option,
+	Barracks_Upgrade_Menu_Option,
+	Mission_Menu_Option,
+}
+
+Structure_Menu_Option :: enum {
+	Build_Barracks,
+	Build_Forge
+}
+Transport_Menu_Option :: enum {
+	Road,
+	Aqueduct,
+	Train,
+}
+Barracks_Upgrade_Menu_Option :: enum {
+	Unit_Speed,
+	Unit_Health,
+	Unit_Power,
+	Unit_Capacity,
+}
+Mission_Menu_Option :: enum {
+	Laner_Gather_Resource,
+	Laner_Fight, // Retreats at low health. If speed too low, can die.
+	Spy_Tile,
+	Spy_Sabotage_Tile,
 }
 
 // The last user to work the improvement.
@@ -180,23 +210,44 @@ SPACER :: 16
 
 @export
 game_step :: proc () {
-	eph_in_tile_menu: bool
-	// TODO: Wraps to 0 and TILES-1 on vertical movement.
-	if gs.in_tile_menu {
+	eph_in_action_menu: bool
+	eph_in_submenu: bool
+	if gs.in_action_menu {
 		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			enum_decrement_wrap(&gs.tile_menu_selection)
+			eu_prev_tag(&gs.menu)
+			eu_print(&gs.menu)
 		}
 		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-			enum_increment_wrap(&gs.tile_menu_selection)
+			eu_next_tag(&gs.menu)
+			eu_print(&gs.menu)
+			// fmt.printfln("Menu Case: %v", gs.menu)
 		}
-		if sugar.on_button_press(.Left) || sugar.on_key_press(.A) {
-		}
-		if sugar.on_button_press(.Right) || sugar.on_key_press(.D) {
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			gs.in_submenu = true
+			eph_in_submenu = true
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			gs.in_tile_menu = false
+			gs.in_action_menu = false
 		}
-	} else {
+	} else if gs.in_submenu {
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			eu_add_to_case(&gs.menu, -1)
+			fmt.printfln("SubMenu Case: %v", gs.menu)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			eu_add_to_case(&gs.menu, +1)
+			fmt.printfln("SubMenu Case: %v", gs.menu)
+		}
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			fmt.printfln("Entered SubMenu %v", gs.menu)
+			// try_start_project()
+		}
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			gs.in_action_menu = true
+			eph_in_action_menu = true
+		}
+	} else /* In overworld */ {
+		// TODO: Wraps to 0 and TILES-1 on vertical movement.
 		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
 			gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
 		}
@@ -215,22 +266,18 @@ game_step :: proc () {
 			row_max := row_min + COLUMNS - 1
 			gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
 		}
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			fmt.printfln("Entered Menu %v", gs.menu)
+			gs.in_action_menu = true
+			eph_in_action_menu = true
+		}
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			// On tiles, nothing to go back to.
+		}
 	}
+
 	if sugar.on_button_press(.Y) || sugar.on_key_press(.E) {
 		gs.zoom = !gs.zoom
-	}
-	if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-
-	}
-	if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-		if !gs.in_tile_menu {
-			gs.in_tile_menu = true
-			eph_in_tile_menu = true
-		} else {
-			// INTENT: already in tile menu, select something.
-			fmt.printfln("Selected %v", gs.tile_menu_selection)
-			// try_start_project()
-		}
 	}
 
 	bg := rect()
@@ -252,6 +299,7 @@ game_step :: proc () {
 	}
 
 	focused_tile := &gs.tiles[gs.focused_tile]
+
 	tile_highlight := rect()
 	tile_highlight.basis = focused_tile.entity.basis
 	tile_highlight.position.xy = focused_tile.entity.position.xy
@@ -291,7 +339,7 @@ game_step :: proc () {
 	// lerp a highlighter from the tile to the menu
 	menu_highlight := rect()
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
-	if eph_in_tile_menu {
+	if eph_in_action_menu {
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
 			start = transform_combine(tile_highlight.basis, tile_highlight.transform),
@@ -306,7 +354,14 @@ game_step :: proc () {
 	}
 	menu_highlight.color = color("ff6")
 	menu_highlight.color.a = sinbh(2*time)
-}
+
+	if gs.in_action_menu {
+		tile_highlight.color.a = 0.3
+	} else {
+		menu_highlight.color.a = 0	
+	}
+
+}// game step
 
 text_list_item :: proc (
 	label: string,
