@@ -38,11 +38,11 @@ Game_State :: struct {
 	state_changed_this_frame: bool,
 	prev_state:     States,
 	state:          States,
-	panel_menu_state: Panel_Menu_State,
+	panel_menu_state:  Panel_Menu_State,
 	//
-	build_menu_state:     Build_Menu,
-	upgrade_menu_state:   Upgrade_Menu,
-	mission_menu_state:   Mission_Menu,
+	build_menu_state:   Build_Menu,
+	upgrade_menu_state: Upgrade_Menu,
+	mission_menu_state: Mission_Menu,
 	//
 	focused_tile:   int,
 	player: Resources,
@@ -268,7 +268,6 @@ game_step :: proc () {
 		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
 			enum_increment_wrap(&gs.panel_menu_state)
 		}
-
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.panel_menu_state {
 			case .Build_Menu:     set_state(.Build_Menu)
@@ -281,6 +280,12 @@ game_step :: proc () {
 		}
 	//////////////////////////////////////////////////////////////////////////////
 	case .Build_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.build_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.build_menu_state)
+		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.build_menu_state {
 			case .Build_Barracks:
@@ -295,6 +300,12 @@ game_step :: proc () {
 		}
 	//////////////////////////////////////////////////////////////////////////////
 	case .Upgrade_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.upgrade_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.upgrade_menu_state)
+		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.upgrade_menu_state {
 			case .Unit_Speed:
@@ -308,6 +319,12 @@ game_step :: proc () {
 		}
 	//////////////////////////////////////////////////////////////////////////////
 	case .Mission_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.mission_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.mission_menu_state)
+		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.mission_menu_state {
 			case .Laner_Gather_Resource:
@@ -368,11 +385,13 @@ game_step :: proc () {
 		pad_box(16),
 		text("ACTIONS:", .bold_pixel),
 	)
+	menu_start: int = len(menu)
 	if contains([]States{.Overworld, .Panel_Menu}, gs.state) {
-		menu_structure := text("+ Structure", .bold_pixel) // Barracks, Forge,
-		menu_upgrade := text("+ Upgrade", .bold_pixel)     // Barracks, Forge (unit stats, city stats)
-		menu_mission := text("+ Mission", .bold_pixel)     // Spy, Sabotage, Gather-Resource(N)
-		append(&menu, menu_structure, menu_upgrade, menu_mission)
+		append(&menu, 
+			text("+ Structure", .bold_pixel),
+			text("+ Upgrade", .bold_pixel),
+			text("+ Mission", .bold_pixel),
+		)
 	}
 	switch gs.state {
 	case .Overworld:
@@ -428,13 +447,21 @@ game_step :: proc () {
 	// 		// data.sink.position.z = next_z()
 	// 	})
 	// }
-	menu_highlight.basis.scale.xy = {PANEL_SIZE.x, 16}
 	uncenter_rect(menu_highlight)
-	menu_highlight.position.xy = {5,5}
+	menu_highlight.basis.scale.xy = {PANEL_SIZE.x, 16}
+	menu_offset: int
+	switch gs.state {
+	case .Overworld:
+	case .Panel_Menu:   menu_offset = cast(int) gs.panel_menu_state
+	case .Build_Menu:   menu_offset = cast(int) gs.build_menu_state
+	case .Upgrade_Menu: menu_offset = cast(int) gs.upgrade_menu_state
+	case .Mission_Menu: menu_offset = cast(int) gs.mission_menu_state
+	}
+	menu_highlight.position.y = menu[menu_start + menu_offset].position.y - 4
 	menu_highlight.color = color("ff6")
-	menu_highlight.color.a = sinbh(2*time)
+	menu_highlight.color.a = sinbh(2*time) * 0.5
 
-	if gs.state == .Panel_Menu {
+	if gs.state != .Overworld {
 		tile_highlight.color.a = 0.3
 	} else {
 		menu_highlight.color.a = 0	
