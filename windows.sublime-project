@@ -1,6 +1,7 @@
 {
 	"folders":
 	[
+		// Desktop
 		{
 			"path": ".",
 		},
@@ -11,5 +12,13 @@
 		{
 			"path": "C:\\Users\\thatl\\usr\\Applications\\sublime_text\\Data\\Packages\\User",
 		},
+		// Legion
+		{
+			"path": "C:\\Users\\leeco\\Documents\\GitHub\\Odin",
+			"file_include_patterns": ["*.odin", "*.js"],
+		},
+		{
+			"path": "C:\\Users\\leeco\\AppData\\Roaming\\Sublime Text\\Packages\\User",
+		}
 	],
 }

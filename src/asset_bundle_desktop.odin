@@ -55,7 +55,7 @@ desktop_load_binary_asset_cache :: proc () {
 		bundle_textures(USE_BINARY_ASSET_CACHE)
 		err: os2.Error
 		texture_atlas_bytes,    err = os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
-	assert(err == nil)
+	assert(err == nil) // TODO: Occurs when no textures were packed.
 		texture_atlas_metadata, err = os2.read_entire_file(TEXTURE_ATLAS_METADATA, context.allocator)
 	assert(err == nil)
 	}
@@ -85,8 +85,8 @@ log_time("render_font")
 	atlas_size: [2]int
 	pack_ctx: stbtt.pack_context
 	atlas_bytes := make([]u8, MAX_ATLAS_BYTES)
-	pack_ranges := make([]Pack_Range, FONT_COUNT)
-	rects := make([]stbrp.Rect, GLYPH_COUNT * FONT_COUNT)
+	pack_ranges := make([dynamic]Pack_Range)
+rects := make([]stbrp.Rect, GLYPH_COUNT * FONT_COUNT)
 	raw_rects := raw_data(rects)
 	stbtt.PackBegin(
 		spc = &pack_ctx,
@@ -98,7 +98,6 @@ log_time("render_font")
 		alloc_context = nil)
 	stbtt.PackSetOversampling(&pack_ctx, 3, 3)
 	total_rects: c.int = 0
-	font_index: int = 0
 	font_files, dir_err := read_files_in_directory_with_suffix("../assets", "ttf")
 	if dir_err != nil {
 		log.errorf("failed to read fonts %v", dir_err)
@@ -161,7 +160,7 @@ log_time("render_font")
 		for usage in usages {
 			height_px := height_px_for_usage[usage]
 			font: ^Font = &globals.fonts[usage][variant]
-			
+
 			ok, fontinfo := load_ttf(font_file.name, font_file.data, font)
 			if !ok {
 				log.errorf("Font parsing failed. %v", font_file.name)
@@ -179,14 +178,13 @@ log_time("render_font")
 			rects_so_far := total_rects
 			range_rects := rects[rects_so_far:rects_so_far+GLYPH_COUNT]
 			num_rects := stbtt.PackFontRangesGatherRects(&pack_ctx, &fontinfo, &range, 1, raw_data(range_rects))
-			pack_ranges[font_index] = Pack_Range {
+			append(&pack_ranges, Pack_Range {
 				range_rects,
 				font,
 				range,
 				fontinfo,
-			}
+			})
 			total_rects += num_rects
-			font_index += 1
 			if num_rects < 1 {
 				log.warnf("GatherRects found no rects in font: %v", font_file.name)
 				continue
@@ -195,8 +193,10 @@ log_time("render_font")
 		} // for usage
 	} // for file
 
+
 	stbtt.PackFontRangesPackRects(&pack_ctx, raw_data(rects), total_rects)
 	for &pack_range in pack_ranges {
+		// assert(pack_range.rects != nil)
 		ok := cast(bool) stbtt.PackFontRangesRenderIntoRects(
 			&pack_ctx,
 			&pack_range.info,
