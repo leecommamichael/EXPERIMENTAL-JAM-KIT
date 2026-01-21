@@ -405,11 +405,12 @@ game_step :: proc () {
 		)
 	} // switch //////////////////////////////////////////////////////////////////
 
+	panel_list := column(..menu[:])
+	panel_list_size := measure_entity(panel_list)
+	height_to_pin_atop := PANEL_SIZE.y - panel_list_size.y
 	col := ui_element(
-		column(
-			..menu[:],
-		),
-		position = Vec2{6, 100},
+		panel_list,
+		position = Vec2{6, height_to_pin_atop},
 	)
 
 	// lerp a highlighter from the tile to the menu
