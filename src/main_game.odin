@@ -44,7 +44,7 @@ Game_State :: struct {
 	upgrade_menu_state: Upgrade_Menu,
 	mission_menu_state: Mission_Menu,
 	//
-	focused_tile:   int,
+	focused_tile: int,
 	player: Resources,
 	enemy:  Resources,
 	tiles:  [TILES]Tile,
@@ -67,7 +67,7 @@ Panel_Menu_State :: enum {
 
 Build_Menu :: enum {
 	Build_Barracks,
-	Build_Forge,
+	Build_Workshop,
 	Build_Road,
 	Build_Aqueduct,
 	Build_Train,
@@ -102,8 +102,10 @@ Tile :: struct {
 
 Tile_Type :: enum {
 	Grass,
-	Ore,         // Build roads, forge, markets, barracks
+	// Resources
+	Ore,         // Build roads, workshop, markets, barracks
 	Food, Water, // Modulates spawn rate
+	// Buildings
 	Workshop,    // improve/unlock units/resources
 	Market,      // strengthen population
 	Barracks,    // raise population
@@ -113,10 +115,12 @@ Tile_Type :: enum {
 }
 
 Project :: struct {
-	start_time: time.Tick,
-	max_time:   time.Duration,
-	cost:       Resources,
-	finished:   bool,
+	start_time:    time.Tick,
+	max_time:      time.Duration, // workers are temp cost.
+	cost:          Resources,
+	new_tile_type: Tile_Type,
+	happening:     bool,
+	finished:      bool,
 }
 
 Resources :: struct {
@@ -127,10 +131,15 @@ Resources :: struct {
 }
 
 project_completion_pct :: proc (it: Project) -> f32 {
-	return f32(time.tick_diff(it.start_time, time.tick_now()) / it.max_time)
+	return f32(time.tick_diff(it.start_time, time.tick_now())) / f32(it.max_time)
 }
 
 try_start_project :: proc (tile: ^Tile, project: Project) -> (started: bool) {
+	if tile == nil\
+	|| tile.project.happening {
+	 return false 
+	}
+
 	if gs.player.ore >= project.cost.ore\
 	&& gs.player.food >= project.cost.food\
 	&& gs.player.water >= project.cost.water\
@@ -142,8 +151,9 @@ try_start_project :: proc (tile: ^Tile, project: Project) -> (started: bool) {
 }
 
 start_project :: proc (tile: ^Tile, project: Project) {
-	ensure(tile.owner == .None && tile.project.finished)
+	ensure(tile.owner != .Enemy && !tile.project.happening)
 	tile.project = project
+	tile.project.happening = true
 	tile.owner = .Player
 	gs.player.ore -= tile.project.cost.ore
 	gs.player.food -= tile.project.cost.food
@@ -153,7 +163,9 @@ start_project :: proc (tile: ^Tile, project: Project) {
 
 finish_project :: proc (tile: ^Tile) {
 	ensure(tile.owner == .Player && !tile.project.finished)
+	tile.project.happening = false
 	tile.project.finished = true
+	tile.resource = tile.project.new_tile_type
 	gs.player.workers += tile.project.cost.workers
 }
 
@@ -202,11 +214,17 @@ game_init :: proc () {
 			water_remaining -= 1
 		}
 	}
+
+	// Start tiles
 	gs.tiles[0].resource = .Barracks
 	gs.tiles[0].owner = .Player
 	gs.tiles[TILES-1].resource = .Barracks
 	gs.tiles[TILES-1].owner = .Enemy
-	gs.player.workers = 1
+	// Starting stats
+	gs.player.workers = 20
+	gs.player.food = 20
+	gs.player.water = 20
+	gs.player.ore = 20
 }
 
 PANEL_SIZE: Vec2 = {120, 400}
@@ -228,6 +246,10 @@ state_changed :: proc () -> bool {
 state_changed_from_to :: proc (prev, current: States) -> bool {
 	if !gs.state_changed_this_frame do return false
 	return prev == gs.prev_state && current == gs.state
+}
+
+get_focused_tile :: proc () -> ^Tile {
+	return &gs.tiles[gs.focused_tile]
 }
 
 @export
@@ -289,8 +311,16 @@ game_step :: proc () {
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.build_menu_state {
 			case .Build_Barracks:
-			case .Build_Forge:
+			case .Build_Workshop:
 			case .Build_Road:
+				try_start_project(get_focused_tile(), {
+					time.tick_now(),
+					1300 * time.Millisecond,
+					resource_cost[.Path],
+					.Path,
+					false,
+					false,
+				})
 			case .Build_Aqueduct:
 			case .Build_Train:
 			}
@@ -356,11 +386,17 @@ game_step :: proc () {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
 		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
-		it := tile_entity(basis, &gs.tiles[i], loop_hash("tile", i))
+		tile: ^Tile = &gs.tiles[i]
+		if tile.project.happening {
+			if project_completion_pct(tile.project) >= 1.0 {
+				finish_project(tile)
+			}
+		}
+		it := tile_entity(basis, tile, loop_hash("tile", i))
 		gs.tiles[i].entity = it
 	}
 
-	focused_tile := &gs.tiles[gs.focused_tile]
+	focused_tile := get_focused_tile()
 
 	tile_highlight := rect()
 	tile_highlight.basis = focused_tile.entity.basis
@@ -407,7 +443,7 @@ game_step :: proc () {
 	case .Build_Menu:
 		append(&menu,
 			text("+ Barracks", .bold_pixel),
-			text("+ Forge", .bold_pixel),
+			text("+ Workshop", .bold_pixel),
 			text("+ Road", .bold_pixel),
 			text("+ Aqueduct", .bold_pixel),
 			text("+ Train", .bold_pixel),
@@ -529,15 +565,23 @@ tile_entity :: proc (
 		shape.basis = basis
 		shape.position.xy = it.position.xy
 		shape.color.rgb = resource_colors[.Water]
-		shape.basis.scale.xy += 0
 		it.color.rgb = 0
 	} else if tile.resource == .Grass {
 		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Barracks {
 		it.color.rgb = resource_colors[tile.resource]
+	} else if tile.resource == .Path {
+		it.color.rgb = resource_colors[tile.resource]
 	} else {
 		log.infof("undecorated resource: %v", tile.resource)
 	}
+
+	if tile.project.happening {
+		pct := project_completion_pct(tile.project)
+		fmt.printfln("%v", pct)
+		it.basis.scale *= clamp(pct, 0, 1)
+	}
+
 	return it, is_new
 }
 
@@ -554,4 +598,19 @@ resource_colors: [Tile_Type]Color3 = {
 
 	.Path     = {0.541, 0.290, 0.192},
 	.Canal    = {0.208, 0.514, 0.749},
+}
+
+resource_cost: [Tile_Type]Resources = {
+	.Grass    = { workers = 1},
+
+	.Ore      = { workers = max(int) },
+	.Food     = { workers = max(int) },
+	.Water    = { workers = max(int) },
+
+	.Workshop = { workers = 1, ore = 1 },
+	.Market   = { workers = 1, ore = 1, food = 1, water = 1 },
+	.Barracks = { workers = 1 },
+
+	.Path     = { workers = 1, ore = 1, food = 1, water = 1 },
+	.Canal    = { workers = 1, ore = 1, food = 1, water = 1 },
 }
