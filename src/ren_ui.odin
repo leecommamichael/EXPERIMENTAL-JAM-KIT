@@ -63,6 +63,16 @@ column :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
 	return entity
 }
 
+// stack :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
+// 	entity, is_new := get_entity(hash)
+// 	entity.ui.type = .Column
+// 	entity.children = make([]^Entity, len(children), context.temp_allocator)
+// 	copy(entity.children, children)
+// 	entity.flags += { .Hidden }
+// 	init_list_children(entity, .Vertical)
+// 	return entity
+// }
+
 pad_box :: proc (
 	size: f32,
 	hash: Hash = #caller_location

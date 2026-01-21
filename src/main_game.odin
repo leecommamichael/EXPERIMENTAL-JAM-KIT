@@ -40,10 +40,9 @@ Game_State :: struct {
 	state:          States,
 	panel_menu_state: Panel_Menu_State,
 	//
-	build_menu:     Build_Menu,
-	transport_menu: Transport_Menu,
-	upgrade_menu:   Upgrade_Menu,
-	mission_menu:   Mission_Menu,
+	build_menu_state:     Build_Menu,
+	upgrade_menu_state:   Upgrade_Menu,
+	mission_menu_state:   Mission_Menu,
 	//
 	focused_tile:   int,
 	player: Resources,
@@ -56,14 +55,12 @@ States :: enum {
 	Overworld,
 	Panel_Menu,
 	Build_Menu,
-	Transport_Menu,
 	Upgrade_Menu,
 	Mission_Menu,
 }
 
 Panel_Menu_State :: enum {
 	Build_Menu,
-	Transport_Menu,
 	Upgrade_Menu,
 	Mission_Menu,
 }
@@ -71,11 +68,9 @@ Panel_Menu_State :: enum {
 Build_Menu :: enum {
 	Build_Barracks,
 	Build_Forge,
-}
-Transport_Menu :: enum {
-	Road,
-	Aqueduct,
-	Train,
+	Build_Road,
+	Build_Aqueduct,
+	Build_Train,
 }
 Upgrade_Menu :: enum {
 	Unit_Speed,
@@ -277,31 +272,50 @@ game_step :: proc () {
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.panel_menu_state {
 			case .Build_Menu:     set_state(.Build_Menu)
-			case .Transport_Menu: set_state(.Transport_Menu)
 			case .Upgrade_Menu:   set_state(.Upgrade_Menu)
 			case .Mission_Menu:   set_state(.Mission_Menu)
 			}
 		}
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			set_state(.Overworld)
+		}
 	//////////////////////////////////////////////////////////////////////////////
 	case .Build_Menu:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-
+			switch gs.build_menu_state {
+			case .Build_Barracks:
+			case .Build_Forge:
+			case .Build_Road:
+			case .Build_Aqueduct:
+			case .Build_Train:
+			}
 		}
-		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			set_state(.Panel_Menu)
-		}
-	//////////////////////////////////////////////////////////////////////////////
-	case .Transport_Menu:
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
 	//////////////////////////////////////////////////////////////////////////////
 	case .Upgrade_Menu:
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			switch gs.upgrade_menu_state {
+			case .Unit_Speed:
+			case .Unit_Health:
+			case .Unit_Power:
+			case .Unit_Capacity:
+			}
+		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
 	//////////////////////////////////////////////////////////////////////////////
 	case .Mission_Menu:
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			switch gs.mission_menu_state {
+			case .Laner_Gather_Resource:
+			case .Laner_Fight: // Retreats at low health. If speed too low, can die.
+			case .Spy_Tile:
+			case .Spy_Sabotage_Tile:
+			}
+		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
@@ -342,62 +356,80 @@ game_step :: proc () {
 	tile_highlight.color = color("ff6")
 	tile_highlight.color.a = sinbh(2*time)
 
-	menu: []^Entity
+	menu := make([dynamic]^Entity, context.temp_allocator)
+	append(&menu, 
+		pad_box(16),
+		text_list_item("ORE:", fmt.tprintf("%d", gs.player.ore)),
+		text_list_item("FOOD:", fmt.tprintf("%d", gs.player.food)),
+		text_list_item("WATER:", fmt.tprintf("%d", gs.player.water)),
+		text_list_item("WORKER:", fmt.tprintf("%d", gs.player.workers)),
+		pad_box(16),
+		text_list_item("THIS TILE:", fmt.tprintf("%v", focused_tile.resource)),
+		pad_box(16),
+		text("ACTIONS:", .bold_pixel),
+	)
+	if contains([]States{.Overworld, .Panel_Menu}, gs.state) {
+		menu_structure := text("+ Structure", .bold_pixel) // Barracks, Forge,
+		menu_upgrade := text("+ Upgrade", .bold_pixel)     // Barracks, Forge (unit stats, city stats)
+		menu_mission := text("+ Mission", .bold_pixel)     // Spy, Sabotage, Gather-Resource(N)
+		append(&menu, menu_structure, menu_upgrade, menu_mission)
+	}
 	switch gs.state {
 	case .Overworld:
 	//////////////////////////////////////////////////////////////////////////////
 	case .Panel_Menu:
 	//////////////////////////////////////////////////////////////////////////////
 	case .Build_Menu:
-	//////////////////////////////////////////////////////////////////////////////
-	case .Transport_Menu:
+		append(&menu,
+			text("+ Barracks", .bold_pixel),
+			text("+ Forge", .bold_pixel),
+			text("+ Road", .bold_pixel),
+			text("+ Aqueduct", .bold_pixel),
+			text("+ Train", .bold_pixel),
+		)
 	//////////////////////////////////////////////////////////////////////////////
 	case .Upgrade_Menu:
+		append(&menu,
+			text("+ Unit Speed", .bold_pixel),
+			text("+ Unit Health", .bold_pixel),
+			text("+ Unit Power", .bold_pixel),
+			text("+ Unit Capacity", .bold_pixel),
+		)
 	//////////////////////////////////////////////////////////////////////////////
 	case .Mission_Menu:
+		append(&menu,
+			text("+ Gather Resource", .bold_pixel),
+			text("+ Conquer", .bold_pixel),
+			text("+ Spy on Tile", .bold_pixel),
+			text("+ Sabotage Tile", .bold_pixel),
+		)
 	} // switch //////////////////////////////////////////////////////////////////
-
-	menu_structure := text("+ Structure", .bold_pixel) // Barracks, Forge,
-	menu_transport := text("+ Transport", .bold_pixel) // Road, Aqueduct, Train
-	menu_upgrade := text("+ Upgrade", .bold_pixel)     // Barracks, Forge (unit stats, city stats)
-	menu_mission := text("+ Mission", .bold_pixel)     // Spy, Sabotage, Gather-Resource(N)
 
 	col := ui_element(
 		column(
-			pad_box(16),
-			text_list_item("ORE:", fmt.tprintf("%d", gs.player.ore)),
-			text_list_item("FOOD:", fmt.tprintf("%d", gs.player.food)),
-			text_list_item("WATER:", fmt.tprintf("%d", gs.player.water)),
-			text_list_item("WORKER:", fmt.tprintf("%d", gs.player.workers)),
-			pad_box(16),
-			text_list_item("THIS TILE:", fmt.tprintf("%v", focused_tile.resource)),
-			pad_box(16),
-			text("ACTIONS:", .bold_pixel),
-			menu_structure,
-			menu_transport,
-			menu_upgrade,
-			menu_mission,
-			pad_box(16),
+			..menu[:],
 		),
 		position = Vec2{6, 100},
 	)
 
 	// lerp a highlighter from the tile to the menu
 	menu_highlight := rect()
-	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
-	if state_changed_from_to(.Overworld, .Panel_Menu) {
-		lerp_data: Transform_Lerp_Data = {
-			sink  = &menu_highlight.transform,
-			start = transform_combine(tile_highlight.basis, tile_highlight.transform),
-			end   = transform_combine(menu_structure.basis, menu_structure.transform),
-		}
-		lerp_data.end.scale.xy = measure_text(menu_structure^)
-		lerp_data.end.position.x = lerp_data.end.scale.x / 2 + 6
-		timed_effect(lerp_data, 0.2, proc (data: ^Transform_Lerp_Data, percent: f32) {
-			data.sink^ = lerp_transform(data.start, data.end, percent)
-			// data.sink.position.z = next_z()
-		})
-	}
+	// Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
+	// if state_changed_from_to(.Overworld, .Panel_Menu) {
+	// 	lerp_data: Transform_Lerp_Data = {
+	// 		sink  = &menu_highlight.transform,
+	// 		start = transform_combine(tile_highlight.basis, tile_highlight.transform),
+	// 		end   = { {0,0,0}, {}, {PANEL_SIZE.x,44,0}},
+	// 	}
+	// 	lerp_data.end.position.x = lerp_data.end.scale.x / 2 + 6
+	// 	timed_effect(lerp_data, 0.2, proc (data: ^Transform_Lerp_Data, percent: f32) {
+	// 		data.sink^ = lerp_transform(data.start, data.end, percent)
+	// 		// data.sink.position.z = next_z()
+	// 	})
+	// }
+	menu_highlight.basis.scale.xy = {PANEL_SIZE.x, 16}
+	uncenter_rect(menu_highlight)
+	menu_highlight.position.xy = {5,5}
 	menu_highlight.color = color("ff6")
 	menu_highlight.color.a = sinbh(2*time)
 
