@@ -383,12 +383,18 @@ game_step :: proc () {
 		pad_box(16),
 		text_list_item("THIS TILE:", fmt.tprintf("%v", focused_tile.resource)),
 		pad_box(16),
-		text("ACTIONS:", .bold_pixel),
 	)
+	switch gs.state {
+	case .Overworld:    append(&menu, text("  ACTIONS:", .bold_pixel))
+	case .Panel_Menu:   append(&menu, text("  ACTIONS:", .bold_pixel))
+	case .Build_Menu:   append(&menu, text("< BUILD:", .bold_pixel))
+	case .Upgrade_Menu: append(&menu, text("< UPGRADE:", .bold_pixel))
+	case .Mission_Menu: append(&menu, text("< MISSION:", .bold_pixel))
+	}
 	menu_start: int = len(menu)
 	if contains([]States{.Overworld, .Panel_Menu}, gs.state) {
 		append(&menu, 
-			text("+ Structure", .bold_pixel),
+			text("+ Build", .bold_pixel),
 			text("+ Upgrade", .bold_pixel),
 			text("+ Mission", .bold_pixel),
 		)
