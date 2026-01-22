@@ -95,8 +95,8 @@ Tile_Owner :: enum {
 Tile :: struct {
 	index:    int,
 	resource: Tile_Type,
-	owner:    Tile_Owner, // Determines who is doing the project.
-	project:  Project,
+	owner:    Tile_Owner, // Determines who is doing the action.
+	action:   Action,
 	entity:   ^Entity,
 }
 
@@ -110,16 +110,68 @@ Tile_Type :: enum {
 	Market,      // strengthen population
 	Barracks,    // raise population
 	Path,        // Allows non-scout units to move fast.
-	// Enhanced water source. Maybe auto resource.
-	Canal,
+	Aqueduct,// Enhanced water source. Maybe auto resource.
+	Train,// Railway
 }
 
-Project :: struct {
-	start_time:    time.Tick,
-	cost:          Resources,
-	new_tile_type: Tile_Type,
-	happening:     bool,
-	finished:      bool,
+Action :: struct {
+	// output/yield/result
+	build_result:   Maybe(Build_Menu),
+	upgrade_result: Maybe(Upgrade_Menu),
+	mission:        Maybe(Mission_Menu),
+	// input
+	cost:           Resources,
+	one_off:        bool,
+
+	// transient state
+	workers_to_reimburse: int,
+	leaders_to_reimburse: int,
+	start_time:     time.Tick, // start_action, finish_action
+	happening:      bool,      // start_action, finish_action
+	finished:       bool,      // start_action, finish_action
+}
+
+action_for_building :: proc (option: Build_Menu) -> (action: Action) {
+	action.build_result = option
+
+	switch option {
+	case .Build_Barracks: action.cost = barracks_cost
+	case .Build_Workshop: action.cost = workshop_cost
+	case .Build_Path:     action.cost = path_cost
+	case .Build_Aqueduct: action.cost = aqueduct_cost
+	case .Build_Train:    action.cost = train_cost
+	}
+	return
+}
+
+action_for_upgrade :: proc (option: Upgrade_Menu) -> (action: Action) {
+	action.upgrade_result = option
+	action.one_off = true
+
+	switch gs.upgrade_menu_state {
+	case .Unit_Speed:    action.cost = unit_speed_cost
+	case .Unit_Health:   action.cost = unit_health_cost
+	case .Unit_Power:    action.cost = unit_power_cost
+	case .Unit_Capacity: action.cost = unit_capacity_cost
+	}
+	return
+}
+
+action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
+	action.mission = option
+
+	switch gs.mission_menu_state {
+	case .Laner_Gather_Resource:
+		action.cost = gather_cost
+	case .Laner_Fight:
+		action.cost = fight_cost
+	case .Spy_Tile:
+		action.cost = spy_cost
+	case .Spy_Sabotage_Tile:
+		action.cost = sabotage_cost
+		action.one_off = true
+	}
+	return action
 }
 
 Resources :: struct #all_or_none {
@@ -127,95 +179,128 @@ Resources :: struct #all_or_none {
 	food:    int,
 	water:   int,
 	workers: int,
-	leaders: int, // Only exists cause you can soft-lock otherwise (use all workers)
+	leaders: int,
 	time:    time.Duration, // time dwelling on-location (not traversal)
 }
+BONKERS_RESOURCES :: Resources {
+	ore     = max(int),
+	food    = max(int),
+	water   = max(int),
+	workers = max(int),
+	leaders = max(int),
+	//
+	time = 0,
+}
 
-project_completion_pct :: proc (it: Project) -> f32 {
+action_completion_pct :: proc (it: Action) -> f32 {
 	return f32(time.tick_diff(it.start_time, time.tick_now())) / f32(it.cost.time)
 }
 
-Affordability :: enum {
-	No, Simple, With_Subs
+Cost_Estimate :: struct {
+	can_simply_afford: bool,
+	can_afford_with_subs: bool,
+	sub_worker_cost: int,
+	sub_leaders_to_reimburse: int,
+	sub_workers_to_reimburse: int,
 }
-get_affordability :: proc (cost: Resources) -> Affordability {
-	if can_simply_afford(cost) {
-		return .Simple
-	} else if ok, subs := can_afford_subbing_workers_with_leaders(cost); ok {
-		return .With_Subs
-	} else {
-		return .No
+
+// INTENT: Adjust the cost of Resources so the correct # of leaders is reimbursed.
+// INTENT: Substitutions make the thing simply-affordable.
+estimate_cost :: proc (cost: Resources) -> Cost_Estimate {
+	if gs.player.ore < cost.ore\
+	&& gs.player.food < cost.food\
+	&& gs.player.water < cost.water {
+		return { can_simply_afford = false }
 	}
+
+	if gs.player.workers >= cost.workers\
+	&& gs.player.leaders >= cost.leaders {
+		return { can_simply_afford = true }
+	}
+
+	workers_needed := gs.player.workers - cost.workers
+	if workers_needed > 0 {
+		if gs.player.leaders < workers_needed {
+			// Not enough leaders to cover worker shortage.
+			return { can_simply_afford = false, can_afford_with_subs = false}
+		}
+	}
+
+	estimate: Cost_Estimate = {
+		can_simply_afford = false,
+		can_afford_with_subs = true,
+		sub_worker_cost = gs.player.workers,
+		sub_leaders_to_reimburse = workers_needed,
+		sub_workers_to_reimburse = gs.player.workers
+	}
+	return estimate
 }
 
-can_simply_afford :: proc (cost: Resources) -> bool {
-	return gs.player.ore >= cost.ore\
-	&&     gs.player.food >= cost.food\
-	&&     gs.player.water >= cost.water\
-	&&     gs.player.workers >= cost.workers
-}
+try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
+	action := action
 
-can_afford_subbing_workers_with_leaders :: proc (
-	cost: Resources
-) -> (ok: bool, leaders_needed: int) {
-	leaders_needed = cost.workers - gs.player.workers
-
-	ok = gs.player.ore >= cost.ore\
-	&&   gs.player.food >= cost.food\
-	&&   gs.player.water >= cost.water\
-	&&   gs.player.leaders >= leaders_needed
-	return
-}
-
-try_start_project :: proc (tile: ^Tile, project: Project) -> (started: bool) {
 	if tile == nil\
-	|| tile.project.happening {
+	|| tile.action.happening {
 	 return false 
 	}
 
-	if can_simply_afford(project.cost) {
-		simply_buy_project(project)
-	} else if ok, subs := can_afford_subbing_workers_with_leaders(project.cost); ok {
-		buy_project_subbing_workers_with_leaders(project, subs)
+	estimate := estimate_cost(action.cost)
+	if estimate.can_simply_afford {
+		simply_buy_action(action)
+	} else if estimate.can_afford_with_subs {
+		action.one_off = true // the game won't let you spend all your leaders permanently
+		action.cost.workers = estimate.sub_worker_cost
+		action.leaders_to_reimburse = estimate.sub_leaders_to_reimburse
+		action.workers_to_reimburse = estimate.sub_workers_to_reimburse
+		simply_buy_action(action)
 	} else {
 		return false
 	}
-	start_project(tile, project)
+	start_action(tile, action)
 	return true
 }
 
-simply_buy_project :: proc (project: Project) {
-	gs.player.ore -= project.cost.ore
-	gs.player.food -= project.cost.food
-	gs.player.water -= project.cost.water
-	gs.player.workers -= project.cost.workers
-	gs.player.leaders -= project.cost.leaders
+simply_buy_action :: proc (action: Action) {
+	gs.player.ore -= action.cost.ore
+	gs.player.food -= action.cost.food
+	gs.player.water -= action.cost.water
+	gs.player.workers -= action.cost.workers
+	gs.player.leaders -= action.cost.leaders
 }
 
-buy_project_subbing_workers_with_leaders :: proc (project: Project, leaders_subbing: int) {
-	gs.player.ore -= project.cost.ore
-	gs.player.food -= project.cost.food
-	gs.player.water -= project.cost.water
-	gs.player.workers -= project.cost.workers - leaders_subbing
-	gs.player.leaders -= leaders_subbing
-}
-
-start_project :: proc (tile: ^Tile, project: Project) {
-	ensure(tile.owner != .Enemy && !tile.project.happening)
-	tile.project = project
-	tile.project.happening = true
+start_action :: proc (tile: ^Tile, action: Action) {
+	ensure(tile.owner != .Enemy && !tile.action.happening)
+	tile.action = action
+	tile.action.start_time = time.tick_now()
+	tile.action.happening = true
 	tile.owner = .Player
-	// INTENT: When a project starts through the menu, put them on the map
-	//         such that it's easy to pick a new tile for a project.
+	// INTENT: When a action starts through the menu, put them on the map
+	//         such that it's easy to pick a new tile for a action.
 	set_state(States.Overworld)
 }
 
-finish_project :: proc (tile: ^Tile) {
-	ensure(tile.owner == .Player && !tile.project.finished)
-	tile.project.happening = false
-	tile.project.finished = true
-	tile.resource = tile.project.new_tile_type
-	gs.player.leaders += 1
+finish_action :: proc (tile: ^Tile) {
+	ensure(tile.owner == .Player && !tile.action.finished)
+	tile.action.happening = false
+	tile.action.finished = true
+	if menu_option, ok := tile.action.build_result.(Build_Menu); ok {
+		new_type: Tile_Type
+		switch menu_option {
+		case .Build_Barracks: new_type = Tile_Type.Barracks
+		case .Build_Workshop: new_type = Tile_Type.Workshop
+		case .Build_Path:     new_type = Tile_Type.Path
+		case .Build_Aqueduct: new_type = Tile_Type.Aqueduct
+		case .Build_Train:    new_type = Tile_Type.Train
+		}
+		tile.resource = new_type
+	}
+	if tile.action.one_off {
+		// Substitution & reimbursement only happens on one-off actions.
+		gs.player.leaders += tile.action.leaders_to_reimburse
+		gs.player.workers += tile.action.workers_to_reimburse
+	} else {
+		start_action(tile, tile.action)
+	}
 }
 
 import gl "angle"
@@ -359,20 +444,7 @@ game_step :: proc () {
 			enum_increment_wrap(&gs.build_menu_state)
 		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			switch gs.build_menu_state {
-			case .Build_Barracks:
-			case .Build_Workshop:
-			case .Build_Path:
-				try_start_project(get_focused_tile(), {
-					time.tick_now(),
-					path_cost,
-					.Path,
-					false,
-					false,
-				})
-			case .Build_Aqueduct:
-			case .Build_Train:
-			}
+			try_start_action(get_focused_tile(), action_for_building(gs.build_menu_state))
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
@@ -439,9 +511,9 @@ game_step :: proc () {
 		basis.scale = TILE_SIZE_PX * tile_scale()
 		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
 		tile: ^Tile = &gs.tiles[i]
-		if tile.project.happening {
-			if project_completion_pct(tile.project) >= 1.0 {
-				finish_project(tile)
+		if tile.action.happening {
+			if action_completion_pct(tile.action) >= 1.0 {
+				finish_action(tile)
 			}
 		}
 		it := tile_entity(basis, tile, loop_hash("tile", i))
@@ -557,16 +629,18 @@ game_step :: proc () {
 	menu_highlight.color.a = sinbh(2*time) * 0.5
 
 	if hovered_cost, hovered := hovered_action_cost(); hovered {
-		if can_simply_afford(hovered_cost) {
-			// no change
-		} else if ok, subs := can_afford_subbing_workers_with_leaders(hovered_cost); ok {
+		estimate := estimate_cost(hovered_cost)
+		switch {
+		case estimate.can_simply_afford: // no change to UI
+		case estimate.can_afford_with_subs:
 			menu_highlight.color = color("fff4")
 			tophat:=image("leader16.ase")
 			tophat.flags += {.Skip_Interpolation}
 			tophat.position.xy = hovered_text.position.xy - {5, 4}
-		} else {
+		case:
 			menu_highlight.color = color("f223")
 		}
+		
 	}
 	if gs.state == .Overworld {
 		menu_highlight.color.a = 0	
@@ -613,7 +687,7 @@ barracks_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 1,
-	time = 1300 * time.Millisecond
+	time = 1300 * time.Millisecond,
 }
 workshop_cost :: Resources {
 	ore     = 1,
@@ -621,7 +695,7 @@ workshop_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 1,
-	time = 1300 * time.Millisecond
+	time = 1300 * time.Millisecond,
 }
 // Gathering cost is 1 worker + distance / speed
 path_cost :: Resources {
@@ -630,7 +704,8 @@ path_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 1,
-	time = 1300 * time.Millisecond
+	time = 1300 * time.Millisecond,
+
 }
 aqueduct_cost :: Resources {
 	ore     = 1,
@@ -638,7 +713,8 @@ aqueduct_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 1,
-	time = 1300 * time.Millisecond
+	time = 1300 * time.Millisecond,
+
 }
 train_cost :: Resources {
 	ore     = 1,
@@ -646,7 +722,7 @@ train_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 1,
-	time = 1300 * time.Millisecond
+	time = 1300 * time.Millisecond,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -658,15 +734,15 @@ unit_speed_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 0,
-	time = 1300 * time.Millisecond
+	time = 5300 * time.Millisecond,
 }
-unit_health_cost :: Resources {
+unit_health_cost ::  Resources {
 	ore     = 1,
 	food    = 1,
 	water   = 1,
 	workers = 1,
 	leaders = 0,
-	time = 1300 * time.Millisecond
+	time = 5300 * time.Millisecond,
 }
 unit_power_cost :: Resources {
 	ore     = 1,
@@ -674,7 +750,7 @@ unit_power_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 0,
-	time = 1300 * time.Millisecond
+	time = 5300 * time.Millisecond,
 }
 unit_capacity_cost :: Resources {
 	ore     = 1,
@@ -682,7 +758,7 @@ unit_capacity_cost :: Resources {
 	water   = 1,
 	workers = 1,
 	leaders = 0,
-	time = 1300 * time.Millisecond
+	time = 5300 * time.Millisecond,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -738,20 +814,20 @@ build_menu_list_item :: proc (
 	_label := text(label, .bold_pixel, hash=loop_hash(label, 1))
 	_label.color = color("#aaa")
 
-	affordability: Affordability
+	estimate: Cost_Estimate
 	switch value {
-	case .Build_Barracks: affordability = get_affordability(barracks_cost)
-	case .Build_Workshop: affordability = get_affordability(workshop_cost)
-	case .Build_Path:     affordability = get_affordability(path_cost)
-	case .Build_Aqueduct: affordability = get_affordability(aqueduct_cost)
-	case .Build_Train:    affordability = get_affordability(train_cost)
+	case .Build_Barracks: estimate = estimate_cost(barracks_cost)
+	case .Build_Workshop: estimate = estimate_cost(workshop_cost)
+	case .Build_Path:     estimate = estimate_cost(path_cost)
+	case .Build_Aqueduct: estimate = estimate_cost(aqueduct_cost)
+	case .Build_Train:    estimate = estimate_cost(train_cost)
 	}
-	switch affordability {
-	case .Simple:
+	switch {
+	case estimate.can_simply_afford:
 		_label.color = color("#fff")
-	case .With_Subs:
+	case estimate.can_afford_with_subs:
 		_label.color = color("#fff7")
-	case .No:
+	case:
 		_label.color = color("#fff2")
 	}
 	return _label
@@ -764,19 +840,19 @@ upgrade_menu_list_item :: proc (
 	_label := text(label, .bold_pixel, hash=loop_hash(label, 1))
 	_label.color = color("#aaa")
 
-	affordability: Affordability
+	estimate: Cost_Estimate
 	switch value {
-	case .Unit_Speed:    affordability = get_affordability(unit_speed_cost)
-	case .Unit_Health:   affordability = get_affordability(unit_health_cost)
-	case .Unit_Power:    affordability = get_affordability(unit_power_cost)
-	case .Unit_Capacity: affordability = get_affordability(unit_capacity_cost)
+	case .Unit_Speed:    estimate = estimate_cost(unit_speed_cost)
+	case .Unit_Health:   estimate = estimate_cost(unit_health_cost)
+	case .Unit_Power:    estimate = estimate_cost(unit_power_cost)
+	case .Unit_Capacity: estimate = estimate_cost(unit_capacity_cost)
 	}
-	switch affordability {
-	case .Simple:
+	switch {
+	case estimate.can_simply_afford:
 		_label.color = color("#fff")
-	case .With_Subs:
+	case estimate.can_afford_with_subs:
 		_label.color = color("#fff7")
-	case .No:
+	case:
 		_label.color = color("#fff2")
 	}
 	return _label
@@ -788,19 +864,19 @@ mission_menu_list_item :: proc (
 ) -> ^Entity {
 	_label := text(label, .bold_pixel, hash=loop_hash(label, 1))
 
-	affordability: Affordability
+	estimate: Cost_Estimate
 	switch value {
-	case .Laner_Gather_Resource: affordability = get_affordability(gather_cost)
-	case .Laner_Fight:           affordability = get_affordability(fight_cost)
-	case .Spy_Tile:              affordability = get_affordability(spy_cost)
-	case .Spy_Sabotage_Tile:     affordability = get_affordability(sabotage_cost)
+	case .Laner_Gather_Resource: estimate = estimate_cost(gather_cost)
+	case .Laner_Fight:           estimate = estimate_cost(fight_cost)
+	case .Spy_Tile:              estimate = estimate_cost(spy_cost)
+	case .Spy_Sabotage_Tile:     estimate = estimate_cost(sabotage_cost)
 	}
-	switch affordability {
-	case .Simple:
+	switch {
+	case estimate.can_simply_afford:
 		_label.color = color("#fff")
-	case .With_Subs:
+	case estimate.can_afford_with_subs:
 		_label.color = color("#fff7")
-	case .No:
+	case:
 		_label.color = color("#fff2")
 	}
 	return _label
@@ -824,20 +900,6 @@ section_list_item :: proc (
 }
 
 tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
-// TBD
-// row_column_of_index :: proc (index: int) -> (row, column: int) {
-// 	row = index % COLUMNS
-// 	column = index / COLUMNS
-// }
-
-// position_of_tile_at_index :: proc () {
-// 		grid: Transform
-// 		grid.scale = TILE_SIZE_PX * tile_scale()
-// 		grid.position.xy = grid.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
-// 		it := tile_entity(grid, &gs.tiles[i], loop_hash("tile", i))
-// 		it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
-// }
-
 
 tile_entity :: proc (
 	basis: Transform,
@@ -871,8 +933,8 @@ tile_entity :: proc (
 		log.infof("undecorated resource: %v", tile.resource)
 	}
 
-	if tile.project.happening {
-		pct := project_completion_pct(tile.project)
+	if tile.action.happening {
+		pct := action_completion_pct(tile.action)
 		it.basis.scale *= clamp(pct, 0, 1)
 	}
 
@@ -891,5 +953,6 @@ resource_colors: [Tile_Type]Color3 = {
 	.Barracks = {0.769, 0.561, 0.376},
 
 	.Path     = {0.541, 0.290, 0.192},
-	.Canal    = {0.208, 0.514, 0.749},
+	.Aqueduct = {0.208, 0.514, 0.749},
+	.Train    = {0.441, 0.190, 0.092},
 }
