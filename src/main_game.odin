@@ -245,16 +245,16 @@ try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
 	}
 
 	estimate := estimate_cost(action.cost)
-	if estimate.can_simply_afford {
+	switch {
+	case estimate.can_simply_afford:
 		simply_buy_action(action)
-	} else if estimate.can_afford_with_subs {
+	case estimate.can_afford_with_subs:
 		action.one_off = true // the game won't let you spend all your leaders permanently
 		action.cost.workers = estimate.sub_worker_cost
 		action.leaders_to_reimburse = estimate.sub_leaders_to_reimburse
 		action.workers_to_reimburse = estimate.sub_workers_to_reimburse
 		simply_buy_action(action)
-	} else {
-		return false
+	case: return false // can't afford
 	}
 	start_action(tile, action)
 	return true
