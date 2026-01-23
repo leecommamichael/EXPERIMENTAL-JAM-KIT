@@ -15,6 +15,8 @@ import "core:math/linalg"
 NIBBLE :: 4 // half a byte
 find :: slice.linear_search
 contains :: slice.contains
+Empty_Struct :: struct {}
+Allocator :: runtime.Allocator
 
 // Returns a slice of the `n` elements from the end of `slice`.
 slice_end :: proc "contextless" (slice: $Indistinct/[]$T, n: int) -> []T {
@@ -85,7 +87,6 @@ is_float   :: intrinsics.type_is_float
 type_is_union :: intrinsics.type_is_union
 type_is_variant_of :: intrinsics.type_is_variant_of
 type_is_ordered_numeric :: intrinsics.type_is_ordered_numeric
-Empty_Struct :: struct {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Conversions

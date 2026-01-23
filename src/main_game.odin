@@ -93,11 +93,14 @@ Tile_Owner :: enum {
 }
 
 Tile :: struct {
-	index:    int,
-	resource: Tile_Type,
-	owner:    Tile_Owner, // Determines who is doing the action.
-	action:   Action,
-	entity:   ^Entity,
+	entity:     ^Entity,
+	index:      int,
+	column_row: [2]int,
+	resource:    Tile_Type,
+	owner:       Tile_Owner, // Determines who is doing the action.
+	action:      Action,
+	focused:           bool,
+	adjacent_to_focus: bool,
 }
 
 Tile_Type :: enum {
@@ -236,6 +239,107 @@ estimate_cost :: proc (cost: Resources) -> Cost_Estimate {
 	return estimate
 }
 
+index_from_column_row :: proc (tile: [2]int) -> int {
+	return (tile.x) + (tile.y * COLUMNS)
+}
+
+// In iterator in Odin is anything that:
+// -> (T, bool)
+// -> (T, int, bool)
+//
+// Iterates indexes in ascending-index order.
+make_neighbors :: proc (
+	#no_broadcast center: [2]int,
+	allocator := context.temp_allocator,
+) -> []^Tile {
+	tiles := alias_slice_as_empty_dynamic(make([]^Tile, 8, allocator)) // 8 = direct neighbors in 8 directions.
+
+	RIGHT_EDGE  :: COLUMNS-1
+	LEFT_EDGE   :: 0
+	BOTTOM_EDGE :: 0
+	TOP_EDGE    :: ROWS-1
+	on_right_edge  := center.x == RIGHT_EDGE
+	on_left_edge   := center.x == LEFT_EDGE
+	on_bottom_edge := center.y == BOTTOM_EDGE
+	on_top_edge    := center.y == TOP_EDGE
+	switch {
+	// Corner Cases //////////////////////////////////////////////////////////////
+	case on_bottom_edge && on_left_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row({1, 0})],
+			&gs.tiles[index_from_column_row({0, 1})],
+			&gs.tiles[index_from_column_row({1, 1})],
+		)
+	case on_bottom_edge && on_right_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, 0})],
+			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, 1})],
+			&gs.tiles[index_from_column_row({RIGHT_EDGE  , 1})],
+		)
+	case on_top_edge && on_left_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row({LEFT_EDGE  , TOP_EDGE-1})],
+			&gs.tiles[index_from_column_row({LEFT_EDGE+1, TOP_EDGE-1})],
+			&gs.tiles[index_from_column_row({LEFT_EDGE+1, TOP_EDGE  })],
+		)
+	case on_top_edge && on_right_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, TOP_EDGE-1})],
+			&gs.tiles[index_from_column_row({RIGHT_EDGE  , TOP_EDGE-1})],
+			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, TOP_EDGE  })],
+		)
+	// Edge Cases ////////////////////////////////////////////////////////////////
+	case on_left_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row(center + {0,-1})],
+			&gs.tiles[index_from_column_row(center + {1,-1})],
+			&gs.tiles[index_from_column_row(center + {1, 0})],
+			&gs.tiles[index_from_column_row(center + {1, 1})],
+			&gs.tiles[index_from_column_row(center + {0, 1})],
+		)
+	case on_right_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row(center + { 0,-1})],
+			&gs.tiles[index_from_column_row(center + {-1,-1})],
+			&gs.tiles[index_from_column_row(center + {-1, 0})],
+			&gs.tiles[index_from_column_row(center + {-1, 1})],
+			&gs.tiles[index_from_column_row(center + { 0, 1})],
+		)
+	case on_bottom_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row(center + {-1, 0})],
+			&gs.tiles[index_from_column_row(center + {-1, 1})],
+			&gs.tiles[index_from_column_row(center + { 0, 1})],
+			&gs.tiles[index_from_column_row(center + { 1, 1})],
+			&gs.tiles[index_from_column_row(center + { 1, 0})],
+		)
+	case on_top_edge:
+		append(&tiles,
+			&gs.tiles[index_from_column_row(center + {-1, 0})],
+			&gs.tiles[index_from_column_row(center + {-1,-1})],
+			&gs.tiles[index_from_column_row(center + { 0,-1})],
+			&gs.tiles[index_from_column_row(center + { 1,-1})],
+			&gs.tiles[index_from_column_row(center + { 1, 0})],
+		)
+	// Not a corner or an edge. //////////////////////////////////////////////////
+	case:
+		append(&tiles,
+			&gs.tiles[index_from_column_row(center + {-1,-1})], // SW
+			&gs.tiles[index_from_column_row(center + { 0,-1})], // S
+			&gs.tiles[index_from_column_row(center + { 1,-1})], // SE
+
+			&gs.tiles[index_from_column_row(center + {-1, 0})], // W
+			&gs.tiles[index_from_column_row(center + { 1, 0})], // E
+
+			&gs.tiles[index_from_column_row(center + {-1, 1})], // NW
+			&gs.tiles[index_from_column_row(center + { 1, 1})], // NE
+			&gs.tiles[index_from_column_row(center + { 0, 1})], // N
+		)
+	}
+
+	return tiles[:]
+}
+
 try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
 	action := action
 
@@ -335,6 +439,7 @@ game_init :: proc () {
 	for i in 0..<TILES {
 		tile: ^Tile = &gs.tiles[i]
 		tile.index = i
+		tile.column_row = {i % COLUMNS, i / COLUMNS}
 		tile.resource = .Grass
 		f01 := rand.float32()
 		if f01 <= 0.005 && ore_remaining > 0 {
@@ -506,6 +611,8 @@ game_step :: proc () {
 	uncenter_rect(panel)
 	panel.color = color("#0126")
 
+	focused_tile := get_focused_tile()
+	neighbors := make_neighbors(focused_tile.column_row)
 	for i in 0..< TILES {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
@@ -516,11 +623,13 @@ game_step :: proc () {
 				finish_action(tile)
 			}
 		}
+		is_neighbor: bool; for n in neighbors do if n.index == i { is_neighbor = true; break }
+		tile.adjacent_to_focus = is_neighbor
+		tile.focused = gs.focused_tile == i
 		it := tile_entity(basis, tile, loop_hash("tile", i))
 		gs.tiles[i].entity = it
 	}
 
-	focused_tile := get_focused_tile()
 
 	tile_highlight := rect()
 	tile_highlight.basis = focused_tile.entity.basis
@@ -908,9 +1017,7 @@ tile_entity :: proc (
 ) -> (^Entity, bool) #optional_ok {
 	it, is_new := rect(hash)
 	it.basis = basis
-	row := tile.index % COLUMNS
-	column := tile.index / COLUMNS
-	it.position.xy = {f32(row), f32(column)} * (TILE_GAP + basis.scale.x)
+	it.position.xy = array_cast(tile.column_row, f32) * (TILE_GAP + basis.scale.x)
 	if tile.resource == .Ore {
 		img := image("ore16.ase", loop_hash("ore", tile.index))
 		transform(img, it^)
@@ -931,6 +1038,10 @@ tile_entity :: proc (
 		it.color.rgb = resource_colors[tile.resource]
 	} else {
 		log.infof("undecorated resource: %v", tile.resource)
+	}
+
+	if tile.adjacent_to_focus {
+		it.color.rgb = {1,0,0}
 	}
 
 	if tile.action.happening {
