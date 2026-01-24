@@ -1,5 +1,7 @@
 // raddbg 0.9.24 project file
 
+recent_file: path: "src/main_game.odin"
+recent_file: path: "src/main_framework.odin"
 recent_file: path: "../../Applications (Compilers)/odin_fork/src/check_type.cpp"
 recent_file: path: "../../Applications (Compilers)/odin_fork/src/check_expr.cpp"
 recent_file: path: "../../Applications (Compilers)/odin_fork/src/types.cpp"
@@ -7,8 +9,6 @@ recent_file: path: "../../Applications (Compilers)/odin_fork/src/checker.cpp"
 recent_file: path: "../../Applications (Compilers)/odin_fork/src/parser.cpp"
 recent_file: path: "../../Applications (Compilers)/odin_fork/src/threading.cpp"
 recent_file: path: "../../Applications (Compilers)/odin_fork/src/check_decl.cpp"
-recent_file: path: "src/main_framework.odin"
-recent_file: path: "src/main_game.odin"
 recent_file: path: "src/main_game_full_tilt.odin"
 recent_file: path: "src/ren_image.odin"
 recent_file: path: "src/main_entrypoint.odin"
@@ -30,37 +30,23 @@ target:
   executable: "engine.exe"
   working_directory: src
   label: Engine
+  enabled: 1
 }
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66203444451079
+  timestamp: 66204727878436
 }
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/game.pdb"
   timestamp: 66200797443045
 }
-breakpoint:
-{
-  source_location: "src/main_framework.odin:671:1"
-  hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/main_framework.odin:188:1"
-  hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/main_framework.odin:685:1"
-  hit_count: 0
-}
 target:
 {
   executable: "../../Applications (Compilers)/odin_fork/odin.exe"
-  working_directory: "../odin_playgrounds/"
-  enabled: 1
+  working_directory: "../odin_playgrounds"
+  enabled: 0
   label: "odin_fork in odin_playgrounds"
   arguments: "run union_directive_bug/src"
 }
@@ -78,7 +64,7 @@ breakpoint:
 breakpoint:
 {
   source_location: "../../Applications (Compilers)/odin_fork/src/check_type.cpp:1667:1"
-  hit_count: 1
+  hit_count: 0
   condition: "ctx.file.filename.text == \"main.odin\""
 }
 breakpoint:
@@ -95,7 +81,11 @@ breakpoint:
 }
 breakpoint:
 {
-  source_location: "../../Applications (Compilers)/odin_fork/src/check_type.cpp:1776:1"
-  condition: "ctx.file.filename.text == \"main.odin\""
-  hit_count: 2
+  source_location: "src/main_game.odin:746:1"
+  hit_count: 1
+}
+breakpoint:
+{
+  source_location: "src/main_game.odin:754:1"
+  hit_count: 0
 }

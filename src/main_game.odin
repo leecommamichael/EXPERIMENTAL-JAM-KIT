@@ -34,7 +34,12 @@ TILE_SIZE_PX :: 16
 
 gs: ^Game_State
 
+Event :: enum {
+	Panel_Focused,
+}
+
 Game_State :: struct {
+	events: bit_set[Event],
 	state_changed_this_frame: bool,
 	prev_state:     States,
 	state:          States,
@@ -99,8 +104,8 @@ Tile :: struct {
 	resource:    Tile_Type,
 	owner:       Tile_Owner, // Determines who is doing the action.
 	action:      Action,
-	focused:           bool,
-	adjacent_to_focus: bool,
+	focused:        bool,
+	focus_neighbor: bool,
 }
 
 Tile_Type :: enum {
@@ -495,6 +500,8 @@ get_focused_tile :: proc () -> ^Tile {
 @export
 game_step :: proc () {
 	gs.state_changed_this_frame = false
+	gs.events = {}
+
 	switch gs.state {
 	case .Overworld:
 		// TODO: Wraps to 0 and TILES-1 on vertical movement.
@@ -518,6 +525,7 @@ game_step :: proc () {
 		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			set_state(.Panel_Menu)
+			gs.events += {.Panel_Focused}
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			// On tiles, nothing to go back to.
@@ -624,23 +632,12 @@ game_step :: proc () {
 			}
 		}
 		is_neighbor: bool; for n in neighbors do if n.index == i { is_neighbor = true; break }
-		tile.adjacent_to_focus = is_neighbor
+		tile.focus_neighbor = is_neighbor
 		tile.focused = gs.focused_tile == i
 		it := tile_entity(basis, tile, loop_hash("tile", i))
 		gs.tiles[i].entity = it
 	}
 
-
-	tile_highlight := rect()
-	tile_highlight.basis = focused_tile.entity.basis
-	tile_highlight.position.xy = focused_tile.entity.position.xy
-	tile_highlight.position.z += 100 // KILL
-	// sin01 :: proc (theta: f32) -> f32 { return (sin(theta) + 1) / 2 }
-	// sinq2q :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.25 }
-	sinbh :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.2 }
-	@static time: f32; time += globals.tick
-	tile_highlight.color = color("ff6")
-	tile_highlight.color.a = sinbh(2*time)
 
 	menu := make([dynamic]^Entity, context.temp_allocator)
 	append(&menu, 
@@ -707,23 +704,7 @@ game_step :: proc () {
 		position = Vec2{6, height_to_pin_atop},
 	)
 
-	// lerp a highlighter from the tile to the menu
-	menu_highlight := rect()
-	// Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
-	// if state_changed_from_to(.Overworld, .Panel_Menu) {
-	// 	lerp_data: Transform_Lerp_Data = {
-	// 		sink  = &menu_highlight.transform,
-	// 		start = transform_combine(tile_highlight.basis, tile_highlight.transform),
-	// 		end   = { {0,0,0}, {}, {PANEL_SIZE.x,44,0}},
-	// 	}
-	// 	lerp_data.end.position.x = lerp_data.end.scale.x / 2 + 6
-	// 	timed_effect(lerp_data, 0.2, proc (data: ^Transform_Lerp_Data, percent: f32) {
-	// 		data.sink^ = lerp_transform(data.start, data.end, percent)
-	// 		// data.sink.position.z = next_z()
-	// 	})
-	// }
-	uncenter_rect(menu_highlight)
-	menu_highlight.basis.scale.xy = {PANEL_SIZE.x, 16}
+	// // lerp a highlighter from the tile to the menu
 	menu_offset: int
 	switch gs.state {
 	case .Overworld:
@@ -733,8 +714,15 @@ game_step :: proc () {
 	case .Mission_Menu: menu_offset = cast(int) gs.mission_menu_state
 	}
 	hovered_text := menu[menu_start + menu_offset]
-	menu_highlight.position.y = hovered_text.position.y - 4
+	menu_highlight := rect()
+	menu_highlight_size := vec3({PANEL_SIZE.x, 16}, 1)
+	menu_highlight.transform.scale = menu_highlight_size
+	menu_highlight.transform.position.xy = hovered_text.position.xy
+	menu_highlight.basis.position.xy = menu_highlight.scale.xy/2 - { 6, 4}
+
 	menu_highlight.color = color("ff6")
+	sinbh :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.2 }
+	@static time: f32; time += globals.tick
 	menu_highlight.color.a = sinbh(2*time) * 0.5
 
 	if hovered_cost, hovered := hovered_action_cost(); hovered {
@@ -743,9 +731,9 @@ game_step :: proc () {
 		case estimate.can_simply_afford: // no change to UI
 		case estimate.can_afford_with_subs:
 			menu_highlight.color = color("fff4")
-			tophat:=image("leader16.ase")
-			tophat.flags += {.Skip_Interpolation}
-			tophat.position.xy = hovered_text.position.xy - {5, 4}
+			top_hat := image("leader16.ase")
+			top_hat.flags += {.Skip_Interpolation}
+			top_hat.position.xy = hovered_text.position.xy - {5, 4}
 		case:
 			menu_highlight.color = color("f223")
 		}
@@ -753,6 +741,20 @@ game_step :: proc () {
 	}
 	if gs.state == .Overworld {
 		menu_highlight.color.a = 0	
+	}
+
+	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
+	if state_changed_from_to(.Overworld, .Panel_Menu) {
+		lerp_data: Transform_Lerp_Data = {
+			sink  = &menu_highlight.transform,
+			start = transform_add(focused_tile.entity.basis, focused_tile.entity.transform),
+			end   = { vec3(hovered_text.position.xy, 0), {}, {PANEL_SIZE.x,16,0} },
+		}
+		// lerp_data.end.position.x = lerp_data.end.scale.x / 2 + 6
+		// lerp_data.end.position.y = hovered_text.position.y - 4
+		timed_effect(lerp_data, 1.2, proc (data: ^Transform_Lerp_Data, percent: f32) {
+			data.sink^ = lerp_transform(data.start, data.end, percent)
+		})
 	}
 } // game step
 
@@ -1040,13 +1042,31 @@ tile_entity :: proc (
 		log.infof("undecorated resource: %v", tile.resource)
 	}
 
-	if tile.adjacent_to_focus {
-		it.color.rgb = {1,0,0}
-	}
-
 	if tile.action.happening {
 		pct := action_completion_pct(tile.action)
 		it.basis.scale *= clamp(pct, 0, 1)
+	}
+
+	if tile.focused {
+		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.5, 0.8) }
+		@static time: f32; time += globals.tick
+		tile_highlight := rect(hash=loop_hash("focus", tile.index))
+		tile_highlight.basis = it.basis
+		tile_highlight.position.xy = it.position.xy
+		tile_highlight.position.z += 100 // KILL
+		tile_highlight.color = color("fa6")
+		tile_highlight.color.a = motion(4*time)
+	}
+
+	if gs.state == .Panel_Menu {
+		if tile.focus_neighbor {
+			@static time: f32; time += globals.tick
+			tile_highlight := rect(hash=loop_hash("focus", tile.index))
+			tile_highlight.basis = it.basis
+			tile_highlight.position.xy = it.position.xy
+			tile_highlight.position.z += 100 // KILL
+			tile_highlight.color = color("ff63")
+		}
 	}
 
 	return it, is_new

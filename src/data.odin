@@ -160,6 +160,7 @@ Entity_Flag :: enum {
 	Skip_Interpolation,
 	Is_UI,
 	Shader_Reload_Failed,
+	Skip_Interpolation_For_First_Frame,
 }
 
 Transform :: struct {

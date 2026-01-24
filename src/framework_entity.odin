@@ -177,11 +177,19 @@ transform_offset :: proc "contextless" (child: ^Entity, parent: Entity, offset: 
 	child.scale     += offset.scale
 	child.rotation  += offset.rotation
 }
-transform_combine :: proc "contextless" (a,b: Transform) -> Transform {
+transform_add :: proc "contextless" (a,b: Transform) -> Transform {
 	return {
 		position = a.position + b.position,
 		rotation = a.rotation + b.rotation,
 		scale    = a.scale * b.scale,
+	}
+}
+
+transform_subtract :: proc "contextless" (a,b: Transform) -> Transform {
+	return {
+		position = a.position - b.position,
+		rotation = a.rotation - b.rotation,
+		scale    = a.scale / b.scale,
 	}
 }
 uncenter_rect :: proc "contextless" (entity: ^Entity) {

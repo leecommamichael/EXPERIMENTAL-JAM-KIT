@@ -296,7 +296,8 @@ framework_draw :: proc (alpha: f32) {
 		instance: ^Any_Instance = entity.instance
 		xform: Transform
 		basis: Transform
-		if .Skip_Interpolation in entity.flags {
+		if .Skip_Interpolation in entity.flags\
+		|| .Skip_Interpolation_For_First_Frame in entity.flags {
 			xform = entity.transform
 			basis = entity.basis
 		} else {
@@ -551,7 +552,7 @@ entity_contains_entity :: proc (entity, other: ^Entity) -> bool {
 init_entity :: proc (entity: ^Entity, id: Entity_ID) {
 	entity^ = {} // zero all fields
 	entity.id = id
-	entity.flags = { .Allocated }
+	entity.flags = { .Allocated, .Skip_Interpolation_For_First_Frame }
 	entity.old_transform.scale = 1
 	entity.transform.scale = 1
 	entity.old_basis.scale = 1
