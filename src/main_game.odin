@@ -36,6 +36,7 @@ gs: ^Game_State
 
 Event :: enum {
 	Panel_Focused,
+	Panel_Dropped_Focus,
 }
 
 Game_State :: struct {
@@ -546,6 +547,7 @@ game_step :: proc () {
 			}
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			gs.events += {.Panel_Dropped_Focus}
 			set_state(.Overworld)
 		}
 	//////////////////////////////////////////////////////////////////////////////
@@ -715,10 +717,12 @@ game_step :: proc () {
 	}
 	hovered_text := menu[menu_start + menu_offset]
 	menu_highlight := rect()
+	@static is_animating := false
 	menu_highlight_size := vec3({PANEL_SIZE.x, 16}, 1)
 	menu_highlight.transform.scale = menu_highlight_size
-	menu_highlight.transform.position.xy = hovered_text.position.xy
-	menu_highlight.basis.position.xy = menu_highlight.scale.xy/2 - { 6, 4}
+	menu_highlight.transform.position.xy = hovered_text.position.xy + menu_highlight.scale.xy/2 - { 6, 4}
+	// If the two objects have different bases, can't interpolate and store in xform.
+	// The object will appear to come from the wrong location.
 
 	menu_highlight.color = color("ff6")
 	sinbh :: proc (theta: f32) -> f32 { return ((sin(theta) + 1) / 4) + 0.2 }
@@ -739,22 +743,37 @@ game_step :: proc () {
 		}
 		
 	}
-	if gs.state == .Overworld {
-		menu_highlight.color.a = 0	
-	}
 
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
-	if state_changed_from_to(.Overworld, .Panel_Menu) {
+	switch {
+	case .Panel_Focused in gs.events:
+		menu_highlight.flags += {.Skip_Next_Interpolation}
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
 			start = transform_add(focused_tile.entity.basis, focused_tile.entity.transform),
-			end   = { vec3(hovered_text.position.xy, 0), {}, {PANEL_SIZE.x,16,0} },
+			end   = { menu_highlight.position, {}, menu_highlight_size },
 		}
-		// lerp_data.end.position.x = lerp_data.end.scale.x / 2 + 6
-		// lerp_data.end.position.y = hovered_text.position.y - 4
-		timed_effect(lerp_data, 1.2, proc (data: ^Transform_Lerp_Data, percent: f32) {
+		effect := timed_effect(lerp_data, 0.1, proc (data: ^Transform_Lerp_Data, percent: f32) {
 			data.sink^ = lerp_transform(data.start, data.end, percent)
 		})
+	case .Panel_Dropped_Focus in gs.events:
+		menu_highlight.flags += {.Skip_Next_Interpolation}
+		lerp_data: Transform_Lerp_Data = {
+			sink  = &menu_highlight.transform,
+			start = { menu_highlight.position, {}, menu_highlight_size },
+			end   = transform_add(focused_tile.entity.basis, focused_tile.entity.transform),
+		}
+		effect := timed_effect(lerp_data, 0.1, proc (data: ^Transform_Lerp_Data, percent: f32) {
+			data.sink^ = lerp_transform(data.start, data.end, percent)
+			is_animating = true
+		})
+		effect.timeout = proc (data: ^Transform_Lerp_Data) {
+			is_animating = false
+		}
+	} // switch
+
+	if gs.state == .Overworld && !is_animating {
+		menu_highlight.color.a = 0	
 	}
 } // game step
 
@@ -1053,18 +1072,16 @@ tile_entity :: proc (
 		tile_highlight := rect(hash=loop_hash("focus", tile.index))
 		tile_highlight.basis = it.basis
 		tile_highlight.position.xy = it.position.xy
-		tile_highlight.position.z += 100 // KILL
 		tile_highlight.color = color("fa6")
 		tile_highlight.color.a = motion(4*time)
 	}
 
 	if gs.state == .Panel_Menu {
-		if tile.focus_neighbor {
+		if tile.focus_neighbor  {
 			@static time: f32; time += globals.tick
 			tile_highlight := rect(hash=loop_hash("focus", tile.index))
 			tile_highlight.basis = it.basis
 			tile_highlight.position.xy = it.position.xy
-			tile_highlight.position.z += 100 // KILL
 			tile_highlight.color = color("ff63")
 		}
 	}
