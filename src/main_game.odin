@@ -54,6 +54,7 @@ Game_State :: struct {
 	player: Resources,
 	enemy:  Resources,
 	tiles:  [TILES]Tile,
+	neighbors: []^Tile,
 	zoom:   bool,
 }
 
@@ -622,7 +623,7 @@ game_step :: proc () {
 	panel.color = color("#0126")
 
 	focused_tile := get_focused_tile()
-	neighbors := make_neighbors(focused_tile.column_row)
+	gs.neighbors = make_neighbors(focused_tile.column_row)
 	for i in 0..< TILES {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
@@ -633,7 +634,7 @@ game_step :: proc () {
 				finish_action(tile)
 			}
 		}
-		is_neighbor: bool; for n in neighbors do if n.index == i { is_neighbor = true; break }
+		is_neighbor: bool; for n in gs.neighbors do if n.index == i { is_neighbor = true; break }
 		tile.focus_neighbor = is_neighbor
 		tile.focused = gs.focused_tile == i
 		it := tile_entity(basis, tile, loop_hash("tile", i))
@@ -729,19 +730,18 @@ game_step :: proc () {
 	@static time: f32; time += globals.tick
 	menu_highlight.color.a = sinbh(2*time) * 0.5
 
-	if hovered_cost, hovered := hovered_action_cost(); hovered {
+	if hovered_cost, hovered, possible := vet_actions(); hovered {
 		estimate := estimate_cost(hovered_cost)
+		menu_highlight.color = color("f223")
 		switch {
+		case !possible: break
 		case estimate.can_simply_afford: // no change to UI
 		case estimate.can_afford_with_subs:
 			menu_highlight.color = color("fff4")
 			top_hat := image("leader16.ase")
 			top_hat.flags += {.Skip_Interpolation}
 			top_hat.position.xy = hovered_text.position.xy - {5, 4}
-		case:
-			menu_highlight.color = color("f223")
 		}
-		
 	}
 
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
@@ -777,34 +777,52 @@ game_step :: proc () {
 	}
 } // game step
 
-hovered_action_cost :: proc () -> (cost: Resources, action_hovered: bool ) {
+vet_actions :: proc () -> (cost: Resources, hovered: bool, possible: bool) {
 	switch gs.state {
 	case .Overworld: fallthrough
-	case .Panel_Menu: return {}, false
+	case .Panel_Menu: return {}, false, false
 	case .Build_Menu:
 		switch gs.build_menu_state {
-		case .Build_Barracks: cost = barracks_cost; action_hovered = true
-		case .Build_Workshop: cost = workshop_cost; action_hovered = true
-		case .Build_Path:     cost = path_cost;     action_hovered = true
-		case .Build_Aqueduct: cost = aqueduct_cost; action_hovered = true
-		case .Build_Train:    cost = train_cost;    action_hovered = true
+		case .Build_Barracks: cost = barracks_cost; hovered = true
+		case .Build_Workshop: cost = workshop_cost; hovered = true
+		case .Build_Path:     cost = path_cost;     hovered = true
+		case .Build_Aqueduct: cost = aqueduct_cost; hovered = true
+		case .Build_Train:    cost = train_cost;    hovered = true
 		}
 	case .Upgrade_Menu:
 		switch gs.upgrade_menu_state {
-		case .Unit_Speed:    cost = unit_speed_cost; action_hovered = true
-		case .Unit_Health:   cost = unit_health_cost; action_hovered = true
-		case .Unit_Power:    cost = unit_power_cost; action_hovered = true
-		case .Unit_Capacity: cost = unit_capacity_cost; action_hovered = true
+		case .Unit_Speed:    cost = unit_speed_cost; hovered = true
+		case .Unit_Health:   cost = unit_health_cost; hovered = true
+		case .Unit_Power:    cost = unit_power_cost; hovered = true
+		case .Unit_Capacity: cost = unit_capacity_cost; hovered = true
 		}
 	case .Mission_Menu:
 		switch gs.mission_menu_state {
-		case .Laner_Gather_Resource: cost = gather_cost; action_hovered = true
-		case .Laner_Fight:           cost = fight_cost; action_hovered = true
-		case .Spy_Tile:              cost = spy_cost; action_hovered = true
-		case .Spy_Sabotage_Tile:     cost = sabotage_cost; action_hovered = true
+		case .Laner_Gather_Resource: cost = gather_cost; hovered = true
+			found: bool; for n in gs.neighbors do if is_gatherable(n^) { found = true; break }
+			possible = found // need a gatherable resource.
+		case .Laner_Fight:           cost = fight_cost; hovered = true
+		case .Spy_Tile:              cost = spy_cost; hovered = true
+		case .Spy_Sabotage_Tile:     cost = sabotage_cost; hovered = true
 		}
-	}
+	} // switch
 	return
+}
+
+is_gatherable :: proc (tile: Tile) -> bool {
+	switch tile.resource {
+	case .Grass:    return false
+	case .Ore:      return true
+	case .Food:     return true
+	case .Water:    return true
+	case .Workshop: return false
+	case .Market:   return false
+	case .Barracks: return false
+	case .Path:     return false
+	case .Aqueduct: return false
+	case .Train:    return false
+	}
+	panic("Exhaustive switch")
 }
 
 ////////////////////////////////////////////////////////////////////////////////
