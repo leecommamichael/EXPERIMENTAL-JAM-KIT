@@ -250,7 +250,7 @@ ren_force_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
 }
 
 ren_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
-	entity.flags -= {.Skip_Interpolation_For_First_Frame}
+	entity.flags -= {.Skip_Next_Interpolation}
 	if .Hidden in entity.flags { return }
 	if .Allocated not_in entity.flags { return }
 	ren_force_draw_entity(ren, entity)
