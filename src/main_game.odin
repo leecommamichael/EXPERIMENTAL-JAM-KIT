@@ -108,6 +108,8 @@ Tile :: struct {
 	action:      Action,
 	focused:        bool,
 	focus_neighbor: bool,
+	_search_distance: int,
+	_search_visited:  bool,
 }
 
 Tile_Type :: enum {
@@ -747,6 +749,7 @@ game_step :: proc () {
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
 	switch {
 	case .Panel_Focused in gs.events:
+		find_path(&gs.tiles[0], focused_tile)
 		menu_highlight.flags += {.Skip_Next_Interpolation}
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
@@ -823,6 +826,64 @@ is_gatherable :: proc (tile: Tile) -> bool {
 	case .Train:    return false
 	}
 	panic("Exhaustive switch")
+}
+
+can_path_through :: proc (type: Tile_Type) -> bool {
+	switch type {
+	case .Grass:    return false
+	case .Ore:      return true
+	case .Food:     return true
+	case .Water:    return true
+	case .Workshop: return true
+	case .Market:   return true
+	case .Barracks: return true
+	case .Path:     return true
+	case .Aqueduct: return true
+	case .Train:    return true
+	}
+	panic("Exhaustive switch")
+}
+
+// Given a resource, try to path a unit to it through roads.
+find_path :: proc (start, dest: ^Tile) {
+	graph := &gs.tiles
+	UNKNOWN :: max(int)
+	for &tile in graph {
+		// "Visited" means we've measured distance to all neighbors from start,
+		// and stored that distance on the neighbor. (this does not make that neighbor "visited")
+		tile._search_visited = false
+		if tile.index == start.index {
+			tile._search_distance = 0
+		} else {
+			tile._search_distance = UNKNOWN
+		}
+	}
+
+	for {
+		min_distance: int = UNKNOWN
+		min_unvisited: ^Tile
+		// Of the unvisited tiles, 
+		for &tile in graph { // Seek to remove from "unvisited"
+			if !tile._search_visited\
+			&& tile._search_distance < min_distance {
+				min_distance = tile._search_distance
+				min_unvisited = &tile
+			}
+		}
+		if min_unvisited == dest do break // INTENT: Shortest path found.
+		if min_unvisited == nil || min_distance == UNKNOWN do break
+		// If we got here, we've got a graph-node to evaluate.
+		assert(len(min_unvisited.neighbors) > 1)
+		for &neighbor in min_unvisited.neighbors {
+			neighbor := neighbor
+			if !can_path_through(neighbor.resource) do continue
+			neighbor._search_distance = min(
+				neighbor._search_distance,
+				min_unvisited._search_distance + 1)
+			fmt.printfln("tile %d dist=%d", neighbor.index, neighbor._search_distance)
+		}
+		min_unvisited._search_visited = true
+	}
 }
 
 
@@ -1078,6 +1139,12 @@ tile_entity :: proc (
 		it.color.rgb = resource_colors[tile.resource]
 	} else {
 		log.infof("undecorated resource: %v", tile.resource)
+	}
+
+	if tile._search_distance > 0 && tile._search_distance < max(int) {
+		dist_label := text(fmt.tprintf("%d", tile._search_distance), hash=loop_hash("search_dbg", tile.index))
+		dist_label.basis = basis
+		dist_label.position.xy = it.position.xy
 	}
 
 	if tile.action.happening {
