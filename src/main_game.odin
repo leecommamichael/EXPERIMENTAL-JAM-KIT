@@ -54,7 +54,6 @@ Game_State :: struct {
 	player: Resources,
 	enemy:  Resources,
 	tiles:  [TILES]Tile,
-	neighbors: []^Tile,
 	zoom:   bool,
 }
 
@@ -100,9 +99,10 @@ Tile_Owner :: enum {
 }
 
 Tile :: struct {
-	entity:     ^Entity,
-	index:      int,
-	column_row: [2]int,
+	entity:      ^Entity,
+	neighbors:   []^Tile,
+	index:       int,
+	column_row:  [2]int,
 	resource:    Tile_Type,
 	owner:       Tile_Owner, // Determines who is doing the action.
 	action:      Action,
@@ -447,6 +447,7 @@ game_init :: proc () {
 		tile: ^Tile = &gs.tiles[i]
 		tile.index = i
 		tile.column_row = {i % COLUMNS, i / COLUMNS}
+		tile.neighbors = make_neighbors(tile.column_row, context.allocator)
 		tile.resource = .Grass
 		f01 := rand.float32()
 		if f01 <= 0.005 && ore_remaining > 0 {
@@ -623,7 +624,6 @@ game_step :: proc () {
 	panel.color = color("#0126")
 
 	focused_tile := get_focused_tile()
-	gs.neighbors = make_neighbors(focused_tile.column_row)
 	for i in 0..< TILES {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
@@ -634,7 +634,7 @@ game_step :: proc () {
 				finish_action(tile)
 			}
 		}
-		is_neighbor: bool; for n in gs.neighbors do if n.index == i { is_neighbor = true; break }
+		is_neighbor: bool; for n in focused_tile.neighbors do if n.index == i { is_neighbor = true; break }
 		tile.focus_neighbor = is_neighbor
 		tile.focused = gs.focused_tile == i
 		it := tile_entity(basis, tile, loop_hash("tile", i))
@@ -799,7 +799,7 @@ vet_actions :: proc () -> (cost: Resources, hovered: bool, possible: bool) {
 	case .Mission_Menu:
 		switch gs.mission_menu_state {
 		case .Laner_Gather_Resource: cost = gather_cost; hovered = true
-			found: bool; for n in gs.neighbors do if is_gatherable(n^) { found = true; break }
+			found: bool; for n in get_focused_tile().neighbors do if is_gatherable(n^) { found = true; break }
 			possible = found // need a gatherable resource.
 		case .Laner_Fight:           cost = fight_cost; hovered = true
 		case .Spy_Tile:              cost = spy_cost; hovered = true
@@ -824,6 +824,7 @@ is_gatherable :: proc (tile: Tile) -> bool {
 	}
 	panic("Exhaustive switch")
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Build Costs
