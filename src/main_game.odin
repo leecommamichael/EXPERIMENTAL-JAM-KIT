@@ -26,122 +26,8 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
-TILE_GAP :: 1
-ROWS :: 23
-COLUMNS :: 30
-TILES :: ROWS * COLUMNS
-TILE_SIZE_PX :: 16
 
 gs: ^Game_State
-
-Event :: enum {
-	Panel_Focused,
-	Panel_Dropped_Focus,
-}
-
-Game_State :: struct {
-	events: bit_set[Event],
-	state_changed_this_frame: bool,
-	prev_state:     States,
-	state:          States,
-	panel_menu_state:  Panel_Menu_State,
-	//
-	build_menu_state:   Build_Menu,
-	upgrade_menu_state: Upgrade_Menu,
-	mission_menu_state: Mission_Menu,
-	//
-	focused_tile: int,
-	player: Resources,
-	enemy:  Resources,
-	tiles:  [TILES]Tile,
-	zoom:   bool,
-}
-
-States :: enum {
-	Overworld,
-	Panel_Menu,
-	Build_Menu,
-	Upgrade_Menu,
-	Mission_Menu,
-}
-
-Panel_Menu_State :: enum {
-	Build_Menu,
-	Upgrade_Menu,
-	Mission_Menu,
-}
-
-Build_Menu :: enum {
-	Build_Barracks,
-	Build_Workshop,
-	Build_Path,
-	Build_Aqueduct,
-	Build_Train,
-}
-Upgrade_Menu :: enum {
-	Unit_Speed,
-	Unit_Health,
-	Unit_Power,
-	Unit_Capacity,
-}
-Mission_Menu :: enum {
-	Laner_Gather_Resource,
-	Laner_Fight, // Retreats at low health. If speed too low, can die.
-	Spy_Tile,
-	Spy_Sabotage_Tile,
-}
-
-// The last user to work the improvement.
-Tile_Owner :: enum {
-	None,
-	Player,
-	Enemy,
-}
-
-Tile :: struct {
-	entity:      ^Entity,
-	neighbors:   []^Tile,
-	index:       int,
-	column_row:  [2]int,
-	resource:    Tile_Type,
-	owner:       Tile_Owner, // Determines who is doing the action.
-	action:      Action,
-	focused:        bool,
-	focus_neighbor: bool,
-	_search_distance: int,
-	_search_visited:  bool,
-}
-
-Tile_Type :: enum {
-	Grass,
-	// Resources
-	Ore,         // Build roads, workshop, markets, barracks
-	Food, Water, // Modulates spawn rate
-	// Buildings
-	Workshop,    // improve/unlock units/resources
-	Market,      // strengthen population
-	Barracks,    // raise population
-	Path,        // Allows non-scout units to move fast.
-	Aqueduct,// Enhanced water source. Maybe auto resource.
-	Train,// Railway
-}
-
-Action :: struct {
-	// output/yield/result
-	build_result:   Maybe(Build_Menu),
-	upgrade_result: Maybe(Upgrade_Menu),
-	mission:        Maybe(Mission_Menu),
-	// input
-	cost:           Resources,
-	one_off:        bool,
-
-	// transient state
-	workers_to_reimburse: int,
-	leaders_to_reimburse: int,
-	start_time:     time.Tick, // start_action, finish_action
-	happening:      bool,      // start_action, finish_action
-	finished:       bool,      // start_action, finish_action
-}
 
 action_for_building :: proc (option: Build_Menu) -> (action: Action) {
 	action.build_result = option
@@ -186,34 +72,8 @@ action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
 	return action
 }
 
-Resources :: struct #all_or_none {
-	ore:     int,
-	food:    int,
-	water:   int,
-	workers: int,
-	leaders: int,
-	time:    time.Duration, // time dwelling on-location (not traversal)
-}
-BONKERS_RESOURCES :: Resources {
-	ore     = max(int),
-	food    = max(int),
-	water   = max(int),
-	workers = max(int),
-	leaders = max(int),
-	//
-	time = 0,
-}
-
 action_completion_pct :: proc (it: Action) -> f32 {
-	return f32(time.tick_diff(it.start_time, time.tick_now())) / f32(it.cost.time)
-}
-
-Cost_Estimate :: struct {
-	can_simply_afford: bool,
-	can_afford_with_subs: bool,
-	sub_worker_cost: int,
-	sub_leaders_to_reimburse: int,
-	sub_workers_to_reimburse: int,
+	return f32(time.tick_diff(it.work_start_time, time.tick_now())) / f32(it.cost.time)
 }
 
 // INTENT: Adjust the cost of Resources so the correct # of leaders is reimbursed.
@@ -230,7 +90,7 @@ estimate_cost :: proc (cost: Resources) -> Cost_Estimate {
 		return { can_simply_afford = true }
 	}
 
-	workers_needed := gs.player.workers - cost.workers
+	workers_needed := cost.workers - gs.player.workers
 	if workers_needed > 0 {
 		if gs.player.leaders < workers_needed {
 			// Not enough leaders to cover worker shortage.
@@ -350,13 +210,13 @@ make_neighbors :: proc (
 }
 
 try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
-	action := action
+	if tile == nil do return false
 
-	if tile == nil\
-	|| tile.action.happening {
-	 return false 
+	if tile.owner == .Enemy {
+	 return false // Maybe in future allow it but they fight.
 	}
 
+	action := action // Need to mutate it if substituting leaders for workers.
 	estimate := estimate_cost(action.cost)
 	switch {
 	case estimate.can_simply_afford:
@@ -364,13 +224,20 @@ try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
 	case estimate.can_afford_with_subs:
 		action.one_off = true // the game won't let you spend all your leaders permanently
 		action.cost.workers = estimate.sub_worker_cost
+		action.cost.leaders = estimate.sub_leaders_to_reimburse
 		action.leaders_to_reimburse = estimate.sub_leaders_to_reimburse
 		action.workers_to_reimburse = estimate.sub_workers_to_reimburse
 		simply_buy_action(action)
 	case: return false // can't afford
 	}
-	start_action(tile, action)
+	add_new_action(tile, action)
 	return true
+}
+
+make_next_action_id :: proc () -> int {
+	id := gs.next_action_id
+	gs.next_action_id += 1
+	return id
 }
 
 simply_buy_action :: proc (action: Action) {
@@ -381,39 +248,19 @@ simply_buy_action :: proc (action: Action) {
 	gs.player.leaders -= action.cost.leaders
 }
 
-start_action :: proc (tile: ^Tile, action: Action) {
-	ensure(tile.owner != .Enemy && !tile.action.happening)
-	tile.action = action
-	tile.action.start_time = time.tick_now()
-	tile.action.happening = true
+// Spawn some units which go to the job site and work.
+add_new_action :: proc (tile: ^Tile, action: Action) {
+	action := action
+	action.id = make_next_action_id()
+	action.target = tile
 	tile.owner = .Player
+	append(&gs.actions, action)
 	// INTENT: When a action starts through the menu, put them on the map
 	//         such that it's easy to pick a new tile for a action.
 	set_state(States.Overworld)
 }
 
-finish_action :: proc (tile: ^Tile) {
-	ensure(tile.owner == .Player && !tile.action.finished)
-	tile.action.happening = false
-	tile.action.finished = true
-	if menu_option, ok := tile.action.build_result.(Build_Menu); ok {
-		new_type: Tile_Type
-		switch menu_option {
-		case .Build_Barracks: new_type = Tile_Type.Barracks
-		case .Build_Workshop: new_type = Tile_Type.Workshop
-		case .Build_Path:     new_type = Tile_Type.Path
-		case .Build_Aqueduct: new_type = Tile_Type.Aqueduct
-		case .Build_Train:    new_type = Tile_Type.Train
-		}
-		tile.resource = new_type
-	}
-	if tile.action.one_off {
-		// Substitution & reimbursement only happens on one-off actions.
-		gs.player.leaders += tile.action.leaders_to_reimburse
-		gs.player.workers += tile.action.workers_to_reimburse
-	} else {
-		start_action(tile, tile.action)
-	}
+finish_action :: proc (action: ^Action) {
 }
 
 import gl "angle"
@@ -444,7 +291,8 @@ game_init :: proc () {
 	food_remaining := 6
 
 	gs = new(Game_State)
-
+	gs.tiles = make([]Tile, TILES)
+	gs.next_action_id = 1
 	for i in 0..<TILES {
 		tile: ^Tile = &gs.tiles[i]
 		tile.index = i
@@ -509,6 +357,7 @@ game_step :: proc () {
 
 	switch gs.state {
 	case .Overworld:
+	// case .Selecting_First_Tile, .Selecting_Source_Tile, .Selecting_Target_Tile:
 		// TODO: Wraps to 0 and TILES-1 on vertical movement.
 		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
 			gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
@@ -529,6 +378,14 @@ game_step :: proc () {
 			gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
 		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			if gs.action_source_barracks == nil\
+			&& gs.action_target == nil {
+				// make first selection with inferred intent
+			} else if gs.action_source_barracks != nil {
+				// second selection is intended as target (check)
+			} else if gs.action_target != nil {
+				// second selection is intended as source-barracks
+			}
 			set_state(.Panel_Menu)
 			gs.events += {.Panel_Focused}
 		}
@@ -598,6 +455,7 @@ game_step :: proc () {
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.mission_menu_state {
 			case .Laner_Gather_Resource:
+				try_start_action(get_focused_tile(), action_for_mission(gs.mission_menu_state))
 				// Check the tile:
 				// If the tile isn't reachable by path, send a leader.
 				// If the tile _is_ reachable, send workers.
@@ -625,28 +483,52 @@ game_step :: proc () {
 	uncenter_rect(panel)
 	panel.color = color("#0126")
 
+	for &action in gs.actions {
+		switch action.state {
+		case .Unplanned: // spawn units
+
+		case .Awaiting_Assignees:
+		case .In_Progress:
+			if action_completion_pct(action) >= 1.0 {
+				action.state = .Unplanned // Now go home
+				if menu_option, ok := action.build_result.(Build_Menu); ok {
+					new_type: Tile_Type
+					switch menu_option {
+					case .Build_Barracks: new_type = Tile_Type.Barracks
+					case .Build_Workshop: new_type = Tile_Type.Workshop
+					case .Build_Path:     new_type = Tile_Type.Path
+					case .Build_Aqueduct: new_type = Tile_Type.Aqueduct
+					case .Build_Train:    new_type = Tile_Type.Train
+					}
+					action.target.resource = new_type
+				}
+				if action.one_off {
+					// Substitution & reimbursement only happens on one-off actions.
+					gs.player.leaders += action.leaders_to_reimburse
+					gs.player.workers += action.workers_to_reimburse
+				} else {
+					// pending
+				}
+			}
+		} // switch state
+	} // for action
+
 	focused_tile := get_focused_tile()
 	for i in 0..< TILES {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
 		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
 		tile: ^Tile = &gs.tiles[i]
-		if tile.action.happening {
-			if action_completion_pct(tile.action) >= 1.0 {
-				finish_action(tile)
-			}
-		}
 		is_neighbor: bool; for n in focused_tile.neighbors do if n.index == i { is_neighbor = true; break }
-		tile.focus_neighbor = is_neighbor
 		tile.focused = gs.focused_tile == i
 		it := tile_entity(basis, tile, loop_hash("tile", i))
 		gs.tiles[i].entity = it
 	}
 
-
 	menu := make([dynamic]^Entity, context.temp_allocator)
 	append(&menu, 
 		pad_box(16),
+		section_list_item("LEADERS:", fmt.tprintf("%d", gs.player.leaders)),
 		section_list_item("ORE:", fmt.tprintf("%d", gs.player.ore)),
 		section_list_item("FOOD:", fmt.tprintf("%d", gs.player.food)),
 		section_list_item("WATER:", fmt.tprintf("%d", gs.player.water)),
@@ -749,7 +631,11 @@ game_step :: proc () {
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
 	switch {
 	case .Panel_Focused in gs.events:
-		find_path(&gs.tiles[0], focused_tile)
+		gs.action_source_barracks = nil
+		gs.action_target = nil
+		// dpending on what has been focused, fill in from and to.
+		// depending on what's left ot fill out after the verb, select another.
+		// find_path(&gs.tiles[0], focused_tile)
 		menu_highlight.flags += {.Skip_Next_Interpolation}
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
@@ -915,7 +801,6 @@ path_cost :: Resources {
 	workers = 1,
 	leaders = 1,
 	time = 1300 * time.Millisecond,
-
 }
 aqueduct_cost :: Resources {
 	ore     = 1,
@@ -1147,31 +1032,21 @@ tile_entity :: proc (
 		dist_label.position.xy = it.position.xy
 	}
 
-	if tile.action.happening {
-		pct := action_completion_pct(tile.action)
-		it.basis.scale *= clamp(pct, 0, 1)
-	}
+	// TODO: Only do this if it's about building.
+	// if tile.action.happening {
+	// 	pct := action_completion_pct(tile.action)
+	// 	it.basis.scale *= clamp(pct, 0, 1)
+	// }
 
 	if tile.focused {
-		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.5, 0.8) }
+		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
 		@static time: f32; time += globals.tick
 		tile_highlight := rect(hash=loop_hash("focus", tile.index))
 		tile_highlight.basis = it.basis
 		tile_highlight.position.xy = it.position.xy
-		tile_highlight.color = color("fa6")
+		tile_highlight.color = color("af6")
 		tile_highlight.color.a = motion(4*time)
 	}
-
-	if gs.state == .Panel_Menu {
-		if tile.focus_neighbor  {
-			@static time: f32; time += globals.tick
-			tile_highlight := rect(hash=loop_hash("focus", tile.index))
-			tile_highlight.basis = it.basis
-			tile_highlight.position.xy = it.position.xy
-			tile_highlight.color = color("ff63")
-		}
-	}
-
 	return it, is_new
 }
 

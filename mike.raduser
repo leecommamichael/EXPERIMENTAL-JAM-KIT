@@ -21,6 +21,7 @@ window:
     {
       0.400602:
       {
+        selected
         watch: expression: "query:types"
         watch:
         {
@@ -42,7 +43,6 @@ window:
       }
       0.195591:
       {
-        selected
         watch: expression: "query:threads"
         watch: expression: "query:targets"
         watch: expression: "query:breakpoints"
@@ -58,6 +58,7 @@ window:
           watch: named_type
           watch: "ctx.scope.procedure_entity.identifier._Storage._Value.Ident.token.string.text"
           watch: "gs.tiles"
+          watch: "gs.player"
         }
       }
       0.403807:
@@ -236,9 +237,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 880
+        cursor_line: 230
         cursor_column: 1
-        mark_line: 880
+        mark_line: 230
         mark_column: 1
       }
       text:
@@ -257,12 +258,12 @@ window:
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin_fork/src/check_expr.cpp\".data"
+        expression: "file:\"D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm\".data"
         auto: 1
         query: input: ""
-        cursor_line: 1316
+        cursor_line: 1
         cursor_column: 1
-        mark_line: 1316
+        mark_line: 1
         mark_column: 1
       }
     }
