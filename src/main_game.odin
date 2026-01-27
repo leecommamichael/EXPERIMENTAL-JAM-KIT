@@ -22,246 +22,12 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Brainless Minigame Jam: Simpler Times
+// Brainless Minigame Jam: Simpler Times                                Jan 2026
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
 
 gs: ^Game_State
-
-action_for_building :: proc (option: Build_Menu) -> (action: Action) {
-	action.build_result = option
-
-	switch option {
-	case .Build_Barracks: action.cost = barracks_cost
-	case .Build_Workshop: action.cost = workshop_cost
-	case .Build_Path:     action.cost = path_cost
-	case .Build_Aqueduct: action.cost = aqueduct_cost
-	case .Build_Train:    action.cost = train_cost
-	}
-	return
-}
-
-action_for_upgrade :: proc (option: Upgrade_Menu) -> (action: Action) {
-	action.upgrade_result = option
-	action.one_off = true
-
-	switch gs.upgrade_menu_state {
-	case .Unit_Speed:    action.cost = unit_speed_cost
-	case .Unit_Health:   action.cost = unit_health_cost
-	case .Unit_Power:    action.cost = unit_power_cost
-	case .Unit_Capacity: action.cost = unit_capacity_cost
-	}
-	return
-}
-
-action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
-	action.mission = option
-
-	switch gs.mission_menu_state {
-	case .Laner_Gather_Resource:
-		action.cost = gather_cost
-	case .Laner_Fight:
-		action.cost = fight_cost
-	case .Spy_Tile:
-		action.cost = spy_cost
-	case .Spy_Sabotage_Tile:
-		action.cost = sabotage_cost
-		action.one_off = true
-	}
-	return action
-}
-
-action_completion_pct :: proc (it: Action) -> f32 {
-	return f32(time.tick_diff(it.work_start_time, time.tick_now())) / f32(it.cost.time)
-}
-
-// INTENT: Adjust the cost of Resources so the correct # of leaders is reimbursed.
-// INTENT: Substitutions make the thing simply-affordable.
-estimate_cost :: proc (cost: Resources) -> Cost_Estimate {
-	if gs.player.ore < cost.ore\
-	&& gs.player.food < cost.food\
-	&& gs.player.water < cost.water {
-		return { can_simply_afford = false }
-	}
-
-	if gs.player.workers >= cost.workers\
-	&& gs.player.leaders >= cost.leaders {
-		return { can_simply_afford = true }
-	}
-
-	workers_needed := cost.workers - gs.player.workers
-	if workers_needed > 0 {
-		if gs.player.leaders < workers_needed {
-			// Not enough leaders to cover worker shortage.
-			return { can_simply_afford = false, can_afford_with_subs = false}
-		}
-	}
-
-	estimate: Cost_Estimate = {
-		can_simply_afford = false,
-		can_afford_with_subs = true,
-		sub_worker_cost = gs.player.workers,
-		sub_leaders_to_reimburse = workers_needed,
-		sub_workers_to_reimburse = gs.player.workers
-	}
-	return estimate
-}
-
-index_from_column_row :: proc (tile: [2]int) -> int {
-	return (tile.x) + (tile.y * COLUMNS)
-}
-
-// In iterator in Odin is anything that:
-// -> (T, bool)
-// -> (T, int, bool)
-//
-// Iterates indexes in ascending-index order.
-make_neighbors :: proc (
-	#no_broadcast center: [2]int,
-	allocator := context.temp_allocator,
-) -> []^Tile {
-	tiles := alias_slice_as_empty_dynamic(make([]^Tile, 8, allocator)) // 8 = direct neighbors in 8 directions.
-
-	RIGHT_EDGE  :: COLUMNS-1
-	LEFT_EDGE   :: 0
-	BOTTOM_EDGE :: 0
-	TOP_EDGE    :: ROWS-1
-	on_right_edge  := center.x == RIGHT_EDGE
-	on_left_edge   := center.x == LEFT_EDGE
-	on_bottom_edge := center.y == BOTTOM_EDGE
-	on_top_edge    := center.y == TOP_EDGE
-	switch {
-	// Corner Cases //////////////////////////////////////////////////////////////
-	case on_bottom_edge && on_left_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row({1, 0})],
-			&gs.tiles[index_from_column_row({0, 1})],
-			&gs.tiles[index_from_column_row({1, 1})],
-		)
-	case on_bottom_edge && on_right_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, 0})],
-			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, 1})],
-			&gs.tiles[index_from_column_row({RIGHT_EDGE  , 1})],
-		)
-	case on_top_edge && on_left_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row({LEFT_EDGE  , TOP_EDGE-1})],
-			&gs.tiles[index_from_column_row({LEFT_EDGE+1, TOP_EDGE-1})],
-			&gs.tiles[index_from_column_row({LEFT_EDGE+1, TOP_EDGE  })],
-		)
-	case on_top_edge && on_right_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, TOP_EDGE-1})],
-			&gs.tiles[index_from_column_row({RIGHT_EDGE  , TOP_EDGE-1})],
-			&gs.tiles[index_from_column_row({RIGHT_EDGE-1, TOP_EDGE  })],
-		)
-	// Edge Cases ////////////////////////////////////////////////////////////////
-	case on_left_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row(center + {0,-1})],
-			&gs.tiles[index_from_column_row(center + {1,-1})],
-			&gs.tiles[index_from_column_row(center + {1, 0})],
-			&gs.tiles[index_from_column_row(center + {1, 1})],
-			&gs.tiles[index_from_column_row(center + {0, 1})],
-		)
-	case on_right_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row(center + { 0,-1})],
-			&gs.tiles[index_from_column_row(center + {-1,-1})],
-			&gs.tiles[index_from_column_row(center + {-1, 0})],
-			&gs.tiles[index_from_column_row(center + {-1, 1})],
-			&gs.tiles[index_from_column_row(center + { 0, 1})],
-		)
-	case on_bottom_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row(center + {-1, 0})],
-			&gs.tiles[index_from_column_row(center + {-1, 1})],
-			&gs.tiles[index_from_column_row(center + { 0, 1})],
-			&gs.tiles[index_from_column_row(center + { 1, 1})],
-			&gs.tiles[index_from_column_row(center + { 1, 0})],
-		)
-	case on_top_edge:
-		append(&tiles,
-			&gs.tiles[index_from_column_row(center + {-1, 0})],
-			&gs.tiles[index_from_column_row(center + {-1,-1})],
-			&gs.tiles[index_from_column_row(center + { 0,-1})],
-			&gs.tiles[index_from_column_row(center + { 1,-1})],
-			&gs.tiles[index_from_column_row(center + { 1, 0})],
-		)
-	// Not a corner or an edge. //////////////////////////////////////////////////
-	case:
-		append(&tiles,
-			&gs.tiles[index_from_column_row(center + {-1,-1})], // SW
-			&gs.tiles[index_from_column_row(center + { 0,-1})], // S
-			&gs.tiles[index_from_column_row(center + { 1,-1})], // SE
-
-			&gs.tiles[index_from_column_row(center + {-1, 0})], // W
-			&gs.tiles[index_from_column_row(center + { 1, 0})], // E
-
-			&gs.tiles[index_from_column_row(center + {-1, 1})], // NW
-			&gs.tiles[index_from_column_row(center + { 1, 1})], // NE
-			&gs.tiles[index_from_column_row(center + { 0, 1})], // N
-		)
-	}
-
-	return tiles[:]
-}
-
-try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
-	if tile == nil do return false
-
-	if tile.owner == .Enemy {
-	 return false // Maybe in future allow it but they fight.
-	}
-
-	action := action // Need to mutate it if substituting leaders for workers.
-	estimate := estimate_cost(action.cost)
-	switch {
-	case estimate.can_simply_afford:
-		simply_buy_action(action)
-	case estimate.can_afford_with_subs:
-		action.one_off = true // the game won't let you spend all your leaders permanently
-		action.cost.workers = estimate.sub_worker_cost
-		action.cost.leaders = estimate.sub_leaders_to_reimburse
-		action.leaders_to_reimburse = estimate.sub_leaders_to_reimburse
-		action.workers_to_reimburse = estimate.sub_workers_to_reimburse
-		simply_buy_action(action)
-	case: return false // can't afford
-	}
-	add_new_action(tile, action)
-	return true
-}
-
-make_next_action_id :: proc () -> int {
-	id := gs.next_action_id
-	gs.next_action_id += 1
-	return id
-}
-
-simply_buy_action :: proc (action: Action) {
-	gs.player.ore -= action.cost.ore
-	gs.player.food -= action.cost.food
-	gs.player.water -= action.cost.water
-	gs.player.workers -= action.cost.workers
-	gs.player.leaders -= action.cost.leaders
-}
-
-// Spawn some units which go to the job site and work.
-add_new_action :: proc (tile: ^Tile, action: Action) {
-	action := action
-	action.id = make_next_action_id()
-	action.target = tile
-	tile.owner = .Player
-	append(&gs.actions, action)
-	// INTENT: When a action starts through the menu, put them on the map
-	//         such that it's easy to pick a new tile for a action.
-	set_state(States.Overworld)
-}
-
-finish_action :: proc (action: ^Action) {
-}
 
 import gl "angle"
 game_init :: proc () {
@@ -328,36 +94,16 @@ game_init :: proc () {
 PANEL_SIZE: Vec2 = {120, 400}
 SPACER :: 16
 
-set_state :: proc (new_state: States) {
-	if new_state != gs.state {
-		gs.state_changed_this_frame = true
-		gs.prev_state = gs.state
-		gs.state = new_state
-	}
-}
-
-state_changed :: proc () -> bool {
-	if !gs.state_changed_this_frame do return false
-	return gs.prev_state != gs.state
-}
-
-state_changed_from_to :: proc (prev, current: States) -> bool {
-	if !gs.state_changed_this_frame do return false
-	return prev == gs.prev_state && current == gs.state
-}
-
-get_focused_tile :: proc () -> ^Tile {
-	return &gs.tiles[gs.focused_tile]
-}
-
 @export
 game_step :: proc () {
 	gs.state_changed_this_frame = false
 	gs.events = {}
 
+	//////////////////////////////////////////////////////////////////////////////
+	// Arrow movement.
+	//////////////////////////////////////////////////////////////////////////////
 	switch gs.state {
-	case .Overworld:
-	// case .Selecting_First_Tile, .Selecting_Source_Tile, .Selecting_Target_Tile:
+	case .Selecting_Tile:
 		// TODO: Wraps to 0 and TILES-1 on vertical movement.
 		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
 			gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
@@ -377,22 +123,6 @@ game_step :: proc () {
 			row_max := row_min + COLUMNS - 1
 			gs.focused_tile = clamp(gs.focused_tile + 1, row_min, row_max)
 		}
-		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			if gs.action_source_barracks == nil\
-			&& gs.action_target == nil {
-				// make first selection with inferred intent
-			} else if gs.action_source_barracks != nil {
-				// second selection is intended as target (check)
-			} else if gs.action_target != nil {
-				// second selection is intended as source-barracks
-			}
-			set_state(.Panel_Menu)
-			gs.events += {.Panel_Focused}
-		}
-		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			// On tiles, nothing to go back to.
-		}
-	//////////////////////////////////////////////////////////////////////////////
 	case .Panel_Menu:
 		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
 			enum_decrement_wrap(&gs.panel_menu_state)
@@ -400,6 +130,80 @@ game_step :: proc () {
 		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
 			enum_increment_wrap(&gs.panel_menu_state)
 		}
+	case .Build_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.build_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.build_menu_state)
+		}
+	case .Upgrade_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.upgrade_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.upgrade_menu_state)
+		}
+	case .Mission_Menu:
+		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
+			enum_decrement_wrap(&gs.mission_menu_state)
+		}
+		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+			enum_increment_wrap(&gs.mission_menu_state)
+		}
+	} // switch
+
+	//////////////////////////////////////////////////////////////////////////////
+	// Vet actions of selected states for the UI and input.
+	//////////////////////////////////////////////////////////////////////////////
+	focused_tile := get_focused_tile()
+
+	//////////////////////////////////////////////////////////////////////////////
+	// Try to start actions
+	//////////////////////////////////////////////////////////////////////////////
+	switch gs.state {
+	case .Selecting_Tile:
+		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
+			switch gs.tile_select_mode {
+			case .First_Tile:
+				if focused_tile == nil do break
+
+				if focused_tile.resource == .Barracks\
+				&& focused_tile.owner == .Player {
+					// Given this is the first selection, infer this to be a SOURCE.
+					gs.actor = focused_tile
+					set_state(.Panel_Menu) // Select an action, then a target
+					gs.events += {.Panel_Focused}
+					gs.tile_select_mode = .Target
+				} else {
+					// Assume the tile was intended to be the target of an action.
+					gs.target = focused_tile
+					set_state(.Panel_Menu) // Select an action, then a source
+					gs.events += {.Panel_Focused}
+					gs.tile_select_mode = .Actor
+				}
+			case .Actor:
+				gs.actor = focused_tile
+			case .Target:
+				gs.target = focused_tile
+			}//switch
+		}
+
+		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
+			switch gs.tile_select_mode {
+			case .First_Tile:
+				// Nothing to do.
+			case .Actor, .Target:
+				// Go back to the panel-menu we came from.
+				switch gs.panel_menu_state {
+				case .Build_Menu:     set_state(.Build_Menu)
+				case .Upgrade_Menu:   set_state(.Upgrade_Menu)
+				case .Mission_Menu:   set_state(.Mission_Menu)
+				}
+				gs.events += {.Panel_Focused}
+			}
+		}
+	case .Panel_Menu:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.panel_menu_state {
 			case .Build_Menu:     set_state(.Build_Menu)
@@ -409,30 +213,17 @@ game_step :: proc () {
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			gs.events += {.Panel_Dropped_Focus}
-			set_state(.Overworld)
+			set_state(.Selecting_Tile)
+			gs.tile_select_mode = .First_Tile
 		}
-	//////////////////////////////////////////////////////////////////////////////
 	case .Build_Menu:
-		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			enum_decrement_wrap(&gs.build_menu_state)
-		}
-		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-			enum_increment_wrap(&gs.build_menu_state)
-		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			try_start_action(get_focused_tile(), action_for_building(gs.build_menu_state))
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
-	//////////////////////////////////////////////////////////////////////////////
 	case .Upgrade_Menu:
-		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			enum_decrement_wrap(&gs.upgrade_menu_state)
-		}
-		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-			enum_increment_wrap(&gs.upgrade_menu_state)
-		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.upgrade_menu_state {
 			case .Unit_Speed:
@@ -444,14 +235,7 @@ game_step :: proc () {
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
-	//////////////////////////////////////////////////////////////////////////////
 	case .Mission_Menu:
-		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			enum_decrement_wrap(&gs.mission_menu_state)
-		}
-		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
-			enum_increment_wrap(&gs.mission_menu_state)
-		}
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.mission_menu_state {
 			case .Laner_Gather_Resource:
@@ -467,22 +251,16 @@ game_step :: proc () {
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
-	} // switch //////////////////////////////////////////////////////////////////
+	} // switch
+
 
 	if sugar.on_button_press(.Y) || sugar.on_key_press(.E) {
 		gs.zoom = !gs.zoom
 	}
 
-	bg := rect()
-	bg.basis.scale.xy = globals.canvas_size_px
-	uncenter_rect(bg)
-	bg.color = color("#234")
-
-	panel := rect()
-	panel.basis.scale.xy = PANEL_SIZE
-	uncenter_rect(panel)
-	panel.color = color("#0126")
-
+	//////////////////////////////////////////////////////////////////////////////
+	// Build Tile Grid
+	//////////////////////////////////////////////////////////////////////////////
 	for &action in gs.actions {
 		switch action.state {
 		case .Unplanned: // spawn units
@@ -497,8 +275,6 @@ game_step :: proc () {
 					case .Build_Barracks: new_type = Tile_Type.Barracks
 					case .Build_Workshop: new_type = Tile_Type.Workshop
 					case .Build_Path:     new_type = Tile_Type.Path
-					case .Build_Aqueduct: new_type = Tile_Type.Aqueduct
-					case .Build_Train:    new_type = Tile_Type.Train
 					}
 					action.target.resource = new_type
 				}
@@ -513,7 +289,22 @@ game_step :: proc () {
 		} // switch state
 	} // for action
 
-	focused_tile := get_focused_tile()
+	//////////////////////////////////////////////////////////////////////////////
+	// Build Panel
+	//////////////////////////////////////////////////////////////////////////////
+	bg := rect()
+	bg.basis.scale.xy = globals.canvas_size_px
+	uncenter_rect(bg)
+	bg.color = color("#234")
+
+	panel := rect()
+	panel.basis.scale.xy = PANEL_SIZE
+	uncenter_rect(panel)
+	panel.color = color("#0126")
+
+	//////////////////////////////////////////////////////////////////////////////
+	// Build Tile Grid
+	//////////////////////////////////////////////////////////////////////////////
 	for i in 0..< TILES {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
@@ -525,6 +316,9 @@ game_step :: proc () {
 		gs.tiles[i].entity = it
 	}
 
+	//////////////////////////////////////////////////////////////////////////////
+	// Build Panel Menu
+	//////////////////////////////////////////////////////////////////////////////
 	menu := make([dynamic]^Entity, context.temp_allocator)
 	append(&menu, 
 		pad_box(16),
@@ -538,14 +332,14 @@ game_step :: proc () {
 		pad_box(16),
 	)
 	switch gs.state {
-	case .Overworld:    append(&menu, text("  ACTIONS:", .bold_pixel))
+	case .Selecting_Tile:    append(&menu, text("  ACTIONS:", .bold_pixel))
 	case .Panel_Menu:   append(&menu, text("  ACTIONS:", .bold_pixel))
 	case .Build_Menu:   append(&menu, text("< BUILD:", .bold_pixel))
 	case .Upgrade_Menu: append(&menu, text("< UPGRADE:", .bold_pixel))
 	case .Mission_Menu: append(&menu, text("< MISSION:", .bold_pixel))
 	}
 	menu_start: int = len(menu)
-	if contains([]States{.Overworld, .Panel_Menu}, gs.state) {
+	if contains([]States{.Selecting_Tile, .Panel_Menu}, gs.state) {
 		append(&menu, 
 			text("  Build", .bold_pixel),
 			text("  Upgrade", .bold_pixel),
@@ -553,19 +347,14 @@ game_step :: proc () {
 		)
 	}
 	switch gs.state {
-	case .Overworld:
-	//////////////////////////////////////////////////////////////////////////////
+	case .Selecting_Tile:
 	case .Panel_Menu:
-	//////////////////////////////////////////////////////////////////////////////
 	case .Build_Menu:
 		append(&menu,
 			build_menu_list_item("  Barracks", .Build_Barracks),
 			build_menu_list_item("  Workshop", .Build_Workshop),
 			build_menu_list_item("  Path", .Build_Path),
-			build_menu_list_item("  Aqueduct", .Build_Aqueduct),
-			build_menu_list_item("  Train", .Build_Train),
 		)
-	//////////////////////////////////////////////////////////////////////////////
 	case .Upgrade_Menu:
 		append(&menu,
 			upgrade_menu_list_item("  Unit Speed", .Unit_Speed),
@@ -573,7 +362,6 @@ game_step :: proc () {
 			upgrade_menu_list_item("  Unit Power", .Unit_Power),
 			upgrade_menu_list_item("  Unit Capacity", .Unit_Capacity),
 		)
-	//////////////////////////////////////////////////////////////////////////////
 	case .Mission_Menu:
 		append(&menu,
 			mission_menu_list_item("  Gather", .Laner_Gather_Resource),
@@ -581,7 +369,7 @@ game_step :: proc () {
 			mission_menu_list_item("  Spy on Tile", .Spy_Tile),
 			mission_menu_list_item("  Sabotage Tile", .Spy_Sabotage_Tile),
 		)
-	} // switch //////////////////////////////////////////////////////////////////
+	} // switch
 
 	panel_list := column(..menu[:])
 	panel_list_size := measure_entity(panel_list)
@@ -591,10 +379,12 @@ game_step :: proc () {
 		position = Vec2{6, height_to_pin_atop},
 	)
 
-	// // lerp a highlighter from the tile to the menu
+	////////////////////////////////////////////////////////////////////////////////////////
+	// Build Panel Menu Highlight
+	////////////////////////////////////////////////////////////////////////////////////////
 	menu_offset: int
 	switch gs.state {
-	case .Overworld:
+	case .Selecting_Tile:
 	case .Panel_Menu:   menu_offset = cast(int) gs.panel_menu_state
 	case .Build_Menu:   menu_offset = cast(int) gs.build_menu_state
 	case .Upgrade_Menu: menu_offset = cast(int) gs.upgrade_menu_state
@@ -614,7 +404,7 @@ game_step :: proc () {
 	@static time: f32; time += globals.tick
 	menu_highlight.color.a = sinbh(2*time) * 0.5
 
-	if hovered_cost, hovered, possible := vet_actions(); hovered {
+	if hovered_cost, hovered, possible := vet_focused_menu_option(); hovered {
 		estimate := estimate_cost(hovered_cost)
 		menu_highlight.color = color("f223")
 		switch {
@@ -631,9 +421,7 @@ game_step :: proc () {
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
 	switch {
 	case .Panel_Focused in gs.events:
-		gs.action_source_barracks = nil
-		gs.action_target = nil
-		// dpending on what has been focused, fill in from and to.
+		// depending on what has been focused, fill in from and to.
 		// depending on what's left ot fill out after the verb, select another.
 		// find_path(&gs.tiles[0], focused_tile)
 		menu_highlight.flags += {.Skip_Next_Interpolation}
@@ -661,246 +449,23 @@ game_step :: proc () {
 		}
 	} // switch
 
-	if gs.state == .Overworld && !is_animating {
+	if gs.state == .Selecting_Tile && !is_animating {
 		menu_highlight.color.a = 0	
 	}
+	////////////////////////////////////////////////////////////////////////////////////////
+	// ...
+	////////////////////////////////////////////////////////////////////////////////////////
 } // game step
 
-vet_actions :: proc () -> (cost: Resources, hovered: bool, possible: bool) {
-	switch gs.state {
-	case .Overworld: fallthrough
-	case .Panel_Menu: return {}, false, false
-	case .Build_Menu:
-		switch gs.build_menu_state {
-		case .Build_Barracks: cost = barracks_cost; hovered = true
-		case .Build_Workshop: cost = workshop_cost; hovered = true
-		case .Build_Path:     cost = path_cost;     hovered = true
-		case .Build_Aqueduct: cost = aqueduct_cost; hovered = true
-		case .Build_Train:    cost = train_cost;    hovered = true
-		}
-	case .Upgrade_Menu:
-		switch gs.upgrade_menu_state {
-		case .Unit_Speed:    cost = unit_speed_cost; hovered = true
-		case .Unit_Health:   cost = unit_health_cost; hovered = true
-		case .Unit_Power:    cost = unit_power_cost; hovered = true
-		case .Unit_Capacity: cost = unit_capacity_cost; hovered = true
-		}
-	case .Mission_Menu:
-		switch gs.mission_menu_state {
-		case .Laner_Gather_Resource: cost = gather_cost; hovered = true
-			found: bool; for n in get_focused_tile().neighbors do if is_gatherable(n^) { found = true; break }
-			possible = found // need a gatherable resource.
-		case .Laner_Fight:           cost = fight_cost; hovered = true
-		case .Spy_Tile:              cost = spy_cost; hovered = true
-		case .Spy_Sabotage_Tile:     cost = sabotage_cost; hovered = true
-		}
-	} // switch
-	return
-}
-
-is_gatherable :: proc (tile: Tile) -> bool {
-	switch tile.resource {
-	case .Grass:    return false
-	case .Ore:      return true
-	case .Food:     return true
-	case .Water:    return true
-	case .Workshop: return false
-	case .Market:   return false
-	case .Barracks: return false
-	case .Path:     return false
-	case .Aqueduct: return false
-	case .Train:    return false
-	}
-	panic("Exhaustive switch")
-}
-
-can_path_through :: proc (type: Tile_Type) -> bool {
-	switch type {
-	case .Grass:    return false
-	case .Ore:      return true
-	case .Food:     return true
-	case .Water:    return true
-	case .Workshop: return true
-	case .Market:   return true
-	case .Barracks: return true
-	case .Path:     return true
-	case .Aqueduct: return true
-	case .Train:    return true
-	}
-	panic("Exhaustive switch")
-}
-
-// Given a resource, try to path a unit to it through roads.
-find_path :: proc (start, dest: ^Tile) {
-	graph := &gs.tiles
-	UNKNOWN :: max(int)
-	for &tile in graph {
-		// "Visited" means we've measured distance to all neighbors from start,
-		// and stored that distance on the neighbor. (this does not make that neighbor "visited")
-		tile._search_visited = false
-		if tile.index == start.index {
-			tile._search_distance = 0
-		} else {
-			tile._search_distance = UNKNOWN
-		}
-	}
-
-	for {
-		min_distance: int = UNKNOWN
-		min_unvisited: ^Tile
-		// Of the unvisited tiles, 
-		for &tile in graph { // Seek to remove from "unvisited"
-			if !tile._search_visited\
-			&& tile._search_distance < min_distance {
-				min_distance = tile._search_distance
-				min_unvisited = &tile
-			}
-		}
-		if min_unvisited == dest do break // INTENT: Shortest path found.
-		if min_unvisited == nil || min_distance == UNKNOWN do break
-		// If we got here, we've got a graph-node to evaluate.
-		assert(len(min_unvisited.neighbors) > 1)
-		for &neighbor in min_unvisited.neighbors {
-			neighbor := neighbor
-			if !can_path_through(neighbor.resource) do continue
-			neighbor._search_distance = min(
-				neighbor._search_distance,
-				min_unvisited._search_distance + 1)
-			fmt.printfln("tile %d dist=%d", neighbor.index, neighbor._search_distance)
-		}
-		min_unvisited._search_visited = true
-	}
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
-// Build Costs
+// UI Components
 ////////////////////////////////////////////////////////////////////////////////
-
-barracks_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 1,
-	time = 1300 * time.Millisecond,
-}
-workshop_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 1,
-	time = 1300 * time.Millisecond,
-}
-// Gathering cost is 1 worker + distance / speed
-path_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 1,
-	time = 1300 * time.Millisecond,
-}
-aqueduct_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 1,
-	time = 1300 * time.Millisecond,
-
-}
-train_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 1,
-	time = 1300 * time.Millisecond,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Upgrade Costs
-////////////////////////////////////////////////////////////////////////////////
-unit_speed_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 0,
-	time = 5300 * time.Millisecond,
-}
-unit_health_cost ::  Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 0,
-	time = 5300 * time.Millisecond,
-}
-unit_power_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 0,
-	time = 5300 * time.Millisecond,
-}
-unit_capacity_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 0,
-	time = 5300 * time.Millisecond,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Mission Costs
-////////////////////////////////////////////////////////////////////////////////
-gather_cost :: Resources {
-	ore     = 0,
-	food    = 0,
-	water   = 0,
-	workers = 1,
-	leaders = 0,
-	time = 1300 * time.Millisecond
-}
-fight_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 0,
-	time = 1300 * time.Millisecond
-}
-spy_cost :: Resources {
-	ore     = 0,
-	food    = 0,
-	water   = 0,
-	workers = 0,
-	leaders = 0,
-	time = 1300 * time.Millisecond // maybe make this the duration of spying
-}
-sabotage_cost :: Resources {
-	ore     = 1,
-	food    = 1,
-	water   = 1,
-	workers = 1,
-	leaders = 0,
-	time = 1300 * time.Millisecond
-}
 
 menu_highlight :: proc (
 	cost: Resources
 ) -> ^Entity {
 	assert(false); return nil
 }
-
-////////////////////////////////////////////////////////////////////////////////
-//
-////////////////////////////////////////////////////////////////////////////////
 
 build_menu_list_item :: proc (
 	label: string,
@@ -914,8 +479,6 @@ build_menu_list_item :: proc (
 	case .Build_Barracks: estimate = estimate_cost(barracks_cost)
 	case .Build_Workshop: estimate = estimate_cost(workshop_cost)
 	case .Build_Path:     estimate = estimate_cost(path_cost)
-	case .Build_Aqueduct: estimate = estimate_cost(aqueduct_cost)
-	case .Build_Train:    estimate = estimate_cost(train_cost)
 	}
 	switch {
 	case estimate.can_simply_afford:
@@ -1048,20 +611,4 @@ tile_entity :: proc (
 		tile_highlight.color.a = motion(4*time)
 	}
 	return it, is_new
-}
-
-resource_colors: [Tile_Type]Color3 = {
-	.Grass    = {0.412, 0.651, 0.255},
-
-	.Ore      = {0.859, 0.686, 0.235},
-	.Food     = {0.761, 0.494, 0.184},
-	.Water    = {0.208, 0.514, 0.749},
-
-	.Workshop = {0.451, 0.224, 0.176},
-	.Market   = {0.580, 0.329, 0.239},
-	.Barracks = {0.769, 0.561, 0.376},
-
-	.Path     = {0.541, 0.290, 0.192},
-	.Aqueduct = {0.208, 0.514, 0.749},
-	.Train    = {0.441, 0.190, 0.092},
 }

@@ -1,21 +1,25 @@
 package main
+
 import "core:time"
 
-// init - takes a pointer
-// new - returns a pointer and initialized to zero
+// Iterators:
+//   (T, bool: more_data)
+//   (T, int, bool)
 //
-// make - returns a value (maybe containing pointers)
-// create - returns a pointer and initialized
-// 
-// destroy - takes a pointer to deinitialize (and sometimes free if necessary)
-// free - takes a pointer (frees the pointer) but not destroy/deinit
-// delete - takes a value (frees a pointer)
+// Naming:
+//   init - takes a pointer
+//   new - returns a pointer and initialized to zero
+//
+//   make - returns a value (maybe containing pointers)
+//   create - returns a pointer and initialized
+//   
+//   destroy - takes a pointer to deinitialize (and sometimes free if necessary)
+//   free - takes a pointer (frees the pointer) but not destroy/deinit
+//   delete - takes a value (frees a pointer)
 
-TILE_GAP :: 1
-ROWS :: 23
-COLUMNS :: 30
-TILES :: ROWS * COLUMNS
-TILE_SIZE_PX :: 16
+////////////////////////////////////////////////////////////////////////////////
+// Types
+////////////////////////////////////////////////////////////////////////////////
 
 Event :: enum {
 	Panel_Focused,
@@ -24,31 +28,37 @@ Event :: enum {
 
 Game_State :: struct {
 	next_action_id: int, // zero is reserved as invalid.
+	player: Resources,
+	enemy:  Resources,
+	tiles:  []Tile,
 	actions: [dynamic]Action,
+	//
 	events:  bit_set[Event],
 	state_changed_this_frame: bool,
 	prev_state:     States,
 	state:          States,
-	panel_menu_state:  Panel_Menu_State,
-	//
+	// Pending Selections
+	focused_tile:     int,
+	tile_select_mode: Tile_Select_Mode,
+	actor:  ^Tile,
+	target: ^Tile,
+	action: Action,
+	panel_menu_state: Panel_Menu_State,
 	build_menu_state:   Build_Menu,
 	upgrade_menu_state: Upgrade_Menu,
 	mission_menu_state: Mission_Menu,
 	//
-	action_source_barracks: ^Tile,
-	action_target:          ^Tile,
-	focused_tile: int,
-	player: Resources,
-	enemy:  Resources,
-	tiles:  []Tile,
 	zoom:   bool,
 }
 
+Tile_Select_Mode :: enum {
+	First_Tile,
+	Actor,
+	Target,
+}
+
 States :: enum {
-	// Selecting_First_Tile,
-	// Selecting_Source_Tile,
-	// Selecting_Target_Tile,
-	Overworld,
+	Selecting_Tile,
 	Panel_Menu,
 	Build_Menu,
 	Upgrade_Menu,
@@ -65,8 +75,6 @@ Build_Menu :: enum {
 	Build_Barracks,
 	Build_Workshop,
 	Build_Path,
-	Build_Aqueduct,
-	Build_Train,
 }
 Upgrade_Menu :: enum {
 	Unit_Speed,
@@ -108,12 +116,13 @@ Tile_Type :: enum {
 	Food, Water, // Modulates spawn rate
 	// Buildings
 	Workshop,    // improve/unlock units/resources
-	Market,      // strengthen population
 	Barracks,    // raise population
 	Path,        // Allows non-scout units to move fast.
-	Aqueduct,// Enhanced water source. Maybe auto resource.
-	Train,// Railway
 }
+IMPOSSIBLE_TERRAIN :: bit_set[Tile_Type]{.Ore, .Water}
+ROUGH_TERRAIN :: bit_set[Tile_Type]{.Grass}
+BUILDINGS :: bit_set[Tile_Type]{.Workshop, .Barracks}
+TRANSPORT :: bit_set[Tile_Type]{.Path}
 
 // To have a global array and add target param or not?
 // Would happening and finish need to exist?
@@ -161,6 +170,25 @@ Resources :: struct #all_or_none {
 	leaders: int,
 	time:    time.Duration, // time dwelling on-location (not traversal)
 }
+
+Cost_Estimate :: struct {
+	can_simply_afford: bool,
+	can_afford_with_subs: bool,
+	sub_worker_cost: int,
+	sub_leaders_to_reimburse: int,
+	sub_workers_to_reimburse: int,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Data
+////////////////////////////////////////////////////////////////////////////////
+
+TILE_GAP :: 1
+ROWS :: 23
+COLUMNS :: 30
+TILES :: ROWS * COLUMNS
+TILE_SIZE_PX :: 16
+
 BONKERS_RESOURCES :: Resources {
 	ore     = max(int),
 	food    = max(int),
@@ -171,10 +199,134 @@ BONKERS_RESOURCES :: Resources {
 	time = 0,
 }
 
-Cost_Estimate :: struct {
-	can_simply_afford: bool,
-	can_afford_with_subs: bool,
-	sub_worker_cost: int,
-	sub_leaders_to_reimburse: int,
-	sub_workers_to_reimburse: int,
+resource_colors: [Tile_Type]Color3 = {
+	.Grass    = {0.412, 0.651, 0.255},
+
+	.Ore      = {0.859, 0.686, 0.235},
+	.Food     = {0.761, 0.494, 0.184},
+	.Water    = {0.208, 0.514, 0.749},
+
+	.Workshop = {0.451, 0.224, 0.176},
+	.Barracks = {0.769, 0.561, 0.376},
+
+	.Path     = {0.541, 0.290, 0.192},
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Build Costs
+////////////////////////////////////////////////////////////////////////////////
+
+barracks_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 1,
+	time = 1300 * time.Millisecond,
+}
+workshop_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 1,
+	time = 1300 * time.Millisecond,
+}
+// Gathering cost is 1 worker + distance / speed
+path_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 1,
+	time = 1300 * time.Millisecond,
+}
+aqueduct_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 1,
+	time = 1300 * time.Millisecond,
+
+}
+train_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 1,
+	time = 1300 * time.Millisecond,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Upgrade Costs
+////////////////////////////////////////////////////////////////////////////////
+unit_speed_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 0,
+	time = 5300 * time.Millisecond,
+}
+unit_health_cost ::  Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 0,
+	time = 5300 * time.Millisecond,
+}
+unit_power_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 0,
+	time = 5300 * time.Millisecond,
+}
+unit_capacity_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 0,
+	time = 5300 * time.Millisecond,
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Mission Costs
+////////////////////////////////////////////////////////////////////////////////
+gather_cost :: Resources {
+	ore     = 0,
+	food    = 0,
+	water   = 0,
+	workers = 1,
+	leaders = 0,
+	time = 1300 * time.Millisecond
+}
+fight_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 0,
+	time = 1300 * time.Millisecond
+}
+spy_cost :: Resources {
+	ore     = 0,
+	food    = 0,
+	water   = 0,
+	workers = 0,
+	leaders = 0,
+	time = 1300 * time.Millisecond // maybe make this the duration of spying
+}
+sabotage_cost :: Resources {
+	ore     = 1,
+	food    = 1,
+	water   = 1,
+	workers = 1,
+	leaders = 0,
+	time = 1300 * time.Millisecond
 }
