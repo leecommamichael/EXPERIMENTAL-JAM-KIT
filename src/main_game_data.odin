@@ -56,7 +56,6 @@ Game_State :: struct {
 	mission_menu_state: Mission_Menu,
 	//
 	zoom:   bool,
-	breathe: f32,
 }
 
 Tile_Select_Mode :: enum {
