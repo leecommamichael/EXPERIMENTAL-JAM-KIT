@@ -3,6 +3,11 @@ package angle
 import "core:log"
 import "core:fmt"
 import "base:intrinsics"
+import "base:runtime"
+
+// IDEA: when generating a buffer, optional parameter to name it and use that for debug info.
+// This way we can give you a debug view of the GL state and what is bound.
+// In debug mode, the context will have fields for the bound state and you can look around.
 
 // If enabled: the package will call glGetError after relevant gl procedures.
 NGL_VALIDATE :: #config(NGL_VALIDATE, ODIN_DEBUG)
@@ -19,8 +24,7 @@ validate :: proc (src_loc: runtime.Source_Code_Location) -> Error {
 		err := cast(Error) GetError()
 		when NGL_DEBUG {
 			if err != Error.NO_ERROR {
-				message := fmt.tprintf("%v: debug_trap emitted.", err)
-				_bad_input(message, src_loc)
+				log.errorf("%v\n%v %v", err, src_loc, err)
 				intrinsics.debug_trap()
 			}
 		}
@@ -28,6 +32,10 @@ validate :: proc (src_loc: runtime.Source_Code_Location) -> Error {
 	} else {
 		return .NO_ERROR
 	}
+}
+
+_bad_input :: proc (str: string, loc: runtime.Source_Code_Location) {
+	log.errorf("%v\n%v %v", str, loc, str)
 }
 
 ////////////////////////////////////////////////////////////////////// 
@@ -218,21 +226,4 @@ make_texture_2D :: proc (
 		data = data
 	)
 	when NGL_VALIDATE { return validate(_loc) } else { return }
-}
-
-// IDEA: when generating a buffer, optional parameter to name it and use that for debug info.
-// This way we can give you a debug view of the GL state and what is bound.
-// In debug mode, the context will have fields for the bound state and you can look around.
-
-import "core:path/slashpath"
-import "base:runtime"
-
-_bad_input :: #force_inline proc (message: string, src_loc: runtime.Source_Code_Location) {
-	// TODO: Before sharing this code, introduce a when config here.
-	_, file := slashpath.split(src_loc.file_path)
-	log.debugf("angle\n" +
-		"  Text│ %s\n" +
-		"  File│ %s\n" +
-		"  Line│ %v",
-		 message, file, src_loc.line)
 }

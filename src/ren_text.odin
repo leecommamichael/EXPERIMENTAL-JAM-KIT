@@ -149,8 +149,12 @@ set_text :: proc (entity: ^Entity, message: string) {
 		indices[(6*gnum)-2] = u32(4*glyph_index)+1 // TR
 		indices[(6*gnum)-1] = u32(4*glyph_index)+2 // BL
 	}
-
-	entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
+	// TODO: I need to re-use the VAO and buffer. Just resize it.
+	if entity.draw_command.VAO == 0 {
+		entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
+	} else {
+		ren_reuse_text_draw_cmd(&entity.draw_command, globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
+	}
 }
 
 // text cursor is at the baseline, so it's not useful.

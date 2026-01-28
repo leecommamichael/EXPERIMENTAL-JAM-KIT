@@ -590,6 +590,27 @@ ren_make_text_draw_cmd :: proc (
 	return
 }
 
+ren_reuse_text_draw_cmd :: proc (
+	cmd: ^Draw_Command,
+	instance_buffer: gl.Buffer,
+	instance_index: int,
+	vertices: []Ren_Vertex_Base,
+	indices:  []u32,
+) {
+	cmd.program = globals.ren.programs[.Text]
+	gl.BindVertexArray(cmd.VAO)
+	// works because ASSUMING created with init_cmd_with_basic_vertex_attributes
+	VBO := cmd.attributes[0].buffer
+	gl.BindBuffer(.ARRAY_BUFFER, VBO)
+	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+
+	cmd.index_count = len(indices)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
+	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+	init_cmd_with_basic_vertex_attributes(cmd, VBO, instance_buffer, instance_index)
+}
+
 ren_make_water_draw_cmd :: proc (
 	instance_buffer: gl.Buffer,
 	instance_index: int,

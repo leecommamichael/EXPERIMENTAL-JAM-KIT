@@ -1,6 +1,5 @@
 package main
 
-import "core:fmt"
 import "core:time"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +81,6 @@ find_path :: proc (
 			}
 			updated_dist := min(tile._search_distance, min_unvisited._search_distance + 1)
 			tile._search_distance = updated_dist
-			fmt.printfln("tile %d dist=%d", tile.index, tile._search_distance)
 		}//for
 		min_unvisited._search_visited = true
 	}

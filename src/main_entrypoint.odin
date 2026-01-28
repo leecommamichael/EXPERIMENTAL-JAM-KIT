@@ -54,7 +54,7 @@ main :: proc() {
 	framework_init()
 
 	when sugar.platform_calls_step { return }
-	
+	// TODO: Only do this on Windows and Linux. Sorry Mac...
 	gl_debug_proc :: proc "c" (
 		source: gl.GLuint,
 		type: gl.GLuint,
@@ -65,15 +65,24 @@ main :: proc() {
 		userParam: rawptr,
 	) {
 		context = (cast(^runtime.Context) userParam)^
-		if type == gl.DEBUG_SEVERITY_MEDIUM {
+		// switch type {
+		// case DEBUG_TYPE_ERROR:
+		// case DEBUG_TYPE_DEPRECATED_BEHAVIOR:
+		// case DEBUG_TYPE_UNDEFINED_BEHAVIOR:
+		// case DEBUG_TYPE_PORTABILITY:
+		// case DEBUG_TYPE_PERFORMANCE:
+		// }
+		if severity == gl.DEBUG_SEVERITY_MEDIUM {
 			log.warnf("%v", message)
-		} else if type == gl.DEBUG_SEVERITY_HIGH {
+		} else if severity == gl.DEBUG_SEVERITY_HIGH {
 			log.errorf("%v", message)
 		} else {
 			// log.infof("%v", message)
 		}
 	}
 	ctx := context
+	gl.glEnable(gl.DEBUG_OUTPUT)
+	gl.glEnable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
 	gl.glDebugMessageCallback(gl_debug_proc, &ctx)
 
 	tick := time.tick_now()

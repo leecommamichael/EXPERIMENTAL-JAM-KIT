@@ -273,6 +273,33 @@ game_step :: proc () {
 	} // switch to select actions
 
 	//////////////////////////////////////////////////////////////////////////////
+	// Build Panel
+	//////////////////////////////////////////////////////////////////////////////
+	bg := rect()
+	bg.basis.scale.xy = globals.canvas_size_px
+	uncenter_rect(bg)
+	bg.color = color("#234")
+
+	panel := rect()
+	panel.basis.scale.xy = PANEL_SIZE
+	uncenter_rect(panel)
+	panel.color = color("#0126")
+
+	//////////////////////////////////////////////////////////////////////////////
+	// Build Tile Grid
+	//////////////////////////////////////////////////////////////////////////////
+	for i in 0..< TILES {
+		basis: Transform
+		basis.scale = TILE_SIZE_PX * tile_scale()
+		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
+		tile: ^Tile = &gs.tiles[i]
+		is_neighbor: bool; for n in focused_tile.neighbors do if n.index == i { is_neighbor = true; break }
+		tile.focused = gs.focused_tile == i
+		it := tile_entity(basis, tile, loop_hash("tile", i))
+		gs.tiles[i].entity = it
+	}
+
+	//////////////////////////////////////////////////////////////////////////////
 	// Dispatch Actions
 	//////////////////////////////////////////////////////////////////////////////
 	for &action in gs.actions {
@@ -306,33 +333,6 @@ game_step :: proc () {
 		case .Moving_Home: unimplemented() // TODO
 		} // switch state
 	} // for action
-
-	//////////////////////////////////////////////////////////////////////////////
-	// Build Panel
-	//////////////////////////////////////////////////////////////////////////////
-	bg := rect()
-	bg.basis.scale.xy = globals.canvas_size_px
-	uncenter_rect(bg)
-	bg.color = color("#234")
-
-	panel := rect()
-	panel.basis.scale.xy = PANEL_SIZE
-	uncenter_rect(panel)
-	panel.color = color("#0126")
-
-	//////////////////////////////////////////////////////////////////////////////
-	// Build Tile Grid
-	//////////////////////////////////////////////////////////////////////////////
-	for i in 0..< TILES {
-		basis: Transform
-		basis.scale = TILE_SIZE_PX * tile_scale()
-		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
-		tile: ^Tile = &gs.tiles[i]
-		is_neighbor: bool; for n in focused_tile.neighbors do if n.index == i { is_neighbor = true; break }
-		tile.focused = gs.focused_tile == i
-		it := tile_entity(basis, tile, loop_hash("tile", i))
-		gs.tiles[i].entity = it
-	}
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Build Panel Menu

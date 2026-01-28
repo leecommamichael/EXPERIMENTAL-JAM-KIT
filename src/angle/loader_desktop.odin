@@ -715,6 +715,7 @@ glSampleMaski:                     proc "c" (maskNumber: GLuint, mask: GLuint)
 
 debug_proc_t :: #type proc "c" (source: GLuint, type: GLuint, id: GLuint, severity: GLuint, length: int, message: cstring, userParam: rawptr)
 glDebugMessageCallback:        proc "c" (callback: debug_proc_t, userParam: rawptr)
+DEBUG_OUTPUT :: 0x92E0
 DEBUG_OUTPUT_SYNCHRONOUS :: 0x8242
 DEBUG_SEVERITY_HIGH :: 0x9146
 DEBUG_SEVERITY_MEDIUM :: 0x9147
