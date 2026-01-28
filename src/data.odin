@@ -31,6 +31,7 @@ Globals :: struct {
 	tick_counter: int,
 	// Milliseconds since last game-loop iteration.
 	dt:         f32,
+	uptime:     f32,
 	avg_fps:    f64,
 	// Assets
 	assets: Asset_Bundle,

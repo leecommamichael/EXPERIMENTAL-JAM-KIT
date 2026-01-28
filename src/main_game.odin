@@ -500,15 +500,17 @@ tile_entity :: proc (
 	if tile.resource == .Ore {
 		img := image("ore16.ase", loop_hash("ore", tile.index))
 		transform(img, it^)
+		it.color.rgb = resource_colors[.Grass]
 	} else if tile.resource == .Food {
 		img := image("food16.ase", loop_hash("food", tile.index))
 		transform(img, it^)
+		it.color.rgb = resource_colors[.Grass]
 	} else if tile.resource == .Water {
 		shape := circle(loop_hash("water", tile.index))
 		shape.basis = basis
 		shape.position.xy = it.position.xy
 		shape.color.rgb = resource_colors[.Water]
-		it.color.rgb = 0
+		it.color.rgb = resource_colors[.Grass]
 	} else if tile.resource == .Grass {
 		it.color.rgb = resource_colors[tile.resource]
 	} else if tile.resource == .Barracks {
@@ -519,18 +521,28 @@ tile_entity :: proc (
 		log.infof("undecorated resource: %v", tile.resource)
 	}
 
-	if tile._search_distance > 0 && tile._search_distance < UNKNOWN_DISTANCE {
-		dist_label := text(fmt.tprintf("%.0f", 0.1*tile._search_distance), .bold_pixel, hash=loop_hash("search_dbg", tile.index))
-		dist_label.basis = basis
-		dist_label.basis.scale.xy = 12
-		dist_label.position.xy = it.position.xy
-		dist_label.position.x -= 7
-		dist_label.position.z += 100
+
+	// if tile._search_distance > 0 && tile._search_distance < UNKNOWN_DISTANCE {
+	// 	dist_label := text(fmt.tprintf("%.0f", 0.1*tile._search_distance), .bold_pixel, hash=loop_hash("search_dbg", tile.index))
+	// 	dist_label.basis = basis
+	// 	dist_label.basis.scale.xy = 12
+	// 	dist_label.position.xy = it.position.xy
+	// 	dist_label.position.x -= 7
+	// 	dist_label.position.z += 100
+	// }
+	in_path: bool; for t in gs.path do if tile.index == t.index { in_path = true; break }
+	if in_path {
+		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
+		focus_alpha := motion(4*globals.uptime)
+		// it.color.rgb += 0.5
+		shape, is_new := circle(loop_hash("path_dots", tile.index))
+		shape.basis = basis
+		shape.basis.scale.xy = basis.scale.xy - 8
+		shape.position.xy = it.position.xy
+		shape.position.z = next_z() / 10
+		shape.color = color("000")
+		shape.color.a = focus_alpha
 	}
-		in_path: bool; for t in gs.path do if tile.index == t.index { in_path = true; break }
-		if in_path {
-			it.color.rgb += 0.5
-		}
 
 	// TODO: Only do this if it's about building.
 	// if tile.action.happening {
@@ -540,12 +552,12 @@ tile_entity :: proc (
 
 	if tile.focused {
 		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
-		@static time: f32; time += globals.tick
+		focus_alpha := motion(4*globals.uptime)
 		tile_highlight := rect(hash=loop_hash("focus", tile.index))
 		tile_highlight.basis = it.basis
 		tile_highlight.position.xy = it.position.xy
 		tile_highlight.color = color("af6")
-		tile_highlight.color.a = motion(4*time)
+		tile_highlight.color.a = focus_alpha
 	}
 	return it, is_new
 }

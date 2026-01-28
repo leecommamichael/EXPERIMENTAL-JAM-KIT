@@ -89,6 +89,7 @@ framework_init :: proc () {
 }
 
 framework_step :: proc (dt: f32) {
+	globals.uptime += globals.tick
 	globals.ui_mouse_position = (globals.sugar.mouse_position / globals.canvas_stretch) 
 	globals.mouse_position = (globals.sugar.mouse_position / globals.canvas_stretch)  // TODO camera offset
 	globals.dt = dt
