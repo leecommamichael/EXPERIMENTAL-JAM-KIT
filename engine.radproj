@@ -35,7 +35,7 @@ target:
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66204933714927
+  timestamp: 66205070844823
 }
 debug_info:
 {
@@ -57,11 +57,7 @@ debug_info:
 }
 breakpoint:
 {
-  source_location: "src/main_game.odin:220:1"
+  source_location: "src/main_game.odin:218:1"
   hit_count: 1
 }
-breakpoint:
-{
-  source_location: "src/main_game.odin:230:1"
-  hit_count: 1
-}
+breakpoint: source_location: "src/main_game.odin:211:1"

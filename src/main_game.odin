@@ -58,6 +58,7 @@ game_init :: proc () {
 
 	gs = new(Game_State)
 	gs.tiles = make([]Tile, TILES)
+	gs.path = make([dynamic]^Tile, len=0, cap=100)
 	gs.next_action_id = 1
 	for i in 0..<TILES {
 		tile: ^Tile = &gs.tiles[i]
@@ -89,6 +90,7 @@ game_init :: proc () {
 	gs.player.water = 0
 	gs.player.ore = 0
 	gs.player.leaders = 1
+	gs.player.workers = 0
 }
 
 PANEL_SIZE: Vec2 = {120, 400}
@@ -161,16 +163,22 @@ game_step :: proc () {
 	// Vet actions of selected states for the UI and input.
 	//////////////////////////////////////////////////////////////////////////////
 	focused_tile := get_focused_tile()
-	gs.action_fully_vetted = false
 	gs.has_focused_action = false
+	gs.action_fully_vetted = false
 	switch gs.state {
 	case .Selecting_Tile:
 		if gs.tile_select_mode == .Actor {
 			actor := focused_tile
 			gs.action_fully_vetted = vet_full_action(actor, gs.selected_action, gs.target)
+			if gs.action_fully_vetted {
+				set_path(actor, gs.target, .Player, gs.selected_action.cost.leaders > 0)
+			}
 		} else if gs.tile_select_mode == .Target {
 			target := focused_tile
 			gs.action_fully_vetted = vet_full_action(gs.actor, gs.selected_action, target)
+			if gs.action_fully_vetted {
+				set_path(gs.actor, target, .Player, gs.selected_action.cost.leaders > 0)
+			}
 		}
 	case .Panel_Menu:
 	case .Build_Menu:
@@ -214,8 +222,12 @@ game_step :: proc () {
 					gs.tile_select_mode = .Actor
 				}
 			case .Actor, .Target:
-				buy_action(gs.selected_action)
-				add_new_action(gs.target, gs.selected_action)
+				if gs.action_fully_vetted {
+					if gs.tile_select_mode == .Actor do gs.actor = focused_tile
+					if gs.tile_select_mode == .Target do gs.target = focused_tile
+					buy_action(gs.selected_action)
+					add_new_action(gs.target, gs.selected_action)
+				}
 			}//switch
 		}
 
@@ -507,11 +519,18 @@ tile_entity :: proc (
 		log.infof("undecorated resource: %v", tile.resource)
 	}
 
-	// if tile._search_distance > 0 && tile._search_distance < max(int) {
-	// 	dist_label := text(fmt.tprintf("%d", tile._search_distance), hash=loop_hash("search_dbg", tile.index))
-	// 	dist_label.basis = basis
-	// 	dist_label.position.xy = it.position.xy
-	// }
+	if tile._search_distance > 0 && tile._search_distance < UNKNOWN_DISTANCE {
+		dist_label := text(fmt.tprintf("%.0f", 0.1*tile._search_distance), .bold_pixel, hash=loop_hash("search_dbg", tile.index))
+		dist_label.basis = basis
+		dist_label.basis.scale.xy = 12
+		dist_label.position.xy = it.position.xy
+		dist_label.position.x -= 7
+		dist_label.position.z += 100
+	}
+		in_path: bool; for t in gs.path do if tile.index == t.index { in_path = true; break }
+		if in_path {
+			it.color.rgb += 0.5
+		}
 
 	// TODO: Only do this if it's about building.
 	// if tile.action.happening {

@@ -31,10 +31,9 @@ index_from_column_row :: proc (tile: [2]int) -> int {
 	return (tile.x) + (tile.y * COLUMNS)
 }
 
-UNKNOWN_DISTANCE :: max(int)
+UNKNOWN_DISTANCE :: max(f32) // NOTE: not infinity
 // Given a resource, try to path a unit to it through roads.
-// INTENT(parameters): zero values allow just finding a naive path. idk if good.
-find_path :: proc (
+_find_path :: proc (
 	start: ^Tile,
 	dest: ^Tile,
 	team: Team,
@@ -53,7 +52,7 @@ find_path :: proc (
 	}
 
 	for {
-		min_distance: int = UNKNOWN_DISTANCE
+		min_distance := UNKNOWN_DISTANCE
 		min_unvisited: ^Tile
 		// Of the unvisited tiles, 
 		for &tile in graph { // Seek to remove from "unvisited"
@@ -68,26 +67,72 @@ find_path :: proc (
 		// If we got here, we've got a graph-node to evaluate.
 		assert(len(min_unvisited.neighbors) > 1)
 		for &tile in min_unvisited.neighbors {
-			if tile.resource in IMPOSSIBLE_TERRAIN do continue
 			if team != .None && !leader { // INTENT: if (worker) ...
 				if tile.resource in ROUGH_TERRAIN do continue
+				if tile.resource in GATHERABLE {
+					// INTENT: Workers cannot gather a resource without an entrance
+					has_entrance: bool; for n in tile.neighbors do if n.resource in TRANSPORT {
+						has_entrance = true; break
+					}
+					if !has_entrance do continue
+				}
 				if tile.resource in BUILDINGS && team != tile.owner {
-					// INTENT: Workers can siege enemy building if there's an entrance.
+					// INTENT: Workers cannot siege an enemy building without an entrance
 					has_entrance: bool; for n in tile.neighbors do if n.resource in TRANSPORT {
 						has_entrance = true; break
 					}
 					if !has_entrance do continue
 				}
 			}
-			updated_dist := min(tile._search_distance, min_unvisited._search_distance + 1)
+			// INTENT: Make reachable by ascribing a known distance.
+			d := distance(min_unvisited.entity.position.xy, tile.entity.position.xy)
+			updated_dist := min(tile._search_distance, min_unvisited._search_distance + d)
 			tile._search_distance = updated_dist
 		}//for
 		min_unvisited._search_visited = true
 	}
 }
 
+// Returns len==0 if no path.
+// Overwrites the supplied path.
+set_path :: proc (
+	start: ^Tile,
+	dest: ^Tile,
+	team: Team,
+	leader: bool,
+) {
+	clear(&gs.path)
+	_find_path(start, dest, team, leader)
+	if !(dest._search_distance < UNKNOWN_DISTANCE) do return
+
+	end: ^Tile = dest
+	inject_at_elem(&gs.path, 0, end)
+	for i := 0;; i+=1 {
+		if i >= TILES {
+			// Defensively avoid an endless loop.
+			assert(false)
+			clear(&gs.path)
+			return
+		}
+
+		nearest: ^Tile = end
+		for neighbor in end.neighbors {
+			if nearest == nil || neighbor._search_distance < end._search_distance {
+				end = neighbor
+			}
+		}
+		inject_at_elem(&gs.path, 0, end)
+
+		if end == start {
+			log.infof("PATH FOUND len=%v", len(gs.path))
+			break // path complete.
+		}
+	}
+}
+import "core:log"
+
 path_exists_between :: proc (actor, target: ^Tile, leader: bool) -> bool {
-	find_path(actor, target, actor.owner, leader)
+	_find_path(actor, target, actor.owner, leader)
 	return target._search_distance < UNKNOWN_DISTANCE
 }
 
@@ -285,6 +330,7 @@ buy_action :: proc (action: Action) {
 
 // Spawn some units which go to the job site and work.
 add_new_action :: proc (tile: ^Tile, action: Action) {
+	assert(gs.target != nil)
 	action := action
 	action.id = make_next_action_id()
 	action.target = tile

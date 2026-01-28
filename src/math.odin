@@ -119,6 +119,7 @@ distance :: linalg.distance
 normalize :: linalg.normalize
 dot :: linalg.dot
 abs :: linalg.abs
+round :: linalg.round
 trunc :: glsl.trunc
 ceil :: glsl.ceil
 vec_min :: linalg.min

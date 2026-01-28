@@ -27,6 +27,7 @@ Event :: enum {
 }
 
 Game_State :: struct {
+	path: [dynamic]^Tile,
 	next_action_id: int, // zero is reserved as invalid.
 	player: Resources,
 	enemy:  Resources,
@@ -113,7 +114,7 @@ Tile :: struct {
 	focused:          bool,
 	focus_neighbor:   bool,
 	_search_visited:  bool,
-	_search_distance: int,
+	_search_distance: f32,
 }
 
 Tile_Type :: enum {
@@ -126,7 +127,6 @@ Tile_Type :: enum {
 	Barracks,    // raise population
 	Path,        // Allows non-scout units to move fast.
 }
-IMPOSSIBLE_TERRAIN :: bit_set[Tile_Type]{.Ore, .Water}
 ROUGH_TERRAIN :: bit_set[Tile_Type]{.Grass}
 BUILDINGS :: bit_set[Tile_Type]{.Workshop, .Barracks}
 TRANSPORT :: bit_set[Tile_Type]{.Path}
