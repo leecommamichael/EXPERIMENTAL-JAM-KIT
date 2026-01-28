@@ -42,7 +42,13 @@ Game_State :: struct {
 	tile_select_mode: Tile_Select_Mode,
 	actor:  ^Tile,
 	target: ^Tile,
-	action: Action,
+	has_focused_action: bool,
+	focused_action:  Action,
+	has_selected_action: bool,
+	selected_action: Action,
+	cost_estimate:  Cost_Estimate, // of focused, else selected action.
+	action_fully_vetted: bool,
+
 	panel_menu_state: Panel_Menu_State,
 	build_menu_state:   Build_Menu,
 	upgrade_menu_state: Upgrade_Menu,
@@ -64,6 +70,7 @@ States :: enum {
 	Upgrade_Menu,
 	Mission_Menu,
 }
+ACTION_MENU :: bit_set[States]{.Build_Menu, .Upgrade_Menu, .Mission_Menu}
 
 Panel_Menu_State :: enum {
 	Build_Menu,
@@ -123,15 +130,20 @@ IMPOSSIBLE_TERRAIN :: bit_set[Tile_Type]{.Ore, .Water}
 ROUGH_TERRAIN :: bit_set[Tile_Type]{.Grass}
 BUILDINGS :: bit_set[Tile_Type]{.Workshop, .Barracks}
 TRANSPORT :: bit_set[Tile_Type]{.Path}
+BUILDABLE_TERRAIN :: bit_set[Tile_Type]{.Grass, .Path}
+GATHERABLE :: bit_set[Tile_Type]{.Ore, .Water, .Food}
 
 // To have a global array and add target param or not?
 // Would happening and finish need to exist?
 // Some actions are recurring. So a state-machine would make sense.
 
+
 Action_State :: enum {
-	Unplanned, // No workers heading in.
-	Awaiting_Assignees,
-	In_Progress,
+	Home,
+	Moving_To_Target,
+	Working,
+	Fighting,
+	Moving_Home,
 }
 
 // TODO? rename Fleet, Unit, Pawn, Piece, Command, Job
@@ -150,17 +162,9 @@ Action :: struct {
 	state: Action_State,
 	workers_to_reimburse: int,
 	leaders_to_reimburse: int,
-	work_start_time:      time.Tick, // start_action, finish_action
+	work_time:      f32,
 }
 
-Unit_State :: enum {
-	Invisible,
-	Moving_To_Target,
-	Working,
-	Fighting,
-	Moving_Home,
-	Delivering,
-}
 
 Resources :: struct #all_or_none {
 	ore:     int,

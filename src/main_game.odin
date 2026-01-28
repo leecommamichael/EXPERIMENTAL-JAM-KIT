@@ -99,6 +99,10 @@ game_step :: proc () {
 	gs.state_changed_this_frame = false
 	gs.events = {}
 
+	if sugar.on_button_press(.Y) || sugar.on_key_press(.E) {
+		gs.zoom = !gs.zoom
+	}
+
 	//////////////////////////////////////////////////////////////////////////////
 	// Arrow movement.
 	//////////////////////////////////////////////////////////////////////////////
@@ -157,15 +161,42 @@ game_step :: proc () {
 	// Vet actions of selected states for the UI and input.
 	//////////////////////////////////////////////////////////////////////////////
 	focused_tile := get_focused_tile()
+	gs.action_fully_vetted = false
+	gs.has_focused_action = false
+	switch gs.state {
+	case .Selecting_Tile:
+		if gs.tile_select_mode == .Actor {
+			actor := focused_tile
+			gs.action_fully_vetted = vet_full_action(actor, gs.selected_action, gs.target)
+		} else if gs.tile_select_mode == .Target {
+			target := focused_tile
+			gs.action_fully_vetted = vet_full_action(gs.actor, gs.selected_action, target)
+		}
+	case .Panel_Menu:
+	case .Build_Menu:
+		gs.has_focused_action = true
+		gs.focused_action = action_for_building(gs.build_menu_state)
+	case .Upgrade_Menu:
+		gs.has_focused_action = true
+		gs.focused_action = action_for_upgrade(gs.upgrade_menu_state)
+	case .Mission_Menu:
+		gs.has_focused_action = true
+		gs.focused_action = action_for_mission(gs.mission_menu_state)
+	} // switch
+
+	if gs.has_focused_action {
+		gs.cost_estimate = estimate_cost(gs.focused_action.cost)
+	}
 
 	//////////////////////////////////////////////////////////////////////////////
-	// Try to start actions
+	// Try to select actions
 	//////////////////////////////////////////////////////////////////////////////
 	switch gs.state {
 	case .Selecting_Tile:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.tile_select_mode {
 			case .First_Tile:
+				gs.has_selected_action = false
 				if focused_tile == nil do break
 
 				if focused_tile.resource == .Barracks\
@@ -182,10 +213,9 @@ game_step :: proc () {
 					gs.events += {.Panel_Focused}
 					gs.tile_select_mode = .Actor
 				}
-			case .Actor:
-				gs.actor = focused_tile
-			case .Target:
-				gs.target = focused_tile
+			case .Actor, .Target:
+				buy_action(gs.selected_action)
+				add_new_action(gs.target, gs.selected_action)
 			}//switch
 		}
 
@@ -216,59 +246,45 @@ game_step :: proc () {
 			set_state(.Selecting_Tile)
 			gs.tile_select_mode = .First_Tile
 		}
-	case .Build_Menu:
+	case .Build_Menu, .Upgrade_Menu, .Mission_Menu:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			try_start_action(get_focused_tile(), action_for_building(gs.build_menu_state))
-		}
-		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			set_state(.Panel_Menu)
-		}
-	case .Upgrade_Menu:
-		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			switch gs.upgrade_menu_state {
-			case .Unit_Speed:
-			case .Unit_Health:
-			case .Unit_Power:
-			case .Unit_Capacity:
+			action := gs.focused_action // Need to mutate it if substituting leaders for workers.
+			cost_estimate := estimate_cost(action.cost)
+			switch {
+			case gs.cost_estimate.can_simply_afford:
+				set_selected_action(action)
+				gs.cost_estimate = cost_estimate
+				set_state(.Selecting_Tile) // ASSUME: tile_select_mode preconfigured
+			case gs.cost_estimate.can_afford_with_subs:
+				action.one_off = true // the game won't let you spend all your leaders permanently
+				action.cost.workers = gs.cost_estimate.sub_worker_cost
+				action.cost.leaders = gs.cost_estimate.sub_leaders_to_reimburse
+				action.leaders_to_reimburse = gs.cost_estimate.sub_leaders_to_reimburse
+				action.workers_to_reimburse = gs.cost_estimate.sub_workers_to_reimburse
+				set_selected_action(action)
+				gs.cost_estimate = cost_estimate
+				set_state(.Selecting_Tile) // ASSUME: tile_select_mode preconfigured
 			}
 		}
+
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
 			set_state(.Panel_Menu)
 		}
-	case .Mission_Menu:
-		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			switch gs.mission_menu_state {
-			case .Laner_Gather_Resource:
-				try_start_action(get_focused_tile(), action_for_mission(gs.mission_menu_state))
-				// Check the tile:
-				// If the tile isn't reachable by path, send a leader.
-				// If the tile _is_ reachable, send workers.
-			case .Laner_Fight: // Retreats at low health. If speed too low, can die.
-			case .Spy_Tile:
-			case .Spy_Sabotage_Tile:
-			}
-		}
-		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
-			set_state(.Panel_Menu)
-		}
-	} // switch
-
-
-	if sugar.on_button_press(.Y) || sugar.on_key_press(.E) {
-		gs.zoom = !gs.zoom
-	}
+	} // switch to select actions
 
 	//////////////////////////////////////////////////////////////////////////////
-	// Build Tile Grid
+	// Dispatch Actions
 	//////////////////////////////////////////////////////////////////////////////
 	for &action in gs.actions {
 		switch action.state {
-		case .Unplanned: // spawn units
-
-		case .Awaiting_Assignees:
-		case .In_Progress:
+		case .Home:
+			action.state = .Moving_To_Target
+			// start following the path
+		case .Moving_To_Target:
+			// if at target, start working (start the timer, too)
+		case .Working:
 			if action_completion_pct(action) >= 1.0 {
-				action.state = .Unplanned // Now go home
+				action.state = .Moving_Home
 				if menu_option, ok := action.build_result.(Build_Menu); ok {
 					new_type: Tile_Type
 					switch menu_option {
@@ -286,6 +302,8 @@ game_step :: proc () {
 					// pending
 				}
 			}
+		case .Fighting: unimplemented() // TODO
+		case .Moving_Home: unimplemented() // TODO
 		} // switch state
 	} // for action
 
@@ -404,26 +422,24 @@ game_step :: proc () {
 	@static time: f32; time += globals.tick
 	menu_highlight.color.a = sinbh(2*time) * 0.5
 
-	if hovered_cost, hovered, possible := vet_focused_menu_option(); hovered {
-		estimate := estimate_cost(hovered_cost)
-		menu_highlight.color = color("f223")
-		switch {
-		case !possible: break
-		case estimate.can_simply_afford: // no change to UI
-		case estimate.can_afford_with_subs:
-			menu_highlight.color = color("fff4")
-			top_hat := image("leader16.ase")
-			top_hat.flags += {.Skip_Interpolation}
-			top_hat.position.xy = hovered_text.position.xy - {5, 4}
+	if gs.has_focused_action {
+		if valid := vet_focused_menu_option(); valid && gs.has_focused_action {
+			menu_highlight.color = color("f223")
+			switch {
+			case !valid: break
+			case gs.cost_estimate.can_simply_afford: // no change to UI
+			case gs.cost_estimate.can_afford_with_subs:
+				menu_highlight.color = color("fff4")
+				top_hat := image("leader16.ase")
+				top_hat.flags += {.Skip_Interpolation}
+				top_hat.position.xy = hovered_text.position.xy - {5, 4}
+			}
 		}
 	}
 
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
 	switch {
 	case .Panel_Focused in gs.events:
-		// depending on what has been focused, fill in from and to.
-		// depending on what's left ot fill out after the verb, select another.
-		// find_path(&gs.tiles[0], focused_tile)
 		menu_highlight.flags += {.Skip_Next_Interpolation}
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
@@ -461,11 +477,61 @@ game_step :: proc () {
 // UI Components
 ////////////////////////////////////////////////////////////////////////////////
 
-menu_highlight :: proc (
-	cost: Resources
-) -> ^Entity {
-	assert(false); return nil
+tile_entity :: proc (
+	basis: Transform,
+	tile: ^Tile,
+	hash: Hash = #caller_location,
+) -> (^Entity, bool) #optional_ok {
+	it, is_new := rect(hash)
+	it.basis = basis
+	it.position.xy = array_cast(tile.column_row, f32) * (TILE_GAP + basis.scale.x)
+	if tile.resource == .Ore {
+		img := image("ore16.ase", loop_hash("ore", tile.index))
+		transform(img, it^)
+	} else if tile.resource == .Food {
+		img := image("food16.ase", loop_hash("food", tile.index))
+		transform(img, it^)
+	} else if tile.resource == .Water {
+		shape := circle(loop_hash("water", tile.index))
+		shape.basis = basis
+		shape.position.xy = it.position.xy
+		shape.color.rgb = resource_colors[.Water]
+		it.color.rgb = 0
+	} else if tile.resource == .Grass {
+		it.color.rgb = resource_colors[tile.resource]
+	} else if tile.resource == .Barracks {
+		it.color.rgb = resource_colors[tile.resource]
+	} else if tile.resource == .Path {
+		it.color.rgb = resource_colors[tile.resource]
+	} else {
+		log.infof("undecorated resource: %v", tile.resource)
+	}
+
+	// if tile._search_distance > 0 && tile._search_distance < max(int) {
+	// 	dist_label := text(fmt.tprintf("%d", tile._search_distance), hash=loop_hash("search_dbg", tile.index))
+	// 	dist_label.basis = basis
+	// 	dist_label.position.xy = it.position.xy
+	// }
+
+	// TODO: Only do this if it's about building.
+	// if tile.action.happening {
+	// 	pct := action_completion_pct(tile.action)
+	// 	it.basis.scale *= clamp(pct, 0, 1)
+	// }
+
+	if tile.focused {
+		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
+		@static time: f32; time += globals.tick
+		tile_highlight := rect(hash=loop_hash("focus", tile.index))
+		tile_highlight.basis = it.basis
+		tile_highlight.position.xy = it.position.xy
+		tile_highlight.color = color("af6")
+		tile_highlight.color.a = motion(4*time)
+	}
+	return it, is_new
 }
+
+tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
 
 build_menu_list_item :: proc (
 	label: string,
@@ -555,60 +621,4 @@ section_list_item :: proc (
 			hash = loop_hash(label, 3)
 		)
 	)
-}
-
-tile_scale :: proc () -> f32 { return 2.0 if gs.zoom else 1.0 }
-
-tile_entity :: proc (
-	basis: Transform,
-	tile: ^Tile,
-	hash: Hash = #caller_location,
-) -> (^Entity, bool) #optional_ok {
-	it, is_new := rect(hash)
-	it.basis = basis
-	it.position.xy = array_cast(tile.column_row, f32) * (TILE_GAP + basis.scale.x)
-	if tile.resource == .Ore {
-		img := image("ore16.ase", loop_hash("ore", tile.index))
-		transform(img, it^)
-	} else if tile.resource == .Food {
-		img := image("food16.ase", loop_hash("food", tile.index))
-		transform(img, it^)
-	} else if tile.resource == .Water {
-		shape := circle(loop_hash("water", tile.index))
-		shape.basis = basis
-		shape.position.xy = it.position.xy
-		shape.color.rgb = resource_colors[.Water]
-		it.color.rgb = 0
-	} else if tile.resource == .Grass {
-		it.color.rgb = resource_colors[tile.resource]
-	} else if tile.resource == .Barracks {
-		it.color.rgb = resource_colors[tile.resource]
-	} else if tile.resource == .Path {
-		it.color.rgb = resource_colors[tile.resource]
-	} else {
-		log.infof("undecorated resource: %v", tile.resource)
-	}
-
-	if tile._search_distance > 0 && tile._search_distance < max(int) {
-		dist_label := text(fmt.tprintf("%d", tile._search_distance), hash=loop_hash("search_dbg", tile.index))
-		dist_label.basis = basis
-		dist_label.position.xy = it.position.xy
-	}
-
-	// TODO: Only do this if it's about building.
-	// if tile.action.happening {
-	// 	pct := action_completion_pct(tile.action)
-	// 	it.basis.scale *= clamp(pct, 0, 1)
-	// }
-
-	if tile.focused {
-		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
-		@static time: f32; time += globals.tick
-		tile_highlight := rect(hash=loop_hash("focus", tile.index))
-		tile_highlight.basis = it.basis
-		tile_highlight.position.xy = it.position.xy
-		tile_highlight.color = color("af6")
-		tile_highlight.color.a = motion(4*time)
-	}
-	return it, is_new
 }

@@ -32,19 +32,6 @@ index_from_column_row :: proc (tile: [2]int) -> int {
 	return (tile.x) + (tile.y * COLUMNS)
 }
 
-is_gatherable :: proc (tile: Tile) -> bool {
-	switch tile.resource {
-	case .Grass:    return false
-	case .Ore:      return true
-	case .Food:     return true
-	case .Water:    return true
-	case .Workshop: return false
-	case .Barracks: return false
-	case .Path:     return false
-	}
-	panic("Exhaustive switch")
-}
-
 UNKNOWN_DISTANCE :: max(int)
 // Given a resource, try to path a unit to it through roads.
 // INTENT(parameters): zero values allow just finding a naive path. idk if good.
@@ -249,7 +236,7 @@ action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
 }
 
 action_completion_pct :: proc (it: Action) -> f32 {
-	return f32(time.tick_diff(it.work_start_time, time.tick_now())) / f32(it.cost.time)
+	return it.work_time / f32(time.duration_milliseconds(it.cost.time))
 }
 
 // INTENT: Adjust the cost of Resources so the correct # of leaders is reimbursed.
@@ -290,7 +277,7 @@ make_next_action_id :: proc () -> int {
 	return id
 }
 
-simply_buy_action :: proc (action: Action) {
+buy_action :: proc (action: Action) {
 	gs.player.ore -= action.cost.ore
 	gs.player.food -= action.cost.food
 	gs.player.water -= action.cost.water
@@ -310,80 +297,86 @@ add_new_action :: proc (tile: ^Tile, action: Action) {
 	set_state(States.Selecting_Tile)
 }
 
-finish_action :: proc (action: ^Action) {
-}
-try_start_action :: proc (tile: ^Tile, action: Action) -> (started: bool) {
-	if tile == nil do return false
-
-	if tile.owner == .Enemy {
-	 return false // Maybe in future allow it but they fight.
-	}
-
-	action := action // Need to mutate it if substituting leaders for workers.
-	estimate := estimate_cost(action.cost)
-	switch {
-	case estimate.can_simply_afford:
-		simply_buy_action(action)
-	case estimate.can_afford_with_subs:
-		action.one_off = true // the game won't let you spend all your leaders permanently
-		action.cost.workers = estimate.sub_worker_cost
-		action.cost.leaders = estimate.sub_leaders_to_reimburse
-		action.leaders_to_reimburse = estimate.sub_leaders_to_reimburse
-		action.workers_to_reimburse = estimate.sub_workers_to_reimburse
-		simply_buy_action(action)
-	case: return false // can't afford
-	}
-	add_new_action(tile, action)
-	return true
+// Also adjusts the action's costs.
+set_selected_action :: proc (action: Action) {
+	gs.selected_action = action
+	gs.has_selected_action = true
 }
 
 // Actions are selected after a target OR source is selected.
-vet_focused_menu_option :: proc () -> (cost: Resources, hovered: bool, possible: bool) {
-	switch gs.state {
-	case .Selecting_Tile: fallthrough
-	case .Panel_Menu: return {}, false, false
-	case .Build_Menu:
-		switch gs.build_menu_state {
-		case .Build_Barracks: cost = barracks_cost; hovered = true
-		case .Build_Workshop: cost = workshop_cost; hovered = true
-		case .Build_Path:     cost = path_cost;     hovered = true
+vet_focused_menu_option :: proc () -> bool {
+	if gs.target != nil {
+		// Define Actions which can happen to Target
+		if build, ok := gs.focused_action.build_result.?; ok {
+			return can_build_on_tile(.Player, gs.target, build)
+		} else if upgrade, ok := gs.focused_action.upgrade_result.?; ok {
+			return can_upgrade_tile(.Player, gs.target, upgrade)
+		} else if mission, ok := gs.focused_action.mission.?; ok {
+			return can_do_mission_on_tile(.Player, gs.target, mission)
+		} else {
+			assert(false, "Bad action.")
 		}
-	case .Upgrade_Menu:
-		switch gs.upgrade_menu_state {
-		case .Unit_Speed:    cost = unit_speed_cost; hovered = true
-		case .Unit_Health:   cost = unit_health_cost; hovered = true
-		case .Unit_Power:    cost = unit_power_cost; hovered = true
-		case .Unit_Capacity: cost = unit_capacity_cost; hovered = true
+	}
+	if gs.actor != nil {
+		// Define Actions which can be done by Actor
+		switch gs.actor.resource {
+		case .Grass, .Ore, .Food, .Water, .Path:
+			return false
+		case .Workshop:
+			upgrade, is_upgrade := gs.focused_action.mission.?
+			return is_upgrade // TODO && can upgrade further
+		case .Barracks:
+			mission, is_mission := gs.focused_action.mission.?
+			return is_mission // TODO && has enough workers/leaders
 		}
-	case .Mission_Menu:
-		switch gs.mission_menu_state {
-		case .Laner_Gather_Resource: cost = gather_cost; hovered = true
-			for n in get_focused_tile().neighbors do if is_gatherable(n^) {
-				possible = true; break 
-			}
-		case .Laner_Fight:           cost = fight_cost; hovered = true
-		case .Spy_Tile:              cost = spy_cost; hovered = true
-		case .Spy_Sabotage_Tile:     cost = sabotage_cost; hovered = true
-		}
-	} // switch
-	return
+	}
+	assert(false, "Need at least one actor/target to vet a potential action (menu_option.)")
+	return false
 }
 
-// Can the `actor` perform the `action` to the `target`?
-vet_action :: proc (
+can_build_on_tile :: proc (team: Team, tile: ^Tile, build: Build_Menu) -> bool {
+	if tile.owner != .None && tile.owner != team do return false
+	if tile.resource not_in BUILDABLE_TERRAIN do return false
+	return true // TODO use the `build` parameter or delete it.
+}
+
+can_upgrade_tile :: proc (team: Team, tile: ^Tile, upgrade: Upgrade_Menu) -> bool {
+	if tile.owner != .None && tile.owner != team do return false
+	if tile.resource != .Barracks do return false
+	return true // TODO check if the tile can be upgraded further
+}
+
+can_do_mission_on_tile :: proc (team: Team, tile: ^Tile, mission: Mission_Menu) -> bool {
+	switch mission {
+	case .Laner_Gather_Resource:
+		return tile.resource in GATHERABLE
+	case .Laner_Fight:
+		if tile.owner == team do return false // cant attack yourself
+		return tile.resource in BUILDINGS || tile.resource in TRANSPORT
+	case .Spy_Tile:
+		return true
+	case .Spy_Sabotage_Tile:
+		return true
+	}
+	panic("Exhaustive Switch")
+}
+
+// Returns true if the `actor` can perform the `action` to the `target`
+// TODO: re-vet cost since time can pass and resources can change.
+vet_full_action :: proc (
 	actor: ^Tile,
 	action: Action,
 	target: ^Tile,
 ) -> bool {
+	assert(actor != nil && target != nil)
+	// Define Actions which can be done by Actor
 	switch actor.resource {
 	case .Grass, .Ore, .Food, .Water, .Path:
 		return false
 	case .Workshop:
 		if target.owner != .Player do return false // Can't improve what you don't own.
-		// return target_is_reachable()
-		// return can_upgrade(action, target)
 	case .Barracks:
 		return path_exists_between(actor, target, action.cost.leaders > 0)
 	}
-	return false
+	panic("Exhaustive Switch")
 }
