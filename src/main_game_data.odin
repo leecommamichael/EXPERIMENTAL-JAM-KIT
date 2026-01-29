@@ -1,6 +1,7 @@
 package main
 
 import "core:time"
+import "core:mem/virtual"
 
 // Iterators:
 //   (T, bool: more_data)
@@ -27,7 +28,8 @@ Event :: enum {
 }
 
 Game_State :: struct {
-	path: [dynamic]^Tile,
+	preview_arena: virtual.Arena,
+	preview_allocator: Allocator,
 	next_action_id: int, // zero is reserved as invalid.
 	player: Resources,
 	enemy:  Resources,
@@ -149,9 +151,11 @@ Action_State :: enum {
 // TODO? rename Fleet, Unit, Pawn, Piece, Command, Job
 // This is like a command from which units spawn.
 Action :: struct {
-	id: int,
+	id:     int,
+	actor:  ^Tile,
+	target: ^Tile,
+	path:   [dynamic]^Tile,
 	// output/yield/result
-	target:         ^Tile,
 	build_result:   Maybe(Build_Menu),
 	upgrade_result: Maybe(Upgrade_Menu),
 	mission:        Maybe(Mission_Menu),

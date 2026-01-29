@@ -113,6 +113,7 @@ color_hex :: proc (hex: u32) -> Color4 {
 // "#ff00ff"   => purple
 // "#ff00ff55" => transparent purple
 color_string :: proc "contextless" (str: string) -> Color4 {
+	NIBBLE :: 4 // half a byte
 	if len(str) == 0 do return {}
 	str := str
 	if str[0] == '#' do str = str[1:] // strip optional leading symbol

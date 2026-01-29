@@ -1,14 +1,15 @@
 package main
 
 import "base:runtime"
+import linalg "core:math/linalg"
+import glsl "core:math/linalg/glsl"
+import "core:mem/virtual"
+import "core:sys/windows"
+import "core:math/rand"
 import "core:fmt"
 import "core:time"
 import "core:log"
-import "core:sys/windows"
-import "core:math/rand"
 import "sugar"
-import linalg "core:math/linalg"
-import glsl "core:math/linalg/glsl"
 
 @export
 hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
@@ -57,8 +58,9 @@ game_init :: proc () {
 	food_remaining := 6
 
 	gs = new(Game_State)
+	err := virtual.arena_init_growing(&gs.preview_arena, 2*Kilobyte); assert(err == nil)
+	gs.preview_allocator = virtual.arena_allocator(&gs.preview_arena)
 	gs.tiles = make([]Tile, TILES)
-	gs.path = make([dynamic]^Tile, len=0, cap=100)
 	gs.next_action_id = 1
 	for i in 0..<TILES {
 		tile: ^Tile = &gs.tiles[i]
@@ -204,7 +206,7 @@ game_step :: proc () {
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.tile_select_mode {
 			case .First_Tile:
-				gs.has_selected_action = false
+				deselect_action()
 				if focused_tile == nil do break
 
 				if focused_tile.resource == .Barracks\
@@ -226,7 +228,7 @@ game_step :: proc () {
 					if gs.tile_select_mode == .Actor do gs.actor = focused_tile
 					if gs.tile_select_mode == .Target do gs.target = focused_tile
 					buy_action(gs.selected_action)
-					add_new_action(gs.target, gs.selected_action)
+					add_new_action()
 				}
 			}//switch
 		}
@@ -530,7 +532,11 @@ tile_entity :: proc (
 	// 	dist_label.position.x -= 7
 	// 	dist_label.position.z += 100
 	// }
-	in_path: bool; for t in gs.path do if tile.index == t.index { in_path = true; break }
+
+	in_path: bool
+	if gs.has_selected_action {
+		for t in gs.selected_action.path do if tile.index == t.index { in_path = true; break }
+	}
 	if in_path {
 		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
 		focus_alpha := motion(4*globals.uptime)

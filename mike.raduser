@@ -7,7 +7,7 @@ recent_project: path: game
 window:
 {
   size: 3059 1957
-  pos: 1298 98
+  pos: 1470 65
   monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0
@@ -19,17 +19,17 @@ window:
   {
     0.514001:
     {
-      0.400602:
+      0.218097:
       {
+        selected
         watch: expression: "query:types"
         watch:
         {
-          selected
           expression: "query:locals"
           normal: 0.317437 0.442995 0.239568
           sub_type: 0.350000 0.200317 0.177406 0.272277
         }
-        watch: expression: "query:type_views"
+        watch: selected expression: "query:type_views"
         watch:
         {
           expression: "query:globals"
@@ -40,7 +40,7 @@ window:
           }
         }
       }
-      0.195591:
+      0.444511:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
@@ -53,14 +53,18 @@ window:
           watch: globals
           root_type: 0.486283 0.363717 0.150000
           normal: 0.218506 0.531494 0.250000
-          watch: "ctx.file.filename.text == \"main.odin\""
-          watch: named_type
-          watch: "ctx.scope.procedure_entity.identifier._Storage._Value.Ident.token.string.text"
           watch: "gs.tiles"
           watch: "gs.player"
+          watch: "gs.selected_action"
+          watch: "gs.has_selected_action"
+          watch: "gs.selected_action.path"
+          watch: "action.path"
+          watch: "gs.selected_action.path.data"
+          watch: "action.path.data"
+          watch: "globals.entities_2D.data[0]"
         }
       }
-      0.403807:
+      0.337392:
       {
         0.647693:
         {
@@ -82,7 +86,6 @@ window:
     }
     0.485994:
     {
-      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/main_entrypoint.odin\".data"
@@ -234,13 +237,13 @@ window:
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query:
         {
-          input: ".Actor"
+          input: ""
           cmd: search
         }
-        cursor_line: 173
-        cursor_column: 53
-        mark_line: 173
-        mark_column: 47
+        cursor_line: 231
+        cursor_column: 1
+        mark_line: 231
+        mark_column: 1
       }
       text:
       {
@@ -258,12 +261,12 @@ window:
       }
       text:
       {
-        expression: "file:\"D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm\".data"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game_procs.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 1
+        cursor_line: 343
         cursor_column: 1
-        mark_line: 1
+        mark_line: 343
         mark_column: 1
       }
     }

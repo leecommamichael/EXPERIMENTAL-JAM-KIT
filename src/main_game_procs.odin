@@ -1,6 +1,7 @@
 package main
 
 import "core:time"
+import "core:mem/virtual"
 
 ////////////////////////////////////////////////////////////////////////////////
 // State
@@ -27,6 +28,7 @@ state_changed_from_to :: proc (prev, current: States) -> bool {
 ////////////////////////////////////////////////////////////////////////////////
 // Tile
 ////////////////////////////////////////////////////////////////////////////////
+
 index_from_column_row :: proc (tile: [2]int) -> int {
 	return (tile.x) + (tile.y * COLUMNS)
 }
@@ -101,17 +103,17 @@ set_path :: proc (
 	team: Team,
 	leader: bool,
 ) {
-	clear(&gs.path)
+	clear(&gs.selected_action.path)
 	_find_path(start, dest, team, leader)
 	if !(dest._search_distance < UNKNOWN_DISTANCE) do return
 
 	end: ^Tile = dest
-	inject_at_elem(&gs.path, 0, end)
+	inject_at_elem(&gs.selected_action.path, 0, end)
 	for i := 0;; i+=1 {
 		if i >= TILES {
 			// Defensively avoid an endless loop.
 			assert(false)
-			clear(&gs.path)
+			clear(&gs.selected_action.path)
 			return
 		}
 
@@ -121,15 +123,13 @@ set_path :: proc (
 				end = neighbor
 			}
 		}
-		inject_at_elem(&gs.path, 0, end)
+		inject_at_elem(&gs.selected_action.path, 0, end)
 
 		if end == start {
-			log.infof("PATH FOUND len=%v", len(gs.path))
 			break // path complete.
 		}
 	}
 }
-import "core:log"
 
 path_exists_between :: proc (actor, target: ^Tile, leader: bool) -> bool {
 	_find_path(actor, target, actor.owner, leader)
@@ -329,22 +329,37 @@ buy_action :: proc (action: Action) {
 }
 
 // Spawn some units which go to the job site and work.
-add_new_action :: proc (tile: ^Tile, action: Action) {
+add_new_action :: proc () {
 	assert(gs.target != nil)
-	action := action
+	action := gs.selected_action
 	action.id = make_next_action_id()
-	action.target = tile
-	tile.owner = .Player
+	action.actor = gs.actor
+	action.target = gs.target
+	action.path = clone_to_dynamic(action.path[:])
 	append(&gs.actions, action)
+	virtual.arena_free_all(&gs.preview_arena) // preview is over. action is made.
+	deselect_action()
 	// INTENT: When a action starts through the menu, put them on the map
 	//         such that it's easy to pick a new tile for a action.
 	set_state(States.Selecting_Tile)
+	gs.tile_select_mode = .First_Tile
+}
+
+destroy_action :: proc (action: ^Action) {
+	delete(action.path)
 }
 
 // Also adjusts the action's costs.
 set_selected_action :: proc (action: Action) {
 	gs.selected_action = action
 	gs.has_selected_action = true
+	assert(gs.selected_action.path == nil)
+	gs.selected_action.path = make([dynamic]^Tile, gs.preview_allocator)
+}
+
+deselect_action :: proc () {
+	gs.selected_action = {}
+	gs.has_selected_action = false
 }
 
 // Actions are selected after a target OR source is selected.

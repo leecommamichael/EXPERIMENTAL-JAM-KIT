@@ -12,7 +12,9 @@ import "core:math/linalg"
 ////////////////////////////////////////////////////////////////////////////////
 // Assorted Idioms
 ////////////////////////////////////////////////////////////////////////////////
-NIBBLE :: 4 // half a byte
+Byte     :: 1
+Kilobyte :: 1024 * Byte
+Megabyte :: 1024 * Kilobyte
 find :: slice.linear_search
 contains :: slice.contains
 Empty_Struct :: struct {}
@@ -94,6 +96,7 @@ type_is_ordered_numeric :: intrinsics.type_is_ordered_numeric
 array_cast :: linalg.array_cast
 clone_to_cstring :: strings.clone_to_cstring
 unsafe_string_to_cstring :: strings.unsafe_string_to_cstring
+clone_to_dynamic :: slice.clone_to_dynamic
 
 // Converts slice into a dynamic array without cloning or allocating memory
 @(require_results)
