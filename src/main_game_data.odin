@@ -141,11 +141,12 @@ GATHERABLE :: bit_set[Tile_Type]{.Ore, .Water, .Food}
 
 
 Action_State :: enum {
-	Home,
+	Will_Leave_Home,
 	Moving_To_Target,
 	Working,
 	Fighting,
 	Moving_Home,
+	Will_Get_Home,
 }
 
 // TODO? rename Fleet, Unit, Pawn, Piece, Command, Job
@@ -166,6 +167,9 @@ Action :: struct {
 	state: Action_State,
 	workers_to_reimburse: int,
 	leaders_to_reimburse: int,
+	move_path_index:      int, // 0 is .actor, end is .target
+	move_tiles_per_second: f32,
+	move_time:      f32,
 	work_time:      f32,
 }
 

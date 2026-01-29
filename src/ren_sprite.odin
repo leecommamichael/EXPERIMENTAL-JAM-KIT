@@ -49,16 +49,20 @@ Sprite_Asset :: struct {
 // Interface
 //////////////////////////////////////////////////////////////////////
 
-sprite :: proc (filename: string) -> ^Entity {
-	entity, is_new := get_entity()
+sprite :: proc (
+	filename: string,
+	hash: Hash = #caller_location
+) -> (^Entity, bool) #optional_ok {
+	entity, is_new := get_entity(hash)
 	if is_new {
 		init_sprite(entity)
 		set_sprite(entity, filename)
 	} else if filename != entity.variant.(Sprite_State).asset.filename {
 		set_sprite(entity, filename)
 	}
+	step_sprite(entity)
 	entity.position.z = next_z()
-	return entity
+	return entity, is_new
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -259,9 +263,9 @@ sprite_fragment_shader_source :: fragment_preamble +
 
 	void main() {
 		vec4 tex_color = texture(texture_atlas, uv);
-		vec3 modulated = mix(tex_color.rgb, io_color.rgb, io_color.a);
-		outColor.rgb = mix(tex_color.rgb, modulated, tex_color.a);
-		outColor.a = float(tex_color.a);
-		// outColor = tex_color;
+		// vec3 modulated = mix(tex_color.rgb, io_color.rgb, io_color.a);
+		// outColor.rgb = mix(tex_color.rgb, modulated, tex_color.a);
+		// outColor.a = float(tex_color.a);
+		outColor = tex_color;
 	}
 `

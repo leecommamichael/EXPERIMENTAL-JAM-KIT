@@ -26,10 +26,10 @@ Globals :: struct {
 	// General
 	cursor:     ^Entity,
 	sugar:      sugar.Memory,
-	// Milliseconds in one tick.
+	// Seconds in one tick.
 	tick:       f32,
 	tick_counter: int,
-	// Milliseconds since last game-loop iteration.
+	// Seconds since last game-loop iteration.
 	dt:         f32,
 	uptime:     f32,
 	avg_fps:    f64,

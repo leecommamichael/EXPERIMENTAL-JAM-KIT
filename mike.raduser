@@ -17,19 +17,19 @@ window:
   split_x
   panels:
   {
-    0.514001:
+    0.432402:
     {
-      0.218097:
+      0.293151:
       {
-        selected
         watch: expression: "query:types"
         watch:
         {
+          selected
           expression: "query:locals"
           normal: 0.317437 0.442995 0.239568
           sub_type: 0.350000 0.200317 0.177406 0.272277
         }
-        watch: selected expression: "query:type_views"
+        watch: expression: "query:type_views"
         watch:
         {
           expression: "query:globals"
@@ -40,7 +40,7 @@ window:
           }
         }
       }
-      0.444511:
+      0.369457:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
@@ -84,8 +84,9 @@ window:
         }
       }
     }
-    0.485994:
+    0.567592:
     {
+      selected
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/main_entrypoint.odin\".data"
@@ -232,7 +233,6 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query:
@@ -240,34 +240,35 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 231
+        cursor_line: 315
         cursor_column: 1
-        mark_line: 231
+        mark_line: 315
         mark_column: 1
       }
       text:
       {
-        expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin_fork/src/check_type.cpp\".data"
-        project: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.radproj"
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren_sprite.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 63
+        cursor_column: 1
+        mark_line: 63
+        mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query:
         {
-          input: ""
+          input: draw_en
           cmd: search
         }
-        cursor_line: 1776
-        cursor_column: 1
-        mark_line: 1776
-        mark_column: 1
-      }
-      text:
-      {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game_procs.odin\".data"
-        auto: 1
-        query: input: ""
-        cursor_line: 343
-        cursor_column: 1
-        mark_line: 343
-        mark_column: 1
+        cursor_line: 313
+        cursor_column: 21
+        mark_line: 313
+        mark_column: 14
       }
     }
   }
@@ -392,7 +393,7 @@ keybindings:
   { toggle_dev_menu d ctrl shift alt }
   { add_target o ctrl }
 }
-current_path: "C:/Users/thatl/usr/Applications (Compilers)/odin_fork/src"
+current_path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src"
 file_path_map:
 {
   source: "C:/Users/thatl/usr/repositories/angle/src/math.odin"

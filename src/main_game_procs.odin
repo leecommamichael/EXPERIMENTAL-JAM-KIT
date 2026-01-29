@@ -279,7 +279,7 @@ action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
 }
 
 action_completion_pct :: proc (it: Action) -> f32 {
-	return it.work_time / f32(time.duration_milliseconds(it.cost.time))
+	return it.work_time / f32(time.duration_seconds(it.cost.time))
 }
 
 // INTENT: Adjust the cost of Resources so the correct # of leaders is reimbursed.
@@ -336,6 +336,7 @@ add_new_action :: proc () {
 	action.actor = gs.actor
 	action.target = gs.target
 	action.path = clone_to_dynamic(action.path[:])
+	action.move_tiles_per_second = 1
 	append(&gs.actions, action)
 	virtual.arena_free_all(&gs.preview_arena) // preview is over. action is made.
 	deselect_action()
@@ -345,8 +346,15 @@ add_new_action :: proc () {
 	gs.tile_select_mode = .First_Tile
 }
 
-destroy_action :: proc (action: ^Action) {
-	delete(action.path)
+unordered_remove_action :: proc (action: ^Action) {
+	for it, i in gs.actions {
+		if it.id == action.id {
+			unordered_remove(&gs.actions, i)
+			delete(action.path)
+			return
+		}
+	}
+	panic("Couldn't find the action to remove it.")
 }
 
 // Also adjusts the action's costs.

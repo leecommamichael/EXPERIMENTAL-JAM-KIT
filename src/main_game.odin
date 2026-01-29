@@ -87,12 +87,11 @@ game_init :: proc () {
 	gs.tiles[TILES-1].resource = .Barracks
 	gs.tiles[TILES-1].owner = .Enemy
 	// Starting stats
-	gs.player.workers = 0
 	gs.player.food = 0
 	gs.player.water = 0
 	gs.player.ore = 0
 	gs.player.leaders = 1
-	gs.player.workers = 0
+	gs.player.workers = 1
 }
 
 PANEL_SIZE: Vec2 = {120, 400}
@@ -312,18 +311,40 @@ game_step :: proc () {
 		it := tile_entity(basis, tile, loop_hash("tile", i))
 		gs.tiles[i].entity = it
 	}
+	entity, N := sprite("worker.ase"); if N {
+		entity.scale = 10
+		entity.color = color("fff")
+		v := &entity.variant.(Sprite_State)
+		v.repetitions = max(int)
+	}
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Dispatch Actions
 	//////////////////////////////////////////////////////////////////////////////
-	for &action in gs.actions {
+	#reverse for &action in gs.actions {
+		asset := "worker.ase" if action.cost.leaders > 0 else "lil_worker.ase"
+		entity := sprite(asset, hash=loop_hash("action", action.id))
+		sprite_state := &entity.variant.(Sprite_State)
+		sprite_state.repetitions = max(int)
+		tile := action.path[action.move_path_index]
+		tile_position := tile.entity.position.xy + tile.entity.basis.position.xy
+		entity.position.xy = tile_position - entity.basis.scale.xy/2
 		switch action.state {
-		case .Home:
+		case .Will_Leave_Home:
+			entity.flags -= {.Hidden}
 			action.state = .Moving_To_Target
-			// start following the path
 		case .Moving_To_Target:
-			// if at target, start working (start the timer, too)
+			action.move_time += globals.tick
+			if action.move_time > action.move_tiles_per_second {
+				action.move_time -= action.move_tiles_per_second
+				action.move_path_index += 1
+			}
+			if action.target == action.path[action.move_path_index] {
+				action.state = .Working
+				// maybe set an animation
+			}
 		case .Working:
+			action.work_time += globals.tick
 			if action_completion_pct(action) >= 1.0 {
 				action.state = .Moving_Home
 				if menu_option, ok := action.build_result.(Build_Menu); ok {
@@ -335,18 +356,40 @@ game_step :: proc () {
 					}
 					action.target.resource = new_type
 				}
-				if action.one_off {
-					// Substitution & reimbursement only happens on one-off actions.
-					gs.player.leaders += action.leaders_to_reimburse
-					gs.player.workers += action.workers_to_reimburse
-				} else {
-					// pending
+			} // if complete
+		case .Fighting: unimplemented() // TODO
+		case .Moving_Home:
+			action.move_time += globals.tick
+			if action.move_time > action.move_tiles_per_second {
+				action.move_time -= action.move_tiles_per_second
+				action.move_path_index -= 1
+			}
+			if action.actor == action.path[action.move_path_index] {
+				entity.flags += {.Hidden}
+				action.state = .Will_Get_Home
+			}
+		case .Will_Get_Home:
+			if mission, ok := action.mission.?; ok {
+				#partial switch mission {
+				case .Laner_Gather_Resource:
+					#partial switch action.target.resource {
+					case .Ore:   gs.player.ore += 1
+					case .Water: gs.player.water += 1
+					case .Food:  gs.player.food += 1
+					}
 				}
 			}
-		case .Fighting: unimplemented() // TODO
-		case .Moving_Home: unimplemented() // TODO
+			if action.one_off {
+				// Substitution & reimbursement only happens on one-off actions.
+				gs.player.leaders += action.leaders_to_reimburse
+				gs.player.workers += action.workers_to_reimburse
+				unordered_remove_action(&action)
+			} else {
+				action.work_time = 0
+				action.state = .Will_Leave_Home
+			}
 		} // switch state
-	} // for action
+	} // #reverse for action
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Build Panel Menu
