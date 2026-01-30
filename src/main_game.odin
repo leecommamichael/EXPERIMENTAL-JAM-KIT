@@ -311,12 +311,6 @@ game_step :: proc () {
 		it := tile_entity(basis, tile, loop_hash("tile", i))
 		gs.tiles[i].entity = it
 	}
-	entity, N := sprite("worker.ase"); if N {
-		entity.scale = 10
-		entity.color = color("fff")
-		v := &entity.variant.(Sprite_State)
-		v.repetitions = max(int)
-	}
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Dispatch Actions
