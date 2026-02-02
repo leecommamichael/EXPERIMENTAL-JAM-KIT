@@ -141,7 +141,7 @@ create_window :: proc (
   use_gl: bool
 ) -> bool {
   lib_ok: bool
-  g.platform.lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/angle/src/libGLESv2.dylib`)
+  g.platform.lib, lib_ok = dynlib.load_library(`/Users/mal/GitHub/EXPERIMENTAL_JAM_KIT/src/libGLESv2.dylib`)
   ensure(lib_ok)
   NS.application_delegate_register_and_alloc({
     applicationShouldTerminateAfterLastWindowClosed = proc(app: ^NS.Application) -> NS.BOOL {

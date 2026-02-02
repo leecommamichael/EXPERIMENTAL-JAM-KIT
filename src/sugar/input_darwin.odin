@@ -3,6 +3,7 @@ package sugar
 import NS "../../../darwodin/darwodin-macos-lite/darwodin/AppKit"
 import CG "../../../darwodin/darwodin-macos-lite/darwodin/CoreGraphics"
 import NSF "../../../darwodin/darwodin-macos-lite/darwodin/Foundation"
+// import NS "core:sys/darwin/Foundation"
 
 Gamepad_Button :: enum u32 {
 	Start,
@@ -34,6 +35,8 @@ Key :: enum {
 	A,
 	S,
 	D,
+	Q,
+	E
 }
 
 @require_results

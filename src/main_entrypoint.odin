@@ -55,6 +55,7 @@ main :: proc() {
 
 	when sugar.platform_calls_step { return }
 	// TODO: Only do this on Windows and Linux. Sorry Mac...
+	when ODIN_OS != .Darwin {
 	gl_debug_proc :: proc "c" (
 		source: gl.GLuint,
 		type: gl.GLuint,
@@ -84,6 +85,7 @@ main :: proc() {
 	gl.glEnable(gl.DEBUG_OUTPUT)
 	gl.glEnable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
 	gl.glDebugMessageCallback(gl_debug_proc, &ctx)
+	}
 
 	tick := time.tick_now()
 	dt: f64
