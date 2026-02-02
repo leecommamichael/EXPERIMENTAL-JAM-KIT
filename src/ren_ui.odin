@@ -26,7 +26,7 @@ UI_Element :: struct {
 }
 
 // Marks this part of the tree as a layout subtree.
-ui_element :: proc (child: ^Entity, position: Maybe(Vec2) = nil) -> ^Entity {
+ui_element :: proc (child: ^Entity, position: Maybe(Vec2) = nil, hash:=#caller_location) -> ^Entity {
 	// entity, is_new := get_entity(hash)
 	// entity.children = make([]^Entity, 1, context.temp_allocator)
 	// entity.children[0] = child
@@ -35,7 +35,7 @@ ui_element :: proc (child: ^Entity, position: Maybe(Vec2) = nil) -> ^Entity {
 	// }
 	// entity.flags += { .Hidden }
 	// entity.position.xy = position
-	child.position.z = next_z()
+	// child.position.z = next_z()
 	if position != nil {
 		child.position.xy = position.(Vec2)
 	}
@@ -48,7 +48,7 @@ row :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
 	entity.ui.type = .Row
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	copy(entity.children, children)
-	entity.flags += { .Hidden }
+	entity.flags += { .Hidden, .Skip_Interpolation }
 	init_list_children(entity, .Horizontal)
 	return entity
 }
@@ -58,7 +58,7 @@ column :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
 	entity.ui.type = .Column
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	copy(entity.children, children)
-	entity.flags += { .Hidden }
+	entity.flags += { .Hidden, .Skip_Interpolation }
 	init_list_children(entity, .Vertical)
 	return entity
 }
@@ -78,7 +78,7 @@ pad_box :: proc (
 	hash: Hash = #caller_location
 ) -> ^Entity {
 	entity, is_new := get_entity(hash)
-	entity.flags += {.Hidden}
+	entity.flags += {.Hidden, .Skip_Interpolation }
 	if is_new {
 		entity.ui = UI_Element {
 			type = .Box

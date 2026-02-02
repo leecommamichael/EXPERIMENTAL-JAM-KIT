@@ -265,8 +265,10 @@ action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
 	action.mission = option
 
 	switch gs.mission_menu_state {
+	case .Leader_Gather_Resource:
+		action.cost = leader_gather_cost
 	case .Laner_Gather_Resource:
-		action.cost = gather_cost
+		action.cost = laner_gather_cost
 	case .Laner_Fight:
 		action.cost = fight_cost
 	case .Spy_Tile:
@@ -371,14 +373,14 @@ deselect_action :: proc () {
 }
 
 // Actions are selected after a target OR source is selected.
-vet_focused_menu_option :: proc () -> bool {
+vet_action :: proc (action: Action) -> bool {
 	if gs.target != nil {
 		// Define Actions which can happen to Target
-		if build, ok := gs.focused_action.build_result.?; ok {
+		if build, ok := action.build_result.?; ok {
 			return can_build_on_tile(.Player, gs.target, build)
-		} else if upgrade, ok := gs.focused_action.upgrade_result.?; ok {
+		} else if upgrade, ok := action.upgrade_result.?; ok {
 			return can_upgrade_tile(.Player, gs.target, upgrade)
-		} else if mission, ok := gs.focused_action.mission.?; ok {
+		} else if mission, ok := action.mission.?; ok {
 			return can_do_mission_on_tile(.Player, gs.target, mission)
 		} else {
 			assert(false, "Bad action.")
@@ -390,10 +392,10 @@ vet_focused_menu_option :: proc () -> bool {
 		case .Grass, .Ore, .Food, .Water, .Path:
 			return false
 		case .Workshop:
-			upgrade, is_upgrade := gs.focused_action.mission.?
+			upgrade, is_upgrade := action.mission.?
 			return is_upgrade // TODO && can upgrade further
 		case .Barracks:
-			mission, is_mission := gs.focused_action.mission.?
+			mission, is_mission := action.mission.?
 			return is_mission // TODO && has enough workers/leaders
 		}
 	}
@@ -415,6 +417,8 @@ can_upgrade_tile :: proc (team: Team, tile: ^Tile, upgrade: Upgrade_Menu) -> boo
 
 can_do_mission_on_tile :: proc (team: Team, tile: ^Tile, mission: Mission_Menu) -> bool {
 	switch mission {
+	case .Leader_Gather_Resource:
+		return tile.resource in GATHERABLE
 	case .Laner_Gather_Resource:
 		return tile.resource in GATHERABLE
 	case .Laner_Fight:

@@ -76,9 +76,9 @@ States :: enum {
 ACTION_MENU :: bit_set[States]{.Build_Menu, .Upgrade_Menu, .Mission_Menu}
 
 Panel_Menu_State :: enum {
+	Mission_Menu,
 	Build_Menu,
 	Upgrade_Menu,
-	Mission_Menu,
 }
 
 Build_Menu :: enum {
@@ -93,6 +93,7 @@ Upgrade_Menu :: enum {
 	Unit_Capacity,
 }
 Mission_Menu :: enum {
+	Leader_Gather_Resource,
 	Laner_Gather_Resource,
 	Laner_Fight, // Retreats at low health. If speed too low, can die.
 	Spy_Tile,
@@ -173,7 +174,6 @@ Action :: struct {
 	work_time:      f32,
 }
 
-
 Resources :: struct #all_or_none {
 	ore:     int,
 	food:    int,
@@ -223,6 +223,10 @@ resource_colors: [Tile_Type]Color3 = {
 
 	.Path     = {0.541, 0.290, 0.192},
 }
+bg_color := color("#234")
+panel_color := color("#0126")
+red := color("#a66")
+green := color("6a6")
 
 ////////////////////////////////////////////////////////////////////////////////
 // Build Costs
@@ -310,7 +314,15 @@ unit_capacity_cost :: Resources {
 ////////////////////////////////////////////////////////////////////////////////
 // Mission Costs
 ////////////////////////////////////////////////////////////////////////////////
-gather_cost :: Resources {
+leader_gather_cost :: Resources {
+	ore     = 0,
+	food    = 0,
+	water   = 0,
+	workers = 0,
+	leaders = 1,
+	time = 600 * time.Millisecond
+}
+laner_gather_cost :: Resources {
 	ore     = 0,
 	food    = 0,
 	water   = 0,

@@ -291,12 +291,12 @@ game_step :: proc () {
 	bg := rect()
 	bg.basis.scale.xy = globals.canvas_size_px
 	uncenter_rect(bg)
-	bg.color = color("#234")
+	bg.color = bg_color
 
 	panel := rect()
 	panel.basis.scale.xy = PANEL_SIZE
 	uncenter_rect(panel)
-	panel.color = color("#0126")
+	panel.color = panel_color
 
 	//////////////////////////////////////////////////////////////////////////////
 	// Build Tile Grid
@@ -389,30 +389,96 @@ game_step :: proc () {
 	// Build Panel Menu
 	//////////////////////////////////////////////////////////////////////////////
 	menu := make([dynamic]^Entity, context.temp_allocator)
-	append(&menu, 
-		pad_box(16),
-		section_list_item("LEADERS:", fmt.tprintf("%d", gs.player.leaders)),
-		section_list_item("ORE:", fmt.tprintf("%d", gs.player.ore)),
-		section_list_item("FOOD:", fmt.tprintf("%d", gs.player.food)),
-		section_list_item("WATER:", fmt.tprintf("%d", gs.player.water)),
-		section_list_item("WORKER:", fmt.tprintf("%d", gs.player.workers)),
-		pad_box(16),
-		section_list_item("THIS TILE:", fmt.tprintf("%v", focused_tile.resource)),
-		pad_box(16),
+	icon_bg :: proc (icon: ^Entity, hash := #caller_location) -> ^Entity {
+		img := icon.variant.(Image_State)
+		icon_bg := rect(hash=hash)
+		icon_bg.basis = icon.basis
+		icon_bg.color.a = 0.1
+		icon_bg.position.xy = icon.position.xy
+		icon_bg.position.z = icon.position.z - 1
+		return icon
+	}
+	resource_panel :=
+		ui_element(row(
+			ui_element(column(
+				pad_box(4), // PIVOT
+				icon_bg(image("leader16.ase")),
+				pad_box(2),
+				icon_bg(image("hammer16.ase")),
+				pad_box(2),
+				icon_bg(image("ore16.ase")),
+				pad_box(2),
+				icon_bg(image("food16.ase")),
+				pad_box(2),
+				icon_bg(image("water16.ase")),
+			)),
+
+			pad_box(4),
+
+			ui_element(column(
+				label("LEADER:"),
+				pad_box(2),
+				label("WORKER:"),
+				pad_box(2),
+				label("ORE:"),
+				pad_box(2),
+				label("FOOD:"),
+				pad_box(2),
+				label("WATER:"),
+				pad_box(4), // PIVOT
+			)),
+
+		pad_box(12),
+
+			ui_element(column(
+				text(fmt.tprintf("% 3d", gs.player.leaders), .bold_pixel),
+				pad_box(2),
+				text(fmt.tprintf("% 3d", gs.player.workers), .bold_pixel),
+				pad_box(2),
+				text(fmt.tprintf("% 3d", gs.player.ore), .bold_pixel),
+				pad_box(2),
+				text(fmt.tprintf("% 3d", gs.player.food), .bold_pixel),
+				pad_box(2),
+				text(fmt.tprintf("% 3d", gs.player.water), .bold_pixel),
+				pad_box(4), // PIVOT
+			)),
+		))
+
+	h_separator :: proc(hash:=#caller_location)->^Entity{
+		separator := rect(hash)
+		separator.basis.scale.x = PANEL_SIZE.x
+		separator.basis.scale.y = 4
+		separator.basis.position.xy = separator.basis.scale.xy/2 - {6,0}
+		separator.color = bg_color
+		return separator
+	}
+	v_separator :: proc(height: f32, hash:=#caller_location)->^Entity{
+		separator := rect(hash)
+		separator.basis.scale.x = 4
+		separator.basis.scale.y = height
+		separator.basis.position.xy = separator.basis.scale.xy/2 + {4,0}
+		separator.color = bg_color
+		return separator
+	}
+	append(&menu,
+		resource_panel,
+		pad_box(4),
+		h_separator(),
 	)
 	switch gs.state {
-	case .Selecting_Tile:    append(&menu, text("  ACTIONS:", .bold_pixel))
-	case .Panel_Menu:   append(&menu, text("  ACTIONS:", .bold_pixel))
-	case .Build_Menu:   append(&menu, text("< BUILD:", .bold_pixel))
-	case .Upgrade_Menu: append(&menu, text("< UPGRADE:", .bold_pixel))
-	case .Mission_Menu: append(&menu, text("< MISSION:", .bold_pixel))
+	case .Selecting_Tile: append(&menu, label("  ACTIONS:"))
+	case .Panel_Menu:     append(&menu, label("  ACTIONS:"))
+	case .Build_Menu:     append(&menu, label("< BUILD:"))
+	case .Upgrade_Menu:   append(&menu, label("< UPGRADE:"))
+	case .Mission_Menu:   append(&menu, label("< MISSION:"))
 	}
+	append(&menu,pad_box(4))
 	menu_start: int = len(menu)
 	if contains([]States{.Selecting_Tile, .Panel_Menu}, gs.state) {
 		append(&menu, 
+			text("  Mission", .bold_pixel),
 			text("  Build", .bold_pixel),
 			text("  Upgrade", .bold_pixel),
-			text("  Mission", .bold_pixel),
 		)
 	}
 	switch gs.state {
@@ -433,6 +499,7 @@ game_step :: proc () {
 		)
 	case .Mission_Menu:
 		append(&menu,
+			mission_menu_list_item("  Gather Once", .Leader_Gather_Resource),
 			mission_menu_list_item("  Gather", .Laner_Gather_Resource),
 			mission_menu_list_item("  Conquer", .Laner_Fight),
 			mission_menu_list_item("  Spy on Tile", .Spy_Tile),
@@ -440,6 +507,108 @@ game_step :: proc () {
 		)
 	} // switch
 
+	cost_leaders: int
+	cost_workers: int
+	cost_ore: int
+	cost_food: int
+	cost_water: int
+	gain_leaders: int
+	gain_workers: int
+	gain_ore: int
+	gain_food: int
+	gain_water: int
+	// make a list of losses and gains.
+	action: ^Action
+	if gs.has_focused_action do action = &gs.focused_action
+	if gs.has_selected_action do action = &gs.selected_action
+	if action != nil {
+		if valid := vet_action(action^); valid {
+			cost_leaders = action.cost.leaders
+			cost_workers = action.cost.workers
+			cost_ore     = action.cost.ore
+			cost_food    = action.cost.food
+			cost_water   = action.cost.water
+
+			if mission, ok := action.mission.?; ok {
+				#partial switch mission {
+				case .Laner_Gather_Resource, .Leader_Gather_Resource:
+					if action.target != nil {
+						#partial switch action.target.resource {
+						case .Ore:   gain_ore += 1
+						case .Water: gain_water += 1
+						case .Food:  gain_food += 1
+						}
+					}
+				} // switch mission
+			} // if mission
+		} // if focused
+
+		cost_icon :: proc (
+			id: int,
+			icon_name: string,
+			cost: int,
+			hash := #caller_location
+		) -> ^Entity {
+			_color: Color4
+			switch {
+			case cost < 0:  _color = red
+			case cost == 0: _color = color("fffa")
+			case cost > 0:  _color = green
+			}
+			icon := image(icon_name, loop_hash("cost_icon", id))
+			elem := ui_element(row(
+				icon, label(fmt.tprintf("%+d", cost), _color, loop_hash("cost_label", id)),
+			hash=loop_hash("cost_row", id)))
+			icon_bg(icon, hash)
+
+			return elem
+		}
+
+		lose_column := make([dynamic]^Entity, context.temp_allocator)
+		append(&lose_column,
+			label("LOSE",red),
+			pad_box(8),
+		)
+		if cost_leaders > 0 do append(&lose_column, cost_icon(1, "leader16.ase", -1*cost_leaders))
+		if cost_workers > 0 do append(&lose_column, cost_icon(2, "hammer16.ase", -1*cost_workers))
+		if cost_ore     > 0 do append(&lose_column, cost_icon(3, "ore16.ase", -1*cost_ore))
+		if cost_food    > 0 do append(&lose_column, cost_icon(4, "food16.ase", -1*cost_food))
+		if cost_water   > 0 do append(&lose_column, cost_icon(5, "water16.ase", -1*cost_water))
+
+		gain_column := make([dynamic]^Entity, context.temp_allocator)
+		append(&gain_column,
+			label("GAIN", green),
+			pad_box(8),
+		)
+		if gain_leaders > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_leaders), green))
+		if gain_workers > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_workers), green))
+		if gain_ore     > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_ore), green))
+		if gain_food    > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_food), green))
+		if gain_water   > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_water), green))
+
+		lose_gain_panel := ui_element(row(
+			pad_box(6),
+			ui_element(column(..lose_column[:])),
+			pad_box(14),
+			v_separator(20), // TODO, bind this and set a height after layout
+			pad_box(14),
+			ui_element(column(..gain_column[:])),
+		))
+
+	append(&menu,
+		pad_box(8),
+		h_separator(),
+		lose_gain_panel,
+		pad_box(8),
+	)
+	} // has focused action
+	append(&menu,
+		pad_box(8),
+		h_separator(),
+		label("ON THIS TILE:"),
+		pad_box(4),
+		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
+	)
 	panel_list := column(..menu[:])
 	panel_list_size := measure_entity(panel_list)
 	height_to_pin_atop := PANEL_SIZE.y - panel_list_size.y
@@ -474,7 +643,7 @@ game_step :: proc () {
 	menu_highlight.color.a = sinbh(2*time) * 0.5
 
 	if gs.has_focused_action {
-		if valid := vet_focused_menu_option(); valid && gs.has_focused_action {
+		if valid := vet_action(gs.focused_action); valid && gs.has_focused_action {
 			menu_highlight.color = color("f223")
 			switch {
 			case !valid: break
@@ -664,7 +833,8 @@ mission_menu_list_item :: proc (
 
 	estimate: Cost_Estimate
 	switch value {
-	case .Laner_Gather_Resource: estimate = estimate_cost(gather_cost)
+	case .Leader_Gather_Resource: estimate = estimate_cost(leader_gather_cost)
+	case .Laner_Gather_Resource: estimate = estimate_cost(laner_gather_cost)
 	case .Laner_Fight:           estimate = estimate_cost(fight_cost)
 	case .Spy_Tile:              estimate = estimate_cost(spy_cost)
 	case .Spy_Sabotage_Tile:     estimate = estimate_cost(sabotage_cost)
@@ -680,19 +850,16 @@ mission_menu_list_item :: proc (
 	return _label
 }
 
-section_list_item :: proc (
+label :: proc (
 	label: string,
-	value: string,
+	_color: Color4 = {},
 	hash: Hash = #caller_location
 ) -> ^Entity {
-	_label := text(label, .bold_pixel, hash=loop_hash(label, 1))
-	_label.color = color("#aaa")
-	_value := text(value, .bold_pixel, hash=loop_hash(label, 2))
-	return ui_element(
-		column(
-			_label,
-			_value,
-			hash = loop_hash(label, 3)
-		)
-	)
+	_label := text(label, .bold_pixel, hash=hash)
+	if _color == {} {
+		_label.color = color("aaa")
+	} else {
+		_label.color = _color
+	}
+	return _label
 }
