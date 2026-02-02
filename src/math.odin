@@ -118,6 +118,7 @@ length :: linalg.length
 distance :: linalg.distance
 normalize :: linalg.normalize
 dot :: linalg.dot
+cross :: linalg.cross
 abs :: linalg.abs
 round :: linalg.round
 trunc :: glsl.trunc

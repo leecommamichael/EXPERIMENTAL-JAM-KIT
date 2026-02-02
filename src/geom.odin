@@ -109,11 +109,10 @@ geom_make_cylinder :: proc (
   vector: Vec3,
   allocator: runtime.Allocator
 ) -> Geom_Mesh {
-using glsl
   CYLINDER_SIDES :: 12
   CYLINDER_RADIUS :: 0.1
   y_axis :: Vec3{0,1,0}
-  axis  := normalize(cross(y_axis, vector))
+  axis := normalize(cross(y_axis, vector))
   // if we got NaN, then the vector is the same in that component.
   if math.is_nan(axis.x) {
     axis.x = vector.x
@@ -124,18 +123,18 @@ using glsl
   if math.is_nan(axis.z) {
     axis.z = vector.z
   }
-  angle := acos(dot(y_axis, normalize(vector)))
+  angle := glsl.acos(dot(y_axis, normalize(vector)))
   // logg.infof("To output a vector pointing to %v, axis is %v, angle is %v", vector, axis, angle)
 
   // At this time, gizmos start from the origin.
   // This means the tail can simply be rotated (since it wont translate like the tip.)
-  rotate_tail_ring := mat4Rotate(axis, angle)
-  _translate_back  := mat4Translate(vector)
+  rotate_tail_ring := glsl.mat4Rotate(axis, angle)
+  _translate_back  := glsl.mat4Translate(vector)
   // Two identical rings are made, and their transforms define the volume.
   // The tip's ring is translated away from the origin after rotating.
   rotate_tip_ring := _translate_back * rotate_tail_ring
 
-  mesh: [dynamic]vec3 = make([dynamic]vec3, allocator)
+  mesh: [dynamic]Vec3 = make([dynamic]Vec3, allocator)
   geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
   geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
   verts_per_mesh: u32 : CYLINDER_SIDES + 1 // plus center-point
