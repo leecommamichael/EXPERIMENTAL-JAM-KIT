@@ -166,39 +166,39 @@ Set_Texture_Wrap_R       :: proc (target: Texture_Parameter_Target, param: Textu
 	glTexParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
 }
 
-Set_Sampler_Base_Level   :: proc (target: Sampler, param: GLuint) {
-	glSamplerParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
-}
-Set_Sampler_Max_Level    :: proc (target: Sampler, param: GLuint) {
-	glSamplerParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
-}
-Set_Sampler_Min_LOD      :: proc (target: Sampler, param: f32) {
-	glSamplerParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
-}
-Set_Sampler_Max_LOD      :: proc (target: Sampler, param: f32) {
-	glSamplerParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
-}
-Set_Sampler_Mag_Filter   :: proc (target: Sampler, param: Texture_Mag_Filter) {
-	glSamplerParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
-}
-Set_Sampler_Min_Filter   :: proc (target: Sampler, param: Texture_Min_Filter) {
-	glSamplerParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
-}
-Set_Sampler_Compare_Func :: proc (target: Sampler, param: Compare_Func) {
-	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
-}
-Set_Sampler_Compare_Mode :: proc (target: Sampler, param: Texture_Compare_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
-}
-Set_Sampler_Wrap_S       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
-}
-Set_Sampler_Wrap_T       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
-}
-Set_Sampler_Wrap_R       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
-	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
-}
+// Set_Sampler_Base_Level   :: proc (target: Sampler, param: GLuint) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_BASE_LEVEL, cast(int) param)
+// }
+// Set_Sampler_Max_Level    :: proc (target: Sampler, param: GLuint) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_MAX_LEVEL, cast(int) param)
+// }
+// Set_Sampler_Min_LOD      :: proc (target: Sampler, param: f32) {
+// 	glSamplerParameterf(auto_cast target, TEXTURE_MIN_LOD, param)
+// }
+// Set_Sampler_Max_LOD      :: proc (target: Sampler, param: f32) {
+// 	glSamplerParameterf(auto_cast target, TEXTURE_MAX_LOD, param)
+// }
+// Set_Sampler_Mag_Filter   :: proc (target: Sampler, param: Texture_Mag_Filter) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_MAG_FILTER, cast(int) param)
+// }
+// Set_Sampler_Min_Filter   :: proc (target: Sampler, param: Texture_Min_Filter) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_MIN_FILTER, cast(int) param)
+// }
+// Set_Sampler_Compare_Func :: proc (target: Sampler, param: Compare_Func) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_FUNC, cast(int) param)
+// }
+// Set_Sampler_Compare_Mode :: proc (target: Sampler, param: Texture_Compare_Mode) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_COMPARE_MODE, cast(int) param)
+// }
+// Set_Sampler_Wrap_S       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_S, cast(int) param)
+// }
+// Set_Sampler_Wrap_T       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_T, cast(int) param)
+// }
+// Set_Sampler_Wrap_R       :: proc (target: Sampler, param: Texture_Wrap_Mode) {
+// 	glSamplerParameteri(auto_cast target, TEXTURE_WRAP_R, cast(int) param)
+// }
 
 
 TexImage2D :: proc {

@@ -576,26 +576,26 @@ FramebufferTexture2D :: proc (
 
 
 
-CreateSampler :: proc () -> (out: Sampler) {
-	glGenSamplers(1, cast(^GLuint)&out)
-	return
-}
+// CreateSampler :: proc () -> (out: Sampler) {
+// 	glGenSamplers(1, cast(^GLuint)&out)
+// 	return
+// }
 
-GenSamplers :: proc (
-	len: int,
-	out: [^]Sampler,
-	_loc := #caller_location
-) -> (err: Error = .NO_ERROR) {
-	glGenSamplers(len, cast(^GLuint) out)
-	when NGL_VALIDATE { return validate(_loc) } else { return }
-}
-
-
+// GenSamplers :: proc (
+// 	len: int,
+// 	out: [^]Sampler,
+// 	_loc := #caller_location
+// ) -> (err: Error = .NO_ERROR) {
+// 	glGenSamplers(len, cast(^GLuint) out)
+// 	when NGL_VALIDATE { return validate(_loc) } else { return }
+// }
 
 
-BindSampler :: proc (unit: GLuint, sampler: Sampler) {
-	glBindSampler(unit, sampler)
-}
+
+
+// BindSampler :: proc (unit: GLuint, sampler: Sampler) {
+// 	glBindSampler(unit, sampler)
+// }
 
 CheckFramebufferStatus :: proc (target: Framebuffer_Target) -> GLenum {
 	return glCheckFramebufferStatus(auto_cast target)
