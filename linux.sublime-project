@@ -1,0 +1,19 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+		},
+		// Linux
+		{
+			"path": "/home/mal/Github/odin",
+			"file_include_patterns": ["*.odin"],
+		},
+		{
+			"path": "~/.config/sublime-text/Packages/User",
+		},
+		{
+			"path": "~/Github/Sublime-Text-Config",
+		}
+	],
+}

@@ -1,0 +1,3 @@
+package audio
+
+Clip :: struct {}
