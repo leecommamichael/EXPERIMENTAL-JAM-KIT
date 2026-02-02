@@ -38,12 +38,17 @@ main :: proc() {
 	sugar.set_memory(&globals.sugar)
 	sugar.init()
 	asset_init()
-	displays := sugar.list_displays()
-	display := displays[1] if len(displays) > 1 else displays[0]
+	when ODIN_OS != .Linux {
+		displays := sugar.list_displays()
+		display := displays[1] if len(displays) > 1 else displays[0]
+		xywh := [4]int{
+				2 + display.top_left.x,
+				44+ display.top_left.y, 0,0} + ({430,430, 640, 400})
+	} else {
+		xywh := [4]int{0,0,1920,1081}
+	}
 	ok := sugar.create_window(
-		[4]int{
-			2 + display.top_left.x,
-			44+ display.top_left.y, 0,0} + ({430,430, 640, 400}),
+		xywh,
 		"SimSettlement",
 		use_gl = true
 	)

@@ -27,15 +27,6 @@ assert(ok)
 	return
 }
 
-// A clip. A collection of samples.
-Clip :: struct {
-	bytes: []u8 `cbor:"-" fmt:"-"`,
-	samples: int,
-	seconds: f64,
-	channels: int,
-	sample_rate: int,
-}
-
 load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
 	sample_data: [^]u8
 	clip.samples = cast(int) stbv.decode_memory(raw_data(bytes),
