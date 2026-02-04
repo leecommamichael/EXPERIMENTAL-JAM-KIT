@@ -90,7 +90,7 @@ main :: proc() {
 	gl.glEnable(gl.DEBUG_OUTPUT)
 	gl.glEnable(gl.DEBUG_OUTPUT_SYNCHRONOUS)
 	gl.glDebugMessageCallback(gl_debug_proc, &ctx)
-	}
+	} // when ODIN_OS
 
 	tick := time.tick_now()
 	dt: f64

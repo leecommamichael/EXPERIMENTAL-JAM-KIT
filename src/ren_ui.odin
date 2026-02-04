@@ -5,61 +5,83 @@ import "core:log"
 
 Axis :: enum { Horizontal, Vertical }
 
-Alignment :: enum { Start, Center, End }
+// Alignment :: enum { Start, Center, End }
 
 Direction :: enum { Left, Right, Up, Down }
 
-// Layout_Flag :: enum { Expand, Expand_Width, Expand_Height }
-
-UI_Element_Type :: enum { None, Row, Column, Box, Root }
-
-UI_Element_State :: enum { Hovered, Pressed }
-
-UI_Element :: struct {
-	type:   UI_Element_Type,
-	state:  bit_set[UI_Element_State],
-	// layout: bit_set[Layout_Flag],
-	focus:  [Direction]^Entity,
-	// main_axis_alignment:  Alignment,
-	// cross_axis_alignment: Alignment,
-	// padding:              [Direction]f32,
+UI_Element_Flag :: enum {
+	Parent_Picks_Width,  // expects it from parent. (Remaining_Width)
+	Parent_Picks_Height, // expects it from parent. (Remaining_Height)
+	Hovered,
+	Pressed
 }
 
-// Marks this part of the tree as a layout subtree.
-ui_element :: proc (child: ^Entity, position: Maybe(Vec2) = nil, hash:=#caller_location) -> ^Entity {
-	// entity, is_new := get_entity(hash)
-	// entity.children = make([]^Entity, 1, context.temp_allocator)
-	// entity.children[0] = child
-	// entity.ui = UI_Element {
-	// 	type = .Root
-	// }
-	// entity.flags += { .Hidden }
-	// entity.position.xy = position
-	// child.position.z = next_z()
-	if position != nil {
-		child.position.xy = position.(Vec2)
-	}
-	layout_subtree(child)
-	return child
+UI_Element :: struct {
+	flags: UI_Flags,
+	focus: [Direction]^Entity,
+	main_axis: Axis,
+	// main_alignment:  Alignment,
+	// cross_alignment: Alignment,
+	// padding:              [Direction]f32,
+}
+UI_Flags :: bit_set[UI_Element_Flag]
+
+// What region we're currently laying-out inside of. Layout_State.
+UI_Context :: struct {
+	size:   Vec2,
+	offset: Vec2,
+	z:      f32
+}
+
+ui_context :: proc (size: Vec2, hash: Hash = #caller_location) -> ^Entity {
+	ctx, is_new := get_entity(hash)
+	ctx.flags += {.Hidden, .Skip_Interpolation}
+	ctx.transform = {}
+	ctx.basis = {}
+	ctx.basis.scale.xy = size
+	ctx.basis.scale.z = 1 // TODO: TAP TARGET SIZE
+	ctx.position.z = next_z()
+
+	return ctx
 }
 
 row :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
 	entity, is_new := get_entity(hash)
-	entity.ui.type = .Row
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
+	entity.ui.main_axis = .Horizontal
 	copy(entity.children, children)
 	entity.flags += { .Hidden, .Skip_Interpolation }
-	init_list_children(entity, .Horizontal)
+	init_list_children(entity)
 	return entity
 }
 
 column :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
 	entity, is_new := get_entity(hash)
-	entity.ui.type = .Column
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
+	entity.ui.main_axis = .Vertical
 	copy(entity.children, children)
 	entity.flags += { .Hidden, .Skip_Interpolation }
-	init_list_children(entity, .Vertical)
+	init_list_children(entity)
+	return entity
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Modifiers
+////////////////////////////////////////////////////////////////////////////////
+ui_mod :: proc (entity: ^Entity, flags: UI_Flags) -> ^Entity {
+	entity.ui.flags += flags
+	return entity
+}
+flex_wh :: proc (entity: ^Entity) -> ^Entity {
+	entity.ui.flags += {.Parent_Picks_Width, .Parent_Picks_Height}
+	return entity
+}
+flex_w :: proc (entity: ^Entity) -> ^Entity {
+	entity.ui.flags += {.Parent_Picks_Width}
+	return entity
+}
+flex_h :: proc (entity: ^Entity) -> ^Entity {
+	entity.ui.flags += {.Parent_Picks_Height}
 	return entity
 }
 
@@ -74,32 +96,40 @@ column :: proc (children: ..^Entity, hash: Hash = #caller_location) -> ^Entity {
 // }
 
 pad_box :: proc (
-	size: f32,
+	size: Vec2,
 	hash: Hash = #caller_location
 ) -> ^Entity {
 	entity, is_new := get_entity(hash)
 	entity.flags += {.Hidden, .Skip_Interpolation }
-	if is_new {
-		entity.ui = UI_Element {
-			type = .Box
-		}
-	}
 	entity.basis.scale.xy = size
 	entity.basis.position.xy = size/2
 	entity.position.z = next_z()
 	return entity
 }
 
-init_list_children :: proc (entity: ^Entity, main_axis: Axis) {
+expander :: proc (
+	hash: Hash = #caller_location
+) -> ^Entity {
+	entity, is_new := get_entity(hash)
+	entity.flags += {.Hidden, .Skip_Interpolation }
+	entity.ui.flags += {.Parent_Picks_Width, .Parent_Picks_Height}
+	entity.basis.scale = 0
+	entity.basis.position = 0
+	entity.position.z = next_z()
+	return entity
+}
+
+// Create trees for focus and parent/child traversal (for layout)
+init_list_children :: proc (entity: ^Entity) {
 	num_children := len(entity.children)
 	children := entity.children
 	for i in 0..< num_children {
 		next_or_wrap := i+1 if i+1 < num_children else 0
-		next_main: Direction = .Right if main_axis == .Horizontal else .Down
+		next_main: Direction = .Right if entity.ui.main_axis == .Horizontal else .Down
 		children[i].ui.focus[next_main] = children[next_or_wrap]
 
 		previous_or_wrap := i-1 if i-1 >= 0 else i
-		prev_main: Direction = .Left if main_axis == .Horizontal else .Up
+		prev_main: Direction = .Left if entity.ui.main_axis == .Horizontal else .Up
 		children[i].ui.focus[prev_main] = children[previous_or_wrap]
 
 		children[i].parent = entity
@@ -107,100 +137,138 @@ init_list_children :: proc (entity: ^Entity, main_axis: Axis) {
 }
 
 measure_entity :: proc (entity: ^Entity) -> Vec2 {
-	switch entity.ui.type {
-	case .None: // Not a UI element, but some we can measure.
-		switch variant in entity.variant {
-		case nil:
-			return entity.basis.scale.xy // maybe have a size() vfunc?
-		case Image_State:
-			return entity.basis.scale.xy * entity.scale.xy
-		case Sprite_State:
-			return entity.basis.scale.xy * entity.scale.xy
-		case Text_State:
-			return measure_text(entity^)
-		case Timed_Effect_State(Empty_Struct): // not visual
-			return 0
-		}
-	case .Row:
-		size: Vec2
-		for child in entity.children {
-			child_size := measure_entity(child)
-			size.x += child_size.x
-			if child_size.y > size.y { size.y = child_size.y }
-		}
-		return size
-	case .Column:
-		size: Vec2
-		for child in entity.children {
-			child_size := measure_entity(child)
-			size.y += child_size.y
-			if child_size.x > size.x { size.x = child_size.x }
-		}
-		return size
-	case .Box:
-		// size := entity.basis.scale.xy * entity.scale.xy
-		// if .Expand in entity.ui.layout do size = inf_f32(+1)
-		// if .Expand_Width in entity.ui.layout do size.x = inf_f32(+1)
-		// if .Expand_Height in entity.ui.layout do size.y = inf_f32(+1)
-		// return size
-		return entity.basis.scale.xy * entity.scale.xy
-	case .Root: 
-		return measure_entity(entity.children[0])
-	}
+	return entity.basis.scale.xy * entity.scale.xy
+	// switch {
+	// // case entity.ui.main_axis == .Horizontal:
+	// // 	size: Vec2
+	// // 	for child in entity.children {
+	// // 		child_size := measure_entity(child)
+	// // 		size.x += child_size.x
+	// // 		if child_size.y > size.y { size.y = child_size.y }
+	// // 	}
+	// // 	return size
+	// // case entity.ui.main_axis == .Vertical:
+	// // 	size: Vec2
+	// // 	for child in entity.children {
+	// // 		child_size := measure_entity(child)
+	// // 		size.y += child_size.y
+	// // 		if child_size.x > size.x { size.x = child_size.x }
+	// // 	}
+	// // 	return size
+	// case: // Not a UI element, but some we can measure.
+	// 	switch variant in entity.variant {
+	// 	case nil:
+	// 		return entity.basis.scale.xy * entity.scale.xy
+	// 	case Image_State:
+	// 		return entity.basis.scale.xy * entity.scale.xy
+	// 	case Sprite_State:
+	// 		return entity.basis.scale.xy * entity.scale.xy
+	// 	case Text_State:
+	// 		return measure_text(entity^)
+	// 	case Timed_Effect_State(Empty_Struct): // not visual
+	// 		return 0
+	// 	}
+	// }
 
-	log.panicf("Exhaustive Switch %v %v %s", entity.ui.type, entity.variant, entity.debug_name)
+	// log.panicf("Exhaustive Switch %v %s", entity.variant, entity.debug_name)
 }
 
+// Size comes from above, and is subdivided.
+// Blocks can be unknown-size, but must be filled in before laying out other components.
+//
+// Bounded-size list. (max or size)
+//   Case 1: Listing sized elements.           // trivial
+//   Case 2: Listing sized & unsized elements. // give remaining size
+//
 // Modifies the sizes and positions of elements.
-layout_subtree :: proc (root: ^Entity) {
-	z := next_z()
-	// size := measure_entity(root)
-	switch root.ui.type {
-	case .None: // TODO: position and size the entity.variant
-	case .Root:
-		root.children[0].position = root.position
-		root.children[0].scale = root.scale
-		layout_subtree(root.children[0])
-	case .Row:
-		// sizes := make([dynamic]Vec2, context.temp_allocator)
-		// 	append(&sizes, measure_entity(child))
-		main_axis_offset: f32 = root.position.x
-		max_cross_axis_size: f32
-		for child in root.children {
+ui_layout :: proc (
+	widget: ^Entity
+) {
+	z := next_z() // Don't think this is right
+	switch {
+	case widget.ui.main_axis == .Horizontal:
+		main_axis_size_remaining: f32 = widget.basis.scale.x
+		cross_axis_size:          f32 = widget.basis.scale.y
+		num_elems_without_width:  f32
+		// Pass 1: Collect metrics.
+		for child in widget.children {
+			if .Parent_Picks_Height in child.ui.flags {
+				child.basis.scale.y = cross_axis_size; // <---------------- child height
+			} else {
+				// known height. 
+				// TODO: position it vertically. overflow-check.
+			}
+			if .Parent_Picks_Width in child.ui.flags {
+				num_elems_without_width += 1
+			} else {
+				// ASSUME: a width is measureable to deduct from the main axis.
+				child_size := measure_entity(child)
+				main_axis_size_remaining -= child_size.x
+			}
+		}
+		child_width := main_axis_size_remaining / num_elems_without_width
+
+		// TODO: offset elements on main axis alignment according to extra space.
+
+		// Pass 2: Provide size to children, position them, and recurse.
+		main_axis_offset: f32 = widget.position.x
+		for child in widget.children {
+			if .Parent_Picks_Width in child.ui.flags {
+				child.basis.scale.x = child_width // <---------------------- child width
+			}
 			child.position.z = z
 			child.position.x = main_axis_offset
-			child.position.y = root.position.y
-			child_size := measure_entity(child)
-			main_axis_offset = child.position.x + child_size.x
-			if child_size.y > max_cross_axis_size { max_cross_axis_size = child_size.y }
+			child.position.y = widget.position.y
+			ui_layout(child) // now it's sized and positioned, so layout below.
+			main_axis_offset += child.basis.scale.x
 		}
-		root.scale.x = main_axis_offset
-		root.scale.y = max_cross_axis_size
-	case .Column:
-		main_axis_offset: f32 = root.position.y
-		max_cross_axis_size: f32
-		#reverse for child in root.children {
+
+	case widget.ui.main_axis == .Vertical: {
+		main_axis_size_remaining: f32 = widget.basis.scale.y
+		cross_axis_size:          f32 = widget.basis.scale.x
+		num_elems_without_height: f32
+		// Pass 1: Collect metrics.
+		#reverse for child in widget.children { child := child;
+			if .Parent_Picks_Width in child.ui.flags {
+				child.basis.scale.x = cross_axis_size; // <---------------- child width
+			} else {
+				// known width. 
+				// TODO: position it horizontally. overflow-check.
+			}
+			if .Parent_Picks_Height in child.ui.flags {
+				num_elems_without_height += 1
+			} else {
+				// ASSUME: a width is measureable to deduct from the main axis.
+				child_size := measure_entity(child)
+				main_axis_size_remaining -= child_size.y
+			}
+		}
+		child_height := main_axis_size_remaining / num_elems_without_height
+
+		// TODO: offset elements on main axis alignment according to extra space.
+
+		// Pass 2: Provide size to children, position them, and recurse.
+		main_axis_offset: f32 = widget.position.y
+		#reverse for child in widget.children { child := child;
+			if .Parent_Picks_Height in child.ui.flags {
+				child.basis.scale.y = child_height // <---------------------- child height
+			}
 			child.position.z = z
 			child.position.y = main_axis_offset
-			child.position.x = root.position.x
-			child_size := measure_entity(child)
-			main_axis_offset = child.position.y + child_size.y
-			if child_size.x > max_cross_axis_size { max_cross_axis_size = child_size.x }
+			child.position.x = widget.position.x
+			ui_layout(child) // now it's sized and positioned, so layout below.
+			main_axis_offset += child.basis.scale.y
 		}
-		root.scale.y = main_axis_offset
-		root.scale.x = max_cross_axis_size
-	case .Box:
-		root.position.z = z
-	}
+}
+	case:
+		widget.position.z = z
+	} // switch
 }
 
 import "sugar"
 button :: proc (hash: Hash = #caller_location) -> ^Entity {
 	entity, is_new := get_entity(hash)
 	if is_new {
-		entity.ui = UI_Element {
-			type = .Box
-		}
 		entity.flags += {.Collider_Enabled}
 		entity.collider.shape = .AABB
 		entity.collider.size = 44 / globals.canvas_stretch.x
@@ -216,9 +284,9 @@ button :: proc (hash: Hash = #caller_location) -> ^Entity {
 	entity.position.z = next_z()
 
 	if they_touch(globals.cursor, entity) {
-		entity.ui.state += {.Hovered}
+		entity.ui.flags += {.Hovered}
 		if sugar.is_key_pressed(.Left_Mouse) {
-			entity.ui.state += {.Pressed}
+			entity.ui.flags += {.Pressed}
 		}
 	}
 

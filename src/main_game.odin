@@ -25,7 +25,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 ////////////////////////////////////////////////////////////////////////////////
 // Brainless Minigame Jam: Simpler Times                                Jan 2026
 ////////////////////////////////////////////////////////////////////////////////
-// RG35SP_RES: Vec2 = {640, 480}
+RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
 
 gs: ^Game_State
@@ -94,7 +94,7 @@ game_init :: proc () {
 	gs.player.workers = 1
 }
 
-PANEL_SIZE: Vec2 = {120, 400}
+PANEL_SIZE_MAX: Vec2 = {120, 400}
 SPACER :: 16
 
 @export
@@ -294,7 +294,7 @@ game_step :: proc () {
 	bg.color = bg_color
 
 	panel := rect()
-	panel.basis.scale.xy = PANEL_SIZE
+	panel.basis.scale.xy = PANEL_SIZE_MAX
 	uncenter_rect(panel)
 	panel.color = panel_color
 
@@ -399,8 +399,8 @@ game_step :: proc () {
 		return icon
 	}
 	resource_panel :=
-		ui_element(row(
-			ui_element(column(
+		(row(
+			(column(
 				pad_box(4), // PIVOT
 				icon_bg(image("leader16.ase")),
 				pad_box(2),
@@ -415,7 +415,7 @@ game_step :: proc () {
 
 			pad_box(4),
 
-			ui_element(column(
+			(column(
 				label("LEADER:"),
 				pad_box(2),
 				label("WORKER:"),
@@ -428,9 +428,9 @@ game_step :: proc () {
 				pad_box(4), // PIVOT
 			)),
 
-		pad_box(12),
+			pad_box(12),
 
-			ui_element(column(
+			(column(
 				text(fmt.tprintf("% 3d", gs.player.leaders), .bold_pixel),
 				pad_box(2),
 				text(fmt.tprintf("% 3d", gs.player.workers), .bold_pixel),
@@ -442,11 +442,11 @@ game_step :: proc () {
 				text(fmt.tprintf("% 3d", gs.player.water), .bold_pixel),
 				pad_box(4), // PIVOT
 			)),
-		))
+		)) // row
 
 	h_separator :: proc(hash:=#caller_location)->^Entity{
 		separator := rect(hash)
-		separator.basis.scale.x = PANEL_SIZE.x
+		separator.basis.scale.x = PANEL_SIZE_MAX.x
 		separator.basis.scale.y = 4
 		separator.basis.position.xy = separator.basis.scale.xy/2 - {6,0}
 		separator.color = bg_color
@@ -556,7 +556,7 @@ game_step :: proc () {
 			case cost > 0:  _color = green
 			}
 			icon := image(icon_name, loop_hash("cost_icon", id))
-			elem := ui_element(row(
+			elem := (row(
 				icon, label(fmt.tprintf("%+d", cost), _color, loop_hash("cost_label", id)),
 			hash=loop_hash("cost_row", id)))
 			icon_bg(icon, hash)
@@ -586,21 +586,21 @@ game_step :: proc () {
 		if gain_food    > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_food), green))
 		if gain_water   > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_water), green))
 
-		lose_gain_panel := ui_element(row(
+		lose_gain_panel := (row(
 			pad_box(6),
-			ui_element(column(..lose_column[:])),
+			(column(..lose_column[:])),
 			pad_box(14),
 			v_separator(20), // TODO, bind this and set a height after layout
 			pad_box(14),
-			ui_element(column(..gain_column[:])),
+			(column(..gain_column[:])),
 		))
 
-	append(&menu,
-		pad_box(8),
-		h_separator(),
-		lose_gain_panel,
-		pad_box(8),
-	)
+		append(&menu,
+			pad_box(8),
+			h_separator(),
+			lose_gain_panel,
+			pad_box(8),
+		)
 	} // has focused action
 	append(&menu,
 		pad_box(8),
@@ -609,13 +609,35 @@ game_step :: proc () {
 		pad_box(4),
 		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
 	)
-	panel_list := column(..menu[:])
-	panel_list_size := measure_entity(panel_list)
-	height_to_pin_atop := PANEL_SIZE.y - panel_list_size.y
-	col := ui_element(
-		panel_list,
-		position = Vec2{6, height_to_pin_atop},
-	)
+	// append(&menu, expander())
+
+	// root_ctx := ui_context(RG35SP_RES)
+	// ui := 
+	// 	row( // sized by root
+	// 		column(..menu[:]),
+	// 		pad_box(RG35SP_RES - PANEL_SIZE_MAX) // sized
+	// 		)
+	// ui.parent = root_ctx
+	// ui_layout(ui)
+
+	panel_ctx := ui_context(PANEL_SIZE_MAX)
+	// col := column(
+	// 	label("ON THIS TILE:"),
+	// 	expander()
+	// )
+	// col := column(
+	// 	expander(),
+	// 	label("ON THIS TILE:"),
+	// 	expander(),
+	// 	expander(),
+	// )
+	// col := column(
+	// 	expander(),
+	// 	label("ON THIS TILE:"),
+	// )
+	col := column(..menu[:])
+	col.basis.scale = panel_ctx.basis.scale
+	ui_layout(col)
 
 	////////////////////////////////////////////////////////////////////////////////////////
 	// Build Panel Menu Highlight
@@ -631,7 +653,7 @@ game_step :: proc () {
 	hovered_text := menu[menu_start + menu_offset]
 	menu_highlight := rect()
 	@static is_animating := false
-	menu_highlight_size := vec3({PANEL_SIZE.x, 16}, 1)
+	menu_highlight_size := vec3({PANEL_SIZE_MAX.x, 16}, 1)
 	menu_highlight.transform.scale = menu_highlight_size
 	menu_highlight.transform.position.xy = hovered_text.position.xy + menu_highlight.scale.xy/2 - { 6, 4}
 	// If the two objects have different bases, can't interpolate and store in xform.
@@ -652,7 +674,7 @@ game_step :: proc () {
 				menu_highlight.color = color("fff4")
 				top_hat := image("leader16.ase")
 				top_hat.flags += {.Skip_Interpolation}
-				top_hat.position.xy = hovered_text.position.xy - {5, 4}
+				// top_hat.position.xy = hovered_text.position.xy - {5, 4}
 			}
 		}
 	}
@@ -696,6 +718,12 @@ game_step :: proc () {
 ////////////////////////////////////////////////////////////////////////////////
 // UI Components
 ////////////////////////////////////////////////////////////////////////////////
+// if it's a column or row, measure everything behind it and find the position.
+menu_add_panel :: proc (menu: ^[dynamic]^Entity, element: ^Entity) -> Vec2 {
+	size := measure_entity(element)
+	append(menu, element)
+	return size
+}
 
 tile_entity :: proc (
 	basis: Transform,
