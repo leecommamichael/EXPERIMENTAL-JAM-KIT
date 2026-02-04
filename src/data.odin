@@ -142,6 +142,21 @@ Entity :: struct {
 	parent:          ^Entity,
 	children:        []^Entity,
 }
+// #assert(size_of(Entity) <   512, "INFO:  32MB @ 2^12 entities.")
+#assert(size_of(Entity) <   768, "INFO:  48MB @ 2^12 entities.")
+#assert(size_of(Entity) <  1024, "INFO:  64MB @ 2^12 entities.")
+#assert(size_of(Entity) <  2048, "INFO: 128MB @ 2^12 entities.")
+#assert(size_of(Entity) <  4096, "INFO: 256MB @ 2^16 entities.")
+#assert(size_of(Entity) <  8192, "WARN: 512MB @ 2^16 entities.")
+#assert(size_of(Entity) < 16384, "WARN:  >1GB @ 2^16 entities.")
+#assert(size_of(Entity) < 16384, "ERROR: >2GB @ 2^16 entities. What are you doing!?")
+//
+#assert(size_of(Globals) <   64*Megabyte, "INFO: Know this figure.")
+#assert(size_of(Globals) <  128*Megabyte, "INFO: Know this figure.")
+#assert(size_of(Globals) <  256*Megabyte, "INFO: Know this figure.")
+#assert(size_of(Globals) <  512*Megabyte, "INFO: Know this figure.")
+#assert(size_of(Globals) < 1024*Megabyte, "WARN: Getting bloated.")
+#assert(size_of(Globals) < 2048*Megabyte, "ERROR: This is absurd. Really!?")
 
 Entity_Variant :: union {
 	Text_State,

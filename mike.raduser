@@ -19,7 +19,7 @@ window:
   {
     0.432402:
     {
-      0.293151:
+      0.366045:
       {
         watch: expression: "query:types"
         watch:
@@ -40,8 +40,9 @@ window:
           }
         }
       }
-      0.369457:
+      0.296563:
       {
+        selected
         watch: expression: "query:threads"
         watch: expression: "query:targets"
         watch: expression: "query:breakpoints"
@@ -53,40 +54,37 @@ window:
           watch: globals
           root_type: 0.486283 0.363717 0.150000
           normal: 0.218506 0.531494 0.250000
-          watch: "gs.tiles"
-          watch: "gs.player"
-          watch: "gs.selected_action"
-          watch: "gs.has_selected_action"
-          watch: "gs.selected_action.path"
-          watch: "action.path"
-          watch: "gs.selected_action.path.data"
-          watch: "action.path.data"
-          watch: "globals.entities_2D.data[0]"
+          watch: main_axis_size_remaining
+          watch: main_axis_offset
+          watch: cross_axis_size
+          watch: "widget.basis.scale"
+          watch: "child.basis.scale"
+          watch: "child.transform.position"
+          watch: "widget.transform.position"
         }
       }
       0.337392:
       {
-        0.647693:
+        watch: selected expression: "query:call_stack"
+        watch: expression: "query:modules"
+        watch:
         {
-          watch: selected expression: "query:call_stack"
-          watch: expression: "query:modules"
-          watch:
-          {
-            expression: "query:registers"
-            normal: 0.170302 0.579698 0.250000
-          }
-        }
-        0.352307: disasm:
-        {
-          selected
-          expression: ""
-          query: input: ""
+          expression: "query:registers"
+          normal: 0.170302 0.579698 0.250000
         }
       }
     }
     0.567592:
     {
-      selected
+      disasm:
+      {
+        expression: ""
+        query:
+        {
+          input: data
+          cmd: search
+        }
+      }
       text:
       {
         expression: "file:\"C:/Users/thatl/usr/Repositories/angle/src/main_entrypoint.odin\".data"
@@ -240,35 +238,31 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 315
+        cursor_line: 235
         cursor_column: 1
-        mark_line: 315
+        mark_line: 235
         mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren_sprite.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 41
+        cursor_column: 15
+        mark_line: 41
+        mark_column: 15
       }
       text:
       {
         selected
-        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren_sprite.odin\".data"
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren_ui.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query: input: ""
-        cursor_line: 63
+        cursor_line: 252
         cursor_column: 1
-        mark_line: 63
+        mark_line: 252
         mark_column: 1
-      }
-      text:
-      {
-        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
-        query:
-        {
-          input: draw_en
-          cmd: search
-        }
-        cursor_line: 313
-        cursor_column: 21
-        mark_line: 313
-        mark_column: 14
       }
     }
   }

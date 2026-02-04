@@ -15,6 +15,7 @@ import "core:math/linalg"
 Byte     :: 1
 Kilobyte :: 1024 * Byte
 Megabyte :: 1024 * Kilobyte
+Gigabyte :: 1024 * Megabyte
 find :: slice.linear_search
 contains :: slice.contains
 Empty_Struct :: struct {}
