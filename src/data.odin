@@ -88,6 +88,7 @@ Globals :: struct {
 	collider_draw_commands: [Collision_Shape]Draw_Command,
 	unit_circle_mesh: Geom_Mesh2,
 	unit_quad_mesh:   Geom_Mesh2,
+	unit_rect_mesh:   Geom_Mesh2,
 	draw_colliders: bool,
 
 	// App Data
@@ -143,7 +144,7 @@ Entity :: struct {
 	children:        []^Entity,
 }
 // #assert(size_of(Entity) <   512, "INFO:  32MB @ 2^12 entities.")
-#assert(size_of(Entity) <   768, "INFO:  48MB @ 2^12 entities.")
+#assert(size_of(Entity) <   768, "INFO:  32MB @ 2^12 entities.")
 #assert(size_of(Entity) <  1024, "INFO:  64MB @ 2^12 entities.")
 #assert(size_of(Entity) <  2048, "INFO: 128MB @ 2^12 entities.")
 #assert(size_of(Entity) <  4096, "INFO: 256MB @ 2^16 entities.")

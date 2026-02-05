@@ -9,7 +9,7 @@ make_circle :: proc () -> (^Entity, bool) #optional_ok {
 	return it, new
 }
 
-circle :: proc (hash: Located_Hash_Input = #caller_location) -> (^Entity, bool) #optional_ok {
+circle :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := get_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_basic_draw_cmd(
@@ -22,7 +22,24 @@ circle :: proc (hash: Located_Hash_Input = #caller_location) -> (^Entity, bool) 
 }
 
 rect :: proc (
-	hash: Located_Hash_Input = #caller_location,
+	color: Color4 = {1,1,1,1},
+	hash: Hash = #caller_location,
+) -> (^Entity, bool) #optional_ok {
+
+	entity, is_new := get_entity(hash)
+	if is_new {
+		entity.draw_command = ren_make_basic_draw_cmd(
+		globals.instance_buffer, cast(int) entity.id,
+		globals.unit_rect_mesh.vertices[:],
+		globals.unit_rect_mesh.indices[:])
+	}
+	entity.color = color
+	entity.position.z = next_z()
+	return entity, is_new
+}
+
+quad :: proc (
+	hash: Hash = #caller_location,
 ) -> (^Entity, bool) #optional_ok {
 
 	entity, is_new := get_entity(hash)

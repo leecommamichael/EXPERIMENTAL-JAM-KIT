@@ -149,7 +149,58 @@ geom_make_cylinder :: proc (
   return { mesh, indices, {}, }
 }
 
-// On the XY plane
+// On the XY plane {0,0,0} is at the bottom left of the rect.
+geom_write_rect :: proc (
+  vertices: []Ren_Vertex_Base,
+  indices:  []u32,
+  start_of_mesh: u32,
+  position: Vec3 = 0,
+  size: Vec2 = 1,
+) {
+  TL := position + Vec3{ 0,      size.y, 0}
+  TR := position + Vec3{ size.x, size.y, 0}
+  BL := position
+  BR := position + Vec3{ size.x, 0,      0}
+  vertices[0] = Ren_Vertex_Base {TL, {0,0}, {}}
+  vertices[1] = Ren_Vertex_Base {TR, {1,0}, {}}
+  vertices[2] = Ren_Vertex_Base {BL, {0,1}, {}}
+  vertices[3] = Ren_Vertex_Base {BR, {1,1}, {}}
+  indices[0] = start_of_mesh + 0 /*TL*/
+  indices[1] = start_of_mesh + 2 /*BL*/
+  indices[2] = start_of_mesh + 1 /*TR*/
+  indices[3] = start_of_mesh + 3 /*BR*/
+  indices[4] = start_of_mesh + 1 /*TR*/
+  indices[5] = start_of_mesh + 2 /*BL*/
+}
+
+geom_append_rect :: proc (
+  mesh: ^Geom_Mesh2,
+  position: Vec3,
+  size: Vec2,
+) -> runtime.Allocator_Error {
+  num_verts := len(mesh.vertices)
+  num_indices := len(mesh.indices)
+  resize(&mesh.vertices, num_verts+4) or_return
+  resize(&mesh.indices, num_indices+6) or_return
+  geom_write_rect(
+    mesh.vertices[num_verts:][:4],
+    mesh.indices[num_indices:][:6],
+    u32(num_verts),
+    position,
+    size)
+  return nil
+}
+
+geom_make_rect :: proc (size: Vec2, allocator: runtime.Allocator) -> Geom_Mesh2 {
+  mesh := Geom_Mesh2 {
+    vertices = make([dynamic]Ren_Vertex_Base, allocator),
+    indices = make([dynamic]u32, allocator)
+  }
+  geom_append_rect(&mesh, position=0, size=size)
+  return mesh
+}
+
+// On the XY plane {0,0,0} is at the center of the quad.
 geom_write_quad :: proc (
   vertices: []Ren_Vertex_Base,
   indices:  []u32,
@@ -190,6 +241,15 @@ geom_append_quad :: proc (
     position,
     size)
   return nil
+}
+
+geom_make_quad :: proc (size: Vec3, allocator: runtime.Allocator) -> Geom_Mesh2 {
+  mesh := Geom_Mesh2 {
+    vertices = make([dynamic]Ren_Vertex_Base, allocator),
+    indices = make([dynamic]u32, allocator)
+  }
+  geom_append_quad(&mesh, position=0, size=size)
+  return mesh
 }
 
 // A grid of points along the XZ plane.
@@ -287,15 +347,6 @@ geom_append_circle :: proc (
 
   geom_make_circle_indices(&mesh.indices, u32(num_verts), u32(sides))
   return nil
-}
-
-geom_make_quad :: proc (size: Vec3, allocator: runtime.Allocator) -> Geom_Mesh2 {
-  mesh := Geom_Mesh2 {
-    vertices = make([dynamic]Ren_Vertex_Base, allocator),
-    indices = make([dynamic]u32, allocator)
-  }
-  geom_append_quad(&mesh, position=0, size=size)
-  return mesh
 }
 
 make_circle_2D :: proc (

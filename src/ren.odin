@@ -61,6 +61,7 @@ ren_init :: proc (ren: ^Ren) {
 	gl.BlendFunc(.ONE, .ONE_MINUS_SRC_ALPHA)
 	globals.unit_circle_mesh = make_circle_2D(0.5, 64, context.allocator)
 	globals.unit_quad_mesh = geom_make_quad(1.0, context.allocator)
+	globals.unit_rect_mesh = geom_make_rect(1.0, context.allocator)
 	circle_draw_cmd := ren_make_basic_draw_cmd(
 		globals.instance_buffer, 0,
 		globals.unit_circle_mesh.vertices[:],

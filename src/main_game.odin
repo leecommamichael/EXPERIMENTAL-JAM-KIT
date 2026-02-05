@@ -25,8 +25,9 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 ////////////////////////////////////////////////////////////////////////////////
 // Brainless Minigame Jam: Simpler Times                                Jan 2026
 ////////////////////////////////////////////////////////////////////////////////
-RG35SP_RES: Vec2 = {640, 480}
+// RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
+RES :: Vec2 {640, 400} // 1/2 of Steam Deck, and pretty close to RG35SP
 
 gs: ^Game_State
 
@@ -99,6 +100,19 @@ SPACER :: 16
 
 @export
 game_step :: proc () {
+	// root := sized(RES, row(
+	// 	sized(PANEL_SIZE_MAX, column(
+	// 		row( label("Hello"), label("Hello"), label("Hello") ),
+	// 		expander(),
+	// 		row( label("ooooooooooooo"), label("123") ),
+	// 		expander(),
+	// 		label("Hello"),
+	// 	)), // column
+	// 	sized_by_parent(rect()),
+	// )) // row
+	// ui_layout(root)
+	// if true do return
+
 	gs.state_changed_this_frame = false
 	gs.events = {}
 
@@ -290,12 +304,10 @@ game_step :: proc () {
 	//////////////////////////////////////////////////////////////////////////////
 	bg := rect()
 	bg.basis.scale.xy = globals.canvas_size_px
-	uncenter_rect(bg)
 	bg.color = bg_color
 
 	panel := rect()
 	panel.basis.scale.xy = PANEL_SIZE_MAX
-	uncenter_rect(panel)
 	panel.color = panel_color
 
 	//////////////////////////////////////////////////////////////////////////////
@@ -304,7 +316,7 @@ game_step :: proc () {
 	for i in 0..< TILES {
 		basis: Transform
 		basis.scale = TILE_SIZE_PX * tile_scale()
-		basis.position.xy = basis.scale.x/2 + Vec2{TILE_SIZE_PX * 8 - 2, 5}
+		basis.position.xy = Vec2{TILE_SIZE_PX * 8 - 2, 5}
 		tile: ^Tile = &gs.tiles[i]
 		is_neighbor: bool; for n in focused_tile.neighbors do if n.index == i { is_neighbor = true; break }
 		tile.focused = gs.focused_tile == i
@@ -445,18 +457,16 @@ game_step :: proc () {
 		)) // row
 
 	h_separator :: proc(hash:=#caller_location)->^Entity{
-		separator := rect(hash)
+		separator := rect(hash=hash)
 		separator.basis.scale.x = PANEL_SIZE_MAX.x
 		separator.basis.scale.y = 4
-		separator.basis.position.xy = separator.basis.scale.xy/2 - {6,0}
 		separator.color = bg_color
 		return separator
 	}
 	v_separator :: proc(height: f32, hash:=#caller_location)->^Entity{
-		separator := rect(hash)
+		separator := rect(hash=hash)
 		separator.basis.scale.x = 4
 		separator.basis.scale.y = height
-		separator.basis.position.xy = separator.basis.scale.xy/2 + {4,0}
 		separator.color = bg_color
 		return separator
 	}
@@ -558,7 +568,8 @@ game_step :: proc () {
 			icon := image(icon_name, loop_hash("cost_icon", id))
 			elem := (row(
 				icon, label(fmt.tprintf("%+d", cost), _color, loop_hash("cost_label", id)),
-			hash=loop_hash("cost_row", id)))
+				hash=loop_hash("cost_row", id)
+			))
 			icon_bg(icon, hash)
 
 			return elem
@@ -571,9 +582,9 @@ game_step :: proc () {
 		)
 		if cost_leaders > 0 do append(&lose_column, cost_icon(1, "leader16.ase", -1*cost_leaders))
 		if cost_workers > 0 do append(&lose_column, cost_icon(2, "hammer16.ase", -1*cost_workers))
-		if cost_ore     > 0 do append(&lose_column, cost_icon(3, "ore16.ase", -1*cost_ore))
-		if cost_food    > 0 do append(&lose_column, cost_icon(4, "food16.ase", -1*cost_food))
-		if cost_water   > 0 do append(&lose_column, cost_icon(5, "water16.ase", -1*cost_water))
+		if cost_ore     > 0 do append(&lose_column, cost_icon(3, "ore16.ase",    -1*cost_ore))
+		if cost_food    > 0 do append(&lose_column, cost_icon(4, "food16.ase",   -1*cost_food))
+		if cost_water   > 0 do append(&lose_column, cost_icon(5, "water16.ase",  -1*cost_water))
 
 		gain_column := make([dynamic]^Entity, context.temp_allocator)
 		append(&gain_column,
@@ -606,37 +617,14 @@ game_step :: proc () {
 		pad_box(8),
 		h_separator(),
 		label("ON THIS TILE:"),
-		pad_box(4),
 		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
 	)
 	// append(&menu, expander())
 
-	// root_ctx := ui_context(RG35SP_RES)
-	// ui := 
-	// 	row( // sized by root
-	// 		column(..menu[:]),
-	// 		pad_box(RG35SP_RES - PANEL_SIZE_MAX) // sized
-	// 		)
-	// ui.parent = root_ctx
-	// ui_layout(ui)
-
 	panel_ctx := ui_context(PANEL_SIZE_MAX)
-	// col := column(
-	// 	label("ON THIS TILE:"),
-	// 	expander()
-	// )
-	// col := column(
-	// 	expander(),
-	// 	label("ON THIS TILE:"),
-	// 	expander(),
-	// 	expander(),
-	// )
-	// col := column(
-	// 	expander(),
-	// 	label("ON THIS TILE:"),
-	// )
 	col := column(..menu[:])
 	col.basis.scale = panel_ctx.basis.scale
+
 	ui_layout(col)
 
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -655,7 +643,7 @@ game_step :: proc () {
 	@static is_animating := false
 	menu_highlight_size := vec3({PANEL_SIZE_MAX.x, 16}, 1)
 	menu_highlight.transform.scale = menu_highlight_size
-	menu_highlight.transform.position.xy = hovered_text.position.xy + menu_highlight.scale.xy/2 - { 6, 4}
+	menu_highlight.transform.position.xy = hovered_text.position.xy - { 0, 4}
 	// If the two objects have different bases, can't interpolate and store in xform.
 	// The object will appear to come from the wrong location.
 
@@ -730,7 +718,7 @@ tile_entity :: proc (
 	tile: ^Tile,
 	hash: Hash = #caller_location,
 ) -> (^Entity, bool) #optional_ok {
-	it, is_new := rect(hash)
+	it, is_new := rect(hash=hash)
 	it.basis = basis
 	it.position.xy = array_cast(tile.column_row, f32) * (TILE_GAP + basis.scale.x)
 	if tile.resource == .Ore {
@@ -778,8 +766,9 @@ tile_entity :: proc (
 		shape, is_new := circle(loop_hash("path_dots", tile.index))
 		shape.basis = basis
 		shape.basis.scale.xy = basis.scale.xy - 8
+		shape.basis.position.xy += basis.scale.xy/2
 		shape.position.xy = it.position.xy
-		shape.position.z = next_z() / 10
+		shape.position.z = next_z() + 1 // overtop the focus highlight
 		shape.color = color("000")
 		shape.color.a = focus_alpha
 	}

@@ -77,7 +77,7 @@ make_sprite :: proc (filename: string) -> ^Entity {
 }
 
 init_sprite :: proc (entity: ^Entity) {
-	mesh: Geom_Mesh2 = geom_make_quad(1, context.temp_allocator)
+	mesh: Geom_Mesh2 = globals.unit_rect_mesh
 	entity.draw_command = sprite_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
 	entity.color = {0,0,0,0} // don't mix a color overtop the sprite.
 }
