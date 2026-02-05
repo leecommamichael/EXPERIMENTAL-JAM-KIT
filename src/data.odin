@@ -143,7 +143,7 @@ Entity :: struct {
 	parent:          ^Entity,
 	children:        []^Entity,
 }
-// #assert(size_of(Entity) <   512, "INFO:  32MB @ 2^12 entities.")
+#assert(size_of(Entity) >   512, "INFO:  32MB @ 2^12 entities.")
 #assert(size_of(Entity) <   768, "INFO:  32MB @ 2^12 entities.")
 #assert(size_of(Entity) <  1024, "INFO:  64MB @ 2^12 entities.")
 #assert(size_of(Entity) <  2048, "INFO: 128MB @ 2^12 entities.")
