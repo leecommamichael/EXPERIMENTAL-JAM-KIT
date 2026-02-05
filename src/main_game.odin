@@ -619,7 +619,7 @@ game_step :: proc () {
 		label("ON THIS TILE:"),
 		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
 	)
-	// append(&menu, expander())
+	append(&menu, expander())
 
 	panel_ctx := ui_context(PANEL_SIZE_MAX)
 	col := column(..menu[:])

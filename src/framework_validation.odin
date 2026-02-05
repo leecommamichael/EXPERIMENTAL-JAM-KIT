@@ -73,9 +73,9 @@ raise_diagnostic :: proc (
 		log.warnf(strings.to_string(fmtstr), ..args[:])
 	case .Error:
 		log.errorf(strings.to_string(fmtstr), ..args[:])
+		debugger()
 	}
 	
-	debugger()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
