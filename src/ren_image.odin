@@ -54,7 +54,11 @@ make_image :: proc (filename: string) -> ^Entity {
 
 init_image :: proc (entity: ^Entity) {
 	mesh: Geom_Mesh2 = globals.unit_rect_mesh
-	entity.draw_command = image_make_draw_command(globals.instance_buffer, cast(int) entity.id, mesh.vertices[:], mesh.indices[:])
+	entity.draw_command = image_make_draw_command(
+		globals.instance_buffer,
+		cast(int) entity.id,
+		mesh.vertices[:],
+		mesh.indices[:])
 }
 
 set_image :: proc (entity: ^Entity, filename: string) {
@@ -65,7 +69,6 @@ set_image :: proc (entity: ^Entity, filename: string) {
 	}
 	entity.variant = image
 	entity.basis.scale.xy = array_cast(image.asset.size_px, f32)
-	entity.basis.position.xy = array_cast(image.asset.size_px/2, f32)
 	globals.instance_staging[cast(int) entity.id].uv_transform = asset.uv_rect
 }
 

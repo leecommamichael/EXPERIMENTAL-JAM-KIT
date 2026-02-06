@@ -402,7 +402,6 @@ game_step :: proc () {
 	//////////////////////////////////////////////////////////////////////////////
 	menu := make([dynamic]^Entity, context.temp_allocator)
 	icon_bg :: proc (icon: ^Entity, hash := #caller_location) -> ^Entity {
-		img := icon.variant.(Image_State)
 		icon_bg := rect(hash=hash)
 		icon_bg.basis = icon.basis
 		icon_bg.color.a = 0.1
@@ -411,49 +410,34 @@ game_step :: proc () {
 		return icon
 	}
 	resource_panel :=
-		(row(
-			(column(
-				pad_box(4), // PIVOT
+		(column(
+			(row(
 				icon_bg(image("leader16.ase")),
-				pad_box(2),
-				icon_bg(image("hammer16.ase")),
-				pad_box(2),
-				icon_bg(image("ore16.ase")),
-				pad_box(2),
-				icon_bg(image("food16.ase")),
-				pad_box(2),
-				icon_bg(image("water16.ase")),
-			)),
-
-			pad_box(4),
-
-			(column(
 				label("LEADER:"),
-				pad_box(2),
-				label("WORKER:"),
-				pad_box(2),
-				label("ORE:"),
-				pad_box(2),
-				label("FOOD:"),
-				pad_box(2),
-				label("WATER:"),
-				pad_box(4), // PIVOT
-			)),
-
-			pad_box(12),
-
-			(column(
 				text(fmt.tprintf("% 3d", gs.player.leaders), .bold_pixel),
-				pad_box(2),
-				text(fmt.tprintf("% 3d", gs.player.workers), .bold_pixel),
-				pad_box(2),
-				text(fmt.tprintf("% 3d", gs.player.ore), .bold_pixel),
-				pad_box(2),
-				text(fmt.tprintf("% 3d", gs.player.food), .bold_pixel),
-				pad_box(2),
-				text(fmt.tprintf("% 3d", gs.player.water), .bold_pixel),
-				pad_box(4), // PIVOT
+				wh_sizers=SIZERS_FLEX_ROW
 			)),
+			(row(
+				icon_bg(image("hammer16.ase")),
+				label("WORKER:"),
+				text(fmt.tprintf("% 3d", gs.player.workers), .bold_pixel),
+			)),
+			(row(
+				icon_bg(image("ore16.ase")),
+				label("ORE:"),
+				text(fmt.tprintf("% 3d", gs.player.ore), .bold_pixel),
+			)),
+			(row(
+				icon_bg(image("food16.ase")),
+				label("FOOD:"),
+				text(fmt.tprintf("% 3d", gs.player.food), .bold_pixel),
+			)),
+			(row(
+				icon_bg(image("water16.ase")),
+				label("WATER:"),
+				text(fmt.tprintf("% 3d", gs.player.water), .bold_pixel),
+			)),
+
 		)) // row
 
 	h_separator :: proc(hash:=#caller_location)->^Entity{
@@ -489,6 +473,7 @@ game_step :: proc () {
 			text("  Mission", .bold_pixel),
 			text("  Build", .bold_pixel),
 			text("  Upgrade", .bold_pixel),
+			pad_box(8),
 		)
 	}
 	switch gs.state {
@@ -585,37 +570,41 @@ game_step :: proc () {
 		if cost_ore     > 0 do append(&lose_column, cost_icon(3, "ore16.ase",    -1*cost_ore))
 		if cost_food    > 0 do append(&lose_column, cost_icon(4, "food16.ase",   -1*cost_food))
 		if cost_water   > 0 do append(&lose_column, cost_icon(5, "water16.ase",  -1*cost_water))
+		append(&lose_column, pad_box(8))
 
 		gain_column := make([dynamic]^Entity, context.temp_allocator)
 		append(&gain_column,
 			label("GAIN", green),
 			pad_box(8),
+			expander()
 		)
 		if gain_leaders > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_leaders), green))
 		if gain_workers > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_workers), green))
 		if gain_ore     > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_ore), green))
 		if gain_food    > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_food), green))
 		if gain_water   > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_water), green))
+		append(&gain_column, pad_box(8))
 
+		v_sep := v_separator(0)
+		v_sep.ui.sizer.y = Sizer.Flexed_By_Parent
 		lose_gain_panel := (row(
 			pad_box(6),
 			(column(..lose_column[:])),
 			pad_box(14),
-			v_separator(20), // TODO, bind this and set a height after layout
+			v_sep,
 			pad_box(14),
-			(column(..gain_column[:])),
+			(column(..gain_column[:], wh_sizers=SIZERS_FLEX_COLUMN)),
 		))
 
 		append(&menu,
 			pad_box(8),
 			h_separator(),
 			lose_gain_panel,
-			pad_box(8),
 		)
 	} // has focused action
 	append(&menu,
-		pad_box(8),
 		h_separator(),
+		pad_box(4),
 		label("ON THIS TILE:"),
 		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
 	)
