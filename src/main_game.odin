@@ -414,30 +414,39 @@ game_step :: proc () {
 			(row(
 				icon_bg(image("leader16.ase")),
 				label("LEADER:"),
+				expander(),
 				text(fmt.tprintf("% 3d", gs.player.leaders), .bold_pixel),
 				wh_sizers=SIZERS_FLEX_ROW
 			)),
 			(row(
 				icon_bg(image("hammer16.ase")),
 				label("WORKER:"),
+				expander(),
 				text(fmt.tprintf("% 3d", gs.player.workers), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW
 			)),
 			(row(
 				icon_bg(image("ore16.ase")),
 				label("ORE:"),
+				expander(),
 				text(fmt.tprintf("% 3d", gs.player.ore), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW
 			)),
 			(row(
 				icon_bg(image("food16.ase")),
 				label("FOOD:"),
+				expander(),
 				text(fmt.tprintf("% 3d", gs.player.food), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW
 			)),
 			(row(
 				icon_bg(image("water16.ase")),
 				label("WATER:"),
+				expander(),
 				text(fmt.tprintf("% 3d", gs.player.water), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW
 			)),
-
+			wh_sizers=SIZERS_FLEX_WIDE_COLUMN
 		)) // row
 
 	h_separator :: proc(hash:=#caller_location)->^Entity{
@@ -456,7 +465,7 @@ game_step :: proc () {
 	}
 	append(&menu,
 		resource_panel,
-		pad_box(4),
+		pad_box(8),
 		h_separator(),
 	)
 	switch gs.state {
@@ -585,14 +594,14 @@ game_step :: proc () {
 		if gain_water   > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_water), green))
 		append(&gain_column, pad_box(8))
 
-		v_sep := v_separator(0)
+		v_sep := v_separator(12)
 		v_sep.ui.sizer.y = Sizer.Flexed_By_Parent
 		lose_gain_panel := (row(
-			pad_box(6),
+			pad_box(12),
 			(column(..lose_column[:])),
 			pad_box(14),
 			v_sep,
-			pad_box(14),
+			pad_box(10),
 			(column(..gain_column[:], wh_sizers=SIZERS_FLEX_COLUMN)),
 		))
 
@@ -600,15 +609,19 @@ game_step :: proc () {
 			pad_box(8),
 			h_separator(),
 			lose_gain_panel,
+			h_separator(),
+			pad_box(8),
 		)
 	} // has focused action
 	append(&menu,
+		expander(),
 		h_separator(),
 		pad_box(4),
 		label("ON THIS TILE:"),
 		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
+			pad_box(8),
 	)
-	append(&menu, expander())
+	// append(&menu, expander())
 
 	panel_ctx := ui_context(PANEL_SIZE_MAX)
 	col := column(..menu[:])

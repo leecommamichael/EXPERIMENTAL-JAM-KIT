@@ -57,9 +57,11 @@ sized_by_parent :: proc (entity: ^Entity) -> ^Entity {
 }
 
 SIZERS_FIXED_ROW    :: [2]Sizer {.Sum_Children, .Max_Child}
-SIZERS_FIXED_COLUMN :: [2]Sizer {.Max_Child, .Sum_Children}
 SIZERS_FLEX_ROW     :: [2]Sizer {.Flexed_By_Parent, .Max_Child}
-SIZERS_FLEX_COLUMN  :: [2]Sizer {.Max_Child, .Flexed_By_Parent}
+
+SIZERS_FIXED_COLUMN      :: [2]Sizer {.Max_Child, .Sum_Children}
+SIZERS_FLEX_WIDE_COLUMN  :: [2]Sizer {.Flexed_By_Parent, .Sum_Children}
+SIZERS_FLEX_COLUMN       :: [2]Sizer {.Max_Child, .Flexed_By_Parent}
 
 row :: proc (
 	children: ..^Entity,
