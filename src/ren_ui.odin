@@ -7,7 +7,15 @@ Axis :: enum { Horizontal, Vertical }
 
 // Alignment :: enum { Start, Center, End }
 
-Direction :: enum { Left, Right, Up, Down }
+Direction :: enum {
+	Left,
+	Right,
+	Up,
+	Down,
+	//
+	Top = Up,
+	Bottom = Down,
+}
 
 UI_Element_Flag :: enum {
 	Hovered,
@@ -26,10 +34,10 @@ UI_Element :: struct {
 	sizer: [2]Sizer,
 	flags:  UI_Flags,
 	focus:  [Direction]^Entity,
+	padding: [Direction]f32,
 	main_axis: Axis,
 	// main_alignment:  Alignment,
 	// cross_alignment: Alignment,
-	// padding:         [Direction]f32,
 }
 
 UI_Flags :: bit_set[UI_Element_Flag]
@@ -103,7 +111,7 @@ column :: proc (
 // 	return entity
 // }
 
-pad_box :: proc (
+spacer :: proc (
 	size: Vec2,
 	hash: Hash = #caller_location
 ) -> ^Entity {
@@ -114,6 +122,20 @@ pad_box :: proc (
 	entity.position.z = next_z()
 	return entity
 }
+
+// TODO
+	// need these to compose, so the basis needs to be dumped somehow.
+	// same would be true if I made a "scale" element.
+pad_edges :: proc (e: ^Entity, edges: [Direction]f32) -> ^Entity {
+	e.ui.padding = edges
+	return e
+}
+pad_all :: proc (e: ^Entity, all: f32) -> ^Entity {
+	e.ui.padding = {.Left = all, .Top = all, .Right = all, .Bottom = all}
+	return e
+}
+// pad_h
+// pad_v
 
 expander :: proc (
 	hash: Hash = #caller_location
@@ -127,17 +149,17 @@ expander :: proc (
 	return entity
 }
 
-// ASSUMES: because the children exist they are measured.
+// ASSUMES: because the children exist, they are measured.
 // This means leaf-Entities need to measure themselves immediately upon creation.
 // Create trees for focus and parent/child traversal (for layout)
 init_ui_container :: proc (entity: ^Entity) {
-	cross_axis := entity.ui.main_axis == .Horizontal ? Axis.Vertical : Axis.Horizontal
+	cross_axis := cross_axis(entity.ui.main_axis)
 	max_child_main:  f32
 	max_child_cross: f32
 	sum_main:  f32
 	sum_cross: f32
-	num_unknowns_main:  f32
-	num_unknowns_cross: f32
+	// num_unknowns_main:  f32
+	// num_unknowns_cross: f32
 	num_children := len(entity.children)
 	children := &entity.children
 	for i in 0..< num_children { child := children[i];
@@ -147,15 +169,15 @@ init_ui_container :: proc (entity: ^Entity) {
 			sum_main += main_axis_size
 			if main_axis_size > max_child_main do max_child_main = main_axis_size
 		case .Flexed_By_Parent:
-			num_unknowns_main += 1
+			// num_unknowns_main += 1
 		}
 		switch sizer_along_axis(child, cross_axis) {
 		case .Specified, .Sum_Children, .Max_Child: // In these cases, assume it's computed.
-			cross_axis_size := size_along_axis(child, entity.ui.main_axis == .Horizontal ? Axis.Vertical : Axis.Horizontal)
+			cross_axis_size := size_along_axis(child, cross_axis)
 			sum_cross += cross_axis_size
 			if cross_axis_size > max_child_cross do max_child_cross = cross_axis_size
 		case .Flexed_By_Parent:
-			num_unknowns_cross += 1
+			// num_unknowns_cross += 1
 		}
 
 		next_or_wrap := i+1 if i+1 < num_children else 0
@@ -168,302 +190,134 @@ init_ui_container :: proc (entity: ^Entity) {
 
 		child.parent = entity
 	}
-	switch main_axis_sizer(entity) {
+
+	entity_main_size: ^f32 = axis_ptr(entity.ui.main_axis, &entity.basis.scale)
+	switch axis_sizer(entity.ui.main_axis, entity.ui.sizer) {
 	case .Specified:
 	 // NOOP, in fact there's room to save work above.
 	case .Sum_Children:
-		axis_ptr(entity.ui.main_axis, &entity.basis.scale)^ = sum_main
+		entity_main_size^ = sum_main
 	case .Max_Child:
-		axis_ptr(entity.ui.main_axis, &entity.basis.scale)^ = max_child_main
+		entity_main_size^ = max_child_main
 	case .Flexed_By_Parent:
 		// NOOP, deferred for the tree-pass.
 	}
-	switch cross_axis_sizer(entity) {
+	entity_cross_size: ^f32 = axis_ptr(cross_axis, &entity.basis.scale)
+	switch axis_sizer(cross_axis, entity.ui.sizer) {
 	case .Specified:
 		// NOOP, in fact there's room to save work above.
 	case .Sum_Children:
-		axis_ptr(cross_axis, &entity.basis.scale)^ = sum_cross
+		entity_cross_size^ = sum_cross
 	case .Max_Child:
-		axis_ptr(cross_axis, &entity.basis.scale)^ = max_child_cross
+		entity_cross_size^ = max_child_cross
 	case .Flexed_By_Parent:
 		// NOOP, deferred for the tree-pass.
-	}
-}
-
-measure_entity :: proc (entity: ^Entity) -> Vec2 {
-	switch {
-	// case entity.ui.main_axis == .Horizontal:
-	// 	size: Vec2
-	// 	for child in entity.children {
-	// 		child_size := measure_entity(child)
-	// 		size.x += child_size.x
-	// 		if child_size.y > size.y { size.y = child_size.y }
-	// 	}
-	// 	return size
-	// case entity.ui.main_axis == .Vertical:
-	// 	size: Vec2
-	// 	for child in entity.children {
-	// 		child_size := measure_entity(child)
-	// 		size.y += child_size.y
-	// 		if child_size.x > size.x { size.x = child_size.x }
-	// 	}
-	// 	return size
-	case: // Not a UI element, but some we can measure.
-		switch variant in entity.variant {
-		case nil:
-			return entity.basis.scale.xy * entity.scale.xy
-		case Image_State:
-			return entity.basis.scale.xy * entity.scale.xy
-		case Sprite_State:
-			return entity.basis.scale.xy * entity.scale.xy
-		case Text_State:
-			return measure_text(entity^)
-		case Timed_Effect_State(Empty_Struct): // not visual
-			return 0
-		}
-	}
-
-	log.panicf("Exhaustive Switch %v %s", entity.variant, entity.debug_name)
-}
-// switch widget.ui.sizer.x {
-// case .Specified:        // just count unknowns
-// case .Flexed_By_Parent: // should already be sized. same as .specified += unknown
-// case .Sum_Children:     // just add similar dimension
-// case .Max_Child:        // max of children
-// case .Measured:         //
-// } // switch sizer.x
-
-axis_ptr :: #force_inline proc "contextless" (axis: Axis, arr: ^[$N]f32) -> ^f32 {
-	return axis == .Horizontal ? &arr.x : &arr.y
-}
-main_axis_ptr :: #force_inline proc "contextless" (e: ^Entity, arr: ^[$N]f32) -> ^f32 {
-	return e.ui.main_axis == .Horizontal ? &arr.x : &arr.y
-}
-cross_axis_ptr :: #force_inline proc "contextless" (e: ^Entity, arr: ^[$N]f32) -> ^f32 {
-	return e.ui.main_axis == .Vertical ? &arr.x : &arr.y
-}
-main_axis_sizer :: #force_inline proc "contextless" (e: ^Entity) -> Sizer {
-	return e.ui.main_axis == .Horizontal ? e.ui.sizer.x : e.ui.sizer.y
-}
-cross_axis_sizer :: #force_inline proc "contextless" (e: ^Entity) -> Sizer {
-	return e.ui.main_axis == .Vertical ? e.ui.sizer.x : e.ui.sizer.y
-}
-
-sizer_along_axis :: #force_inline proc "contextless" (
-	entity: ^Entity,
-	axis: Axis
-) -> Sizer {
-	return axis == .Vertical ? entity.ui.sizer.y : entity.ui.sizer.x
-}
-
-size_along_axis :: #force_inline proc "contextless" (
-	entity: ^Entity,
-	axis: Axis
-) -> f32 {
-	return axis == .Vertical ? entity.basis.scale.y : entity.basis.scale.x
-}
-
-child_sizer_along_parent_main_axis :: #force_inline proc "contextless" (
-	parent: ^Entity,
-	child: ^Entity
-) -> Sizer {
-	return parent.ui.main_axis == .Horizontal ? child.ui.sizer.x : child.ui.sizer.y
-}
-
-child_sizer_along_parent_cross_axis :: #force_inline proc "contextless" (
-	parent: ^Entity,
-	child: ^Entity
-) -> Sizer {
-	return parent.ui.main_axis == .Vertical ? child.ui.sizer.x : child.ui.sizer.y
-}
-
-
-// Flexed_By_Parent cannot be a child of Sum_Children or Max_Child
-layout_span :: proc (
-	widget: ^Entity
-) {
-	z := next_z() // Don't think this is right
-	main_axis_size:    ^f32 = main_axis_ptr(widget, &widget.basis.scale)
-	cross_axis_size:   ^f32 = cross_axis_ptr(widget, &widget.basis.scale)
-	main_axis_sizer :=  main_axis_sizer(widget)
-	cross_axis_sizer := cross_axis_sizer(widget)
-	main_axis_size_remaining: f32
-	num_flex_children:        f32
-
-	// // Pass 1: Size the children, and possibly the container.
-	// switch main_axis_sizer {
-	// case .Specified:
-	// 	switch cross_axis_sizer {
-	// 	case .Specified:        // The container's height and width are specified.
-	// 	case .Flexed_By_Parent: unimplemented()
-	// 	case .Sum_Children:     unimplemented()
-	// 	case .Max_Child:        unimplemented()
-	// 	}
-	// case .Flexed_By_Parent:
-	// 	switch cross_axis_sizer {
-	// 	case .Specified:        // The container's height and width are specified.
-	// 	case .Flexed_By_Parent: // should already be sized. same as .specified += unknown
-	// 	case .Sum_Children:     // just add similar dimension
-	// 	case .Max_Child:        // max of children
-	// 	}
-	// case .Sum_Children:     // just add similar dimension
-	// 	switch cross_axis_sizer {
-	// 	case .Specified:        // The container's height and width are specified.
-	// 	case .Flexed_By_Parent: // should already be sized. same as .specified += unknown
-	// 	case .Sum_Children:     // just add similar dimension
-	// 	case .Max_Child:        // max of children
-	// 	}
-	// case .Max_Child:        // max of children
-	// 	switch cross_axis_sizer {
-	// 	case .Specified:        // The container's height and width are specified.
-	// 	case .Flexed_By_Parent: // should already be sized. same as .specified += unknown
-	// 	case .Sum_Children:     // just add similar dimension
-	// 	case .Max_Child:        // max of children
-	// 	}
-	// }
-	for child in widget.children {
-		switch {
-		case widget.ui.sizer.x == .Sum_Children: fallthrough
-		case widget.ui.sizer.x == .Max_Child:    fallthrough
-		case widget.ui.sizer.y == .Sum_Children: fallthrough
-		case widget.ui.sizer.y == .Max_Child:    
-			switch {
-			case child.ui.sizer.x == .Flexed_By_Parent: fallthrough
-			case child.ui.sizer.y == .Flexed_By_Parent:
-				raise_error("CHILDISH-PARENT & FLEXED-CHILD",
-					"The parent's size is based on the child, and the child based on the parent.")
-			}
-		}
-
-		if child.ui.sizer.y == .Flexed_By_Parent {
-			cross_axis_ptr(child, &child.basis.scale)^ = cross_axis_size^
-		} else {
-			// known height. child uses min of self-size and parentsize.
-			// TODO: position it vertically. overflow-check.
-		}
-		if child.ui.sizer.x == .Flexed_By_Parent {
-			num_flex_children += 1
-		} else {
-			// ASSUME: a width is measureable to deduct from the main axis.
-			child_size := measure_entity(child)
-			main_axis_size_remaining -= child_size.x
-		}
-	}
-
-	inferred_width := main_axis_size_remaining / num_flex_children
-
-	// TODO: offset elements on main axis alignment according to extra space.
-
-	// Pass 2: Provide size to children, position them, and recurse.
-	main_axis_offset: f32 = widget.position.x
-	for child in widget.children {
-		child.position.z = z
-		child.position.x = main_axis_offset
-		child.position.y = widget.position.y
-
-		ui_layout(child) // now it's sized and positioned, so layout below.
-		if child.ui.sizer.x == .Flexed_By_Parent {
-			child.basis.scale.x = inferred_width // <---------------------- child width
-			main_axis_offset += inferred_width
-		} else {
-			child_size := measure_entity(child) // TODO: measures everything twice.
-			main_axis_offset += child_size.x
-		}
 	}
 }
 
 // Modifies the sizes and positions of elements.
 ui_layout :: proc (
+	bounds: Vec2,
 	widget: ^Entity
 ) {
-	z := next_z() // Don't think this is right
-	switch { // ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW ROW
-	case widget.ui.main_axis == .Horizontal:
-		main_axis_size:           f32 = widget.basis.scale.x
-		main_axis_size_remaining: f32 = widget.basis.scale.x
-		cross_axis_size:          f32 = widget.basis.scale.y
-		num_elems_without_width:  f32
-		// Pass 1: Collect metrics.
-		for child in widget.children {
+	main_axis  := widget.ui.main_axis
+	cross_axis := cross_axis(main_axis)
+	main_axis_size_remaining: f32 = axis_ptr(main_axis,  &widget.basis.scale)^ - padding_along_axis(widget, main_axis)
+	num_unknowns_main: f32
 
-			if child.ui.sizer.y == .Flexed_By_Parent {
-				child.basis.scale.y = cross_axis_size; // <---------------- child height
-			} else {
-				// known height. child uses min of self-size and parentsize.
-				// TODO: position it vertically. overflow-check.
-			}
-			if child.ui.sizer.x == .Flexed_By_Parent {
-				num_elems_without_width += 1
-			} else {
-				// ASSUME: a width is measureable to deduct from the main axis.
-				child_size := measure_entity(child)
-				main_axis_size_remaining -= child_size.x
-			}
+	// Pass 1: Flex, count unknowns, apply padding.
+	for child in widget.children {
+		if sizer_along_axis(child, main_axis) == .Flexed_By_Parent {
+			num_unknowns_main += 1
+		} else {
+			child_main := size_along_axis(child, main_axis)
+			main_axis_size_remaining -= child_main
 		}
-		inferred_width := main_axis_size_remaining / num_elems_without_width
-
-		// TODO: offset elements on main axis alignment according to extra space.
-
-		// Pass 2: Provide size to children, position them, and recurse.
-		main_axis_offset: f32 = widget.position.x
-		for child in widget.children {
-			child.position.z = z
-			child.position.x = main_axis_offset
-			child.position.y = widget.position.y
-
-			ui_layout(child) // now it's sized and positioned, so layout below.
-			if child.ui.sizer.x == .Flexed_By_Parent {
-				child.basis.scale.x = inferred_width // <---------------------- child width
-				main_axis_offset += inferred_width
-			} else {
-				child_size := measure_entity(child) // TODO: measures everything twice.
-				main_axis_offset += child_size.x
-			}
-		}
-
-	case widget.ui.main_axis == .Vertical: { // COLUMN COLUMN COLUMN COLUMN COLUMN
-		main_axis_size_remaining: f32 = widget.basis.scale.y
-		cross_axis_size:          f32 = widget.basis.scale.x
-		num_elems_without_height: f32
-		// Pass 1: Collect metrics.
-		#reverse for child in widget.children { child := child;
-			if child.ui.sizer.x == .Flexed_By_Parent {
-				child.basis.scale.x = cross_axis_size; // <---------------- child width
-			} else {
-				// known width. 
-				// TODO: position it horizontally. overflow-check.
-			}
-			if child.ui.sizer.y == .Flexed_By_Parent {
-				num_elems_without_height += 1
-			} else {
-				// ASSUME: a width is measureable to deduct from the main axis.
-				child_size := measure_entity(child)
-				main_axis_size_remaining -= child_size.y
-			}
-		}
-		inferred_height := main_axis_size_remaining / num_elems_without_height
-
-		// TODO: offset elements on main axis alignment according to extra space.
-
-		// Pass 2: Provide size to children, position them, and recurse.
-		main_axis_offset: f32 = widget.position.y
-		#reverse for child in widget.children { child := child;
-			child.position.z = z
-			child.position.y = main_axis_offset
-			child.position.x = widget.position.x
-			ui_layout(child) // now it's sized and positioned, so layout below.
-			if child.ui.sizer.y == .Flexed_By_Parent {
-				child.basis.scale.y = inferred_height // <---------------------- child height
-				main_axis_offset += inferred_height
-			} else {
-				child_size := measure_entity(child) // TODO: measures everything twice.
-				main_axis_offset += child_size.y
-			}
+		if sizer_along_axis(child, cross_axis) == .Flexed_By_Parent {
+			axis_ptr(cross_axis, &child.basis.scale)^ = size_along_axis(widget, cross_axis) - padding_along_axis(widget, cross_axis);
+		} else {
+			// known height. child uses min of self-size and parentsize.
+			// TODO: position it vertically. overflow-check.
 		}
 	}
-	case:
-		widget.position.z = z
-	} // switch
+	inferred_main := main_axis_size_remaining / num_unknowns_main
+
+	// Pass 2: Provide size to children, position them, and recurse.
+	main_axis_offset: f32 = axis_ptr(main_axis, &widget.position)^
+	cross_axis_offset: f32 = axis_ptr(cross_axis, &widget.position)^
+	num_children := len(widget.children)
+	for _i in 0..<num_children {
+		i := main_axis == .Vertical ? (num_children-1 -_i) : _i
+		child := widget.children[i];
+		child_main: ^f32 = axis_ptr(main_axis, &child.position)
+		child_cross: ^f32 = axis_ptr(cross_axis, &child.position)
+		main_leading, main_trailing := padding_components_along_axis(child, main_axis)
+		// mainpad_sign: f32 = main_axis == .Vertical ? -1 : +1
+		// main_leading  *= mainpad_sign
+		// main_trailing *= mainpad_sign
+		cross_leading, _ :=  padding_components_along_axis(child, cross_axis)
+		// crosspad_sign: f32 = cross_axis == .Vertical ? -1 : +1
+		// cross_leading *= crosspad_sign
+		
+		main_axis_offset += main_leading
+		child_main^ = main_axis_offset
+		child_cross^ = cross_axis_offset + cross_leading
+		child.position.z = widget.position.z
+		ui_layout(0, child) // now it's sized and positioned, so layout below.
+		flexes_on_main_axis := sizer_along_axis(child, main_axis) == .Flexed_By_Parent
+		if flexes_on_main_axis {
+			axis_ptr(main_axis, &child.basis.scale)^ = inferred_main
+			main_axis_offset += inferred_main
+		} else {
+			child_main_size := size_along_axis(child, main_axis) + padding_along_axis(child, main_axis)
+			main_axis_offset += child_main_size
+		}
+		main_axis_offset -= main_trailing
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Utils
+////////////////////////////////////////////////////////////////////////////////
+cross_axis :: #force_inline proc (axis: Axis) -> Axis {
+	return axis == .Horizontal ? .Vertical : .Horizontal
+}
+axis_ptr :: #force_inline proc (axis: Axis, arr: ^[$N]f32) -> ^f32 {
+	return axis == .Horizontal ? &arr.x : &arr.y
+}
+axis_sizer :: #force_inline proc (axis: Axis, arr: [$N]Sizer) -> Sizer {
+	return axis == .Horizontal ? arr.x : arr.y
+}
+
+sizer_along_axis :: #force_inline proc (entity: ^Entity, axis: Axis) -> Sizer {
+	return axis == .Vertical ? entity.ui.sizer.y : entity.ui.sizer.x
+}
+
+size_along_axis :: #force_inline proc (entity: ^Entity, axis: Axis) -> f32 {
+	return content_size_along_axis(entity, axis) + padding_along_axis(entity, axis)
+}
+content_size_along_axis :: #force_inline proc (entity: ^Entity, axis: Axis) -> f32 {
+	return axis == .Vertical ? entity.basis.scale.y : entity.basis.scale.x
+}
+padding_along_axis :: #force_inline proc (entity: ^Entity, axis: Axis) -> f32 {
+	switch axis {
+	case .Horizontal:
+		return entity.ui.padding[.Left] + entity.ui.padding[.Right]
+	case .Vertical:
+		return entity.ui.padding[.Top] + entity.ui.padding[.Bottom]
+	}
+	assert(false)
+	return 0
+}
+padding_components_along_axis :: #force_inline proc (entity: ^Entity, axis: Axis) -> (leading, trailing: f32) {
+	switch axis {
+	case .Horizontal:
+		return entity.ui.padding[.Left], entity.ui.padding[.Right]
+	case .Vertical:
+		return entity.ui.padding[.Top], entity.ui.padding[.Bottom]
+	}
+	assert(false)
+	return 0, 0
 }
 
 import "sugar"

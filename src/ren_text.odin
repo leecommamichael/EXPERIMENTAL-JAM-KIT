@@ -106,9 +106,9 @@ set_text :: proc (entity: ^Entity, message: string) {
 
   atlas_size: [2]int = globals.assets.font_atlas.size_px
 	text_cursor: [2]f32
+	quad: stbtt.aligned_quad
 	for byte, glyph_index in text.text {
 		chardata_index := i32(byte - 32)
-		quad: stbtt.aligned_quad
 		stbtt.GetPackedQuad(
 			raw_data(text.font.data),
 			cast(i32) atlas_size.x,
@@ -137,10 +137,10 @@ set_text :: proc (entity: ^Entity, message: string) {
 		}
 
 		gnum := glyph_index+1
-		verts[(4*gnum)-4] = { position = ({quad.x0,-quad.y0, 0,} / text.font.line_height), texcoord = {quad.s0,quad.t0} } // TL
-		verts[(4*gnum)-3] = { position = ({quad.x1,-quad.y0, 0,} / text.font.line_height), texcoord = {quad.s1,quad.t0} } // TR
-		verts[(4*gnum)-2] = { position = ({quad.x0,-quad.y1, 0,} / text.font.line_height), texcoord = {quad.s0,quad.t1} } // BL
-		verts[(4*gnum)-1] = { position = ({quad.x1,-quad.y1, 0,} / text.font.line_height), texcoord = {quad.s1,quad.t1} } // BR
+		verts[(4*gnum)-4] = { position = ({quad.x0,-quad.y0, 0,}), texcoord = {quad.s0,quad.t0} } // TL
+		verts[(4*gnum)-3] = { position = ({quad.x1,-quad.y0, 0,}), texcoord = {quad.s1,quad.t0} } // TR
+		verts[(4*gnum)-2] = { position = ({quad.x0,-quad.y1, 0,}), texcoord = {quad.s0,quad.t1} } // BL
+		verts[(4*gnum)-1] = { position = ({quad.x1,-quad.y1, 0,}), texcoord = {quad.s1,quad.t1} } // BR
 
 		indices[(6*gnum)-6] = u32(4*glyph_index)+0 // TL
 		indices[(6*gnum)-5] = u32(4*glyph_index)+2 // BL
@@ -149,7 +149,11 @@ set_text :: proc (entity: ^Entity, message: string) {
 		indices[(6*gnum)-2] = u32(4*glyph_index)+1 // TR
 		indices[(6*gnum)-1] = u32(4*glyph_index)+2 // BL
 	}
-	// TODO: I need to re-use the VAO and buffer. Just resize it.
+	entity.basis.scale.xy = {text_cursor.x, text.font.line_height}
+	for &v in verts {
+		v.position.xy /= entity.basis.scale.xy
+	}
+	// JANKY: I need to re-use the VAO and buffer. Just resize it.
 	if entity.draw_command.VAO == 0 {
 		entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
 	} else {
