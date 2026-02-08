@@ -102,14 +102,14 @@ SPACER :: 16
 game_step :: proc () {
 	// root := sized(RES, row(
 	// 	sized(PANEL_SIZE_MAX, column(
-	// 		row( label("Hello"), label("Hello"), label("Hello") ),
-	// 		row( label("ooooooooooooo"), label("123") ),
+	// 		row( label("Hello", green), label("Hello", green), label("Hello", green) ),
+	// 		row( label("ooooooooooooo", green), label("123", green) ),
 	// 		expander(),
-	// 		label("Hello"),
+	// 		label("Hello", green),
 	// 	)), // column
 	// 	sized_by_parent(rect()),
 	// )) // row
-	// ui_layout(root)
+	// ui_layout(0, root)
 	// if true do return
 
 	gs.state_changed_this_frame = false
@@ -409,7 +409,7 @@ game_step :: proc () {
 		return icon
 	}
 	resource_panel :=
-		pad_all(column(
+		pad(column(
 			(row(
 				icon_bg(image("leader16.ase")),
 				label("LEADER:"),
@@ -417,22 +417,7 @@ game_step :: proc () {
 				text(fmt.tprintf("%03d", gs.player.leaders), .bold_pixel),
 				wh_sizers=SIZERS_FLEX_ROW
 			)),
-			// pad_all(row(
-			// 	label("X"),label("X"),expander(),label("X"),
-			// 	wh_sizers=SIZERS_FLEX_ROW
-			// ), 0),
-			// pad_all(row(
-			// 	label("WORKER"),
-			// 	label("X"),
-			// 	expander(),
-			// 	label("001"),
-			// 	wh_sizers=SIZERS_FLEX_ROW
-			// ), 0),
-			// pad_all(row(
-			// 	label("X"),label("X"),expander(),label("X"),
-			// 	wh_sizers=SIZERS_FLEX_ROW
-			// ), 0),
-			pad_all(row(
+			pad(row(
 				icon_bg(image("hammer16.ase")),
 				label("WORKER:"),
 				expander(),
@@ -453,7 +438,7 @@ game_step :: proc () {
 				text(fmt.tprintf("%03d", gs.player.food), .bold_pixel),
 				wh_sizers=SIZERS_FLEX_ROW
 			)),
-			pad_all(row(
+			pad(row(
 				icon_bg(image("water16.ase")),
 				label("WATER:"),
 				expander(),
@@ -461,7 +446,7 @@ game_step :: proc () {
 				wh_sizers=SIZERS_FLEX_ROW
 			), 0),
 			wh_sizers=SIZERS_FLEX_WIDE_COLUMN
-		), 4) // column
+		), 0) // column
 
 	h_separator :: proc(hash:=#caller_location)->^Entity{
 		separator := rect(hash=hash)

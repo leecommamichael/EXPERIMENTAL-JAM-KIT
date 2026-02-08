@@ -130,12 +130,23 @@ pad_edges :: proc (e: ^Entity, edges: [Direction]f32) -> ^Entity {
 	e.ui.padding = edges
 	return e
 }
-pad_all :: proc (e: ^Entity, all: f32) -> ^Entity {
+
+pad :: proc (e: ^Entity, all: f32) -> ^Entity {
 	e.ui.padding = {.Left = all, .Top = all, .Right = all, .Bottom = all}
 	return e
 }
-// pad_h
-// pad_v
+
+pad_h :: proc (e: ^Entity, horizontal_padding: f32) -> ^Entity {
+	e.ui.padding[.Left] = horizontal_padding
+	e.ui.padding[.Right] = horizontal_padding
+	return e
+}
+
+pad_v :: proc (e: ^Entity, vertical_padding: f32) -> ^Entity {
+	e.ui.padding[.Top] = vertical_padding
+	e.ui.padding[.Bottom] = vertical_padding
+	return e
+}
 
 expander :: proc (
 	hash: Hash = #caller_location
@@ -153,6 +164,8 @@ expander :: proc (
 // This means leaf-Entities need to measure themselves immediately upon creation.
 // Create trees for focus and parent/child traversal (for layout)
 init_ui_container :: proc (entity: ^Entity) {
+	entity.basis.position = {}
+	entity.transform.position = {}
 	cross_axis := cross_axis(entity.ui.main_axis)
 	max_child_main:  f32
 	max_child_cross: f32
@@ -169,8 +182,8 @@ init_ui_container :: proc (entity: ^Entity) {
 			sum_main += main_axis_size
 			if main_axis_size > max_child_main do max_child_main = main_axis_size
 		case .Flexed_By_Parent:
-			// num_unknowns_main += 1
-		}
+		// num_unknowns_main += 1
+	}
 		switch sizer_along_axis(child, cross_axis) {
 		case .Specified, .Sum_Children, .Max_Child: // In these cases, assume it's computed.
 			cross_axis_size := size_along_axis(child, cross_axis)
@@ -222,10 +235,22 @@ ui_layout :: proc (
 ) {
 	main_axis  := widget.ui.main_axis
 	cross_axis := cross_axis(main_axis)
-	main_axis_size_remaining: f32 = axis_ptr(main_axis,  &widget.basis.scale)^ - padding_along_axis(widget, main_axis)
+	main_size:  ^f32 = axis_ptr(main_axis, &widget.basis.scale)
+	cross_size: ^f32 = axis_ptr(cross_axis, &widget.basis.scale)
+	pad_main_leading,  pad_main_trailing  := padding_components_along_axis(widget, main_axis)
+	pad_cross_leading, pad_cross_trailing := padding_components_along_axis(widget, cross_axis)
+	main_offset:  ^f32 = axis_ptr(main_axis,  &widget.position)
+	cross_offset: ^f32 = axis_ptr(cross_axis, &widget.position)
+// Step 1. Shrink by padding and offset self by padding.
+	main_size^  -= pad_main_leading  + pad_main_trailing
+	cross_size^ -= pad_cross_leading + pad_cross_trailing
+	main_offset^  += pad_main_leading
+	cross_offset^ += pad_cross_leading
+
+// Step 2. Infer unknown child sizes.
+	main_axis_size_remaining: f32 = main_size^
 	num_unknowns_main: f32
 
-	// Pass 1: Flex, count unknowns, apply padding.
 	for child in widget.children {
 		if sizer_along_axis(child, main_axis) == .Flexed_By_Parent {
 			num_unknowns_main += 1
@@ -234,45 +259,37 @@ ui_layout :: proc (
 			main_axis_size_remaining -= child_main
 		}
 		if sizer_along_axis(child, cross_axis) == .Flexed_By_Parent {
-			axis_ptr(cross_axis, &child.basis.scale)^ = size_along_axis(widget, cross_axis) - padding_along_axis(widget, cross_axis);
+			axis_ptr(cross_axis, &child.basis.scale)^ = cross_size^
 		} else {
 			// known height. child uses min of self-size and parentsize.
 			// TODO: position it vertically. overflow-check.
 		}
 	}
+
 	inferred_main := main_axis_size_remaining / num_unknowns_main
+	main_cursor := main_offset^
 
 	// Pass 2: Provide size to children, position them, and recurse.
-	main_axis_offset: f32 = axis_ptr(main_axis, &widget.position)^
-	cross_axis_offset: f32 = axis_ptr(cross_axis, &widget.position)^
 	num_children := len(widget.children)
 	for _i in 0..<num_children {
-		i := main_axis == .Vertical ? (num_children-1 -_i) : _i
-		child := widget.children[i];
-		child_main: ^f32 = axis_ptr(main_axis, &child.position)
-		child_cross: ^f32 = axis_ptr(cross_axis, &child.position)
-		main_leading, main_trailing := padding_components_along_axis(child, main_axis)
-		// mainpad_sign: f32 = main_axis == .Vertical ? -1 : +1
-		// main_leading  *= mainpad_sign
-		// main_trailing *= mainpad_sign
-		cross_leading, _ :=  padding_components_along_axis(child, cross_axis)
-		// crosspad_sign: f32 = cross_axis == .Vertical ? -1 : +1
-		// cross_leading *= crosspad_sign
-		
-		main_axis_offset += main_leading
-		child_main^ = main_axis_offset
-		child_cross^ = cross_axis_offset + cross_leading
+	i := main_axis == .Vertical ? (num_children-1 -_i) : _i
+	child := widget.children[i];
+
+		child_main_offset:  ^f32 = axis_ptr(main_axis,  &child.position)
+		child_cross_offset: ^f32 = axis_ptr(cross_axis, &child.position)
+		child_main_offset^ = main_cursor
+		child_cross_offset^ = cross_offset^
 		child.position.z = widget.position.z
-		ui_layout(0, child) // now it's sized and positioned, so layout below.
-		flexes_on_main_axis := sizer_along_axis(child, main_axis) == .Flexed_By_Parent
-		if flexes_on_main_axis {
+
+		child_main_size:  f32 = size_along_axis(child, main_axis)
+		child_cross_size: f32 = size_along_axis(child, cross_axis)
+		
+		if sizer_along_axis(child, main_axis) == .Flexed_By_Parent {
 			axis_ptr(main_axis, &child.basis.scale)^ = inferred_main
-			main_axis_offset += inferred_main
-		} else {
-			child_main_size := size_along_axis(child, main_axis) + padding_along_axis(child, main_axis)
-			main_axis_offset += child_main_size
+			child_main_size = inferred_main
 		}
-		main_axis_offset -= main_trailing
+		ui_layout(0, child) // now it's sized and positioned, so layout below.
+		main_cursor += child_main_size
 	}
 }
 
