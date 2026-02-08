@@ -43,9 +43,9 @@ main :: proc() {
 		display := displays[1] if len(displays) > 1 else displays[0]
 		xywh := [4]int{
 				2 + display.top_left.x,
-				44+ display.top_left.y, 0,0} + ({430,430, 640, 400})
+				44+ display.top_left.y, 0,0} + ({0,0, RES_SCALE*RES_X, RES_SCALE*RES_Y})
 	} else {
-		xywh := [4]int{0,0,1920,1081}
+		xywh := [4]int{0,0,1920,1080}
 	}
 	ok := sugar.create_window(
 		xywh,

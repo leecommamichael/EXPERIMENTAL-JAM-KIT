@@ -36,6 +36,7 @@ UI_Element :: struct {
 	focus:  [Direction]^Entity,
 	padding: [Direction]f32,
 	main_axis: Axis,
+	child_spacing: f32,
 	// main_alignment:  Alignment,
 	// cross_alignment: Alignment,
 }
@@ -73,6 +74,7 @@ SIZERS_FLEX_COLUMN       :: [2]Sizer {.Max_Child, .Flexed_By_Parent}
 
 row :: proc (
 	children: ..^Entity,
+	spacing:  f32 = 0,
 	wh_sizers := SIZERS_FIXED_ROW,
 	hash: Hash = #caller_location
 ) -> ^Entity {
@@ -80,6 +82,7 @@ row :: proc (
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	entity.ui.main_axis = .Horizontal
 	entity.ui.sizer = wh_sizers
+	entity.ui.child_spacing = spacing
 	copy(entity.children, children)
 	entity.flags += { .Hidden, .Skip_Interpolation }
 	init_ui_container(entity)
@@ -88,6 +91,7 @@ row :: proc (
 
 column :: proc (
 	children: ..^Entity,
+	spacing:  f32 = 0,
 	wh_sizers := SIZERS_FIXED_COLUMN,
 	hash: Hash = #caller_location
 ) -> ^Entity {
@@ -95,6 +99,7 @@ column :: proc (
 	entity.children = make([]^Entity, len(children), context.temp_allocator)
 	entity.ui.main_axis = .Vertical
 	entity.ui.sizer = wh_sizers
+	entity.ui.child_spacing = spacing
 	copy(entity.children, children)
 	entity.flags += { .Hidden, .Skip_Interpolation }
 	init_ui_container(entity)
@@ -123,14 +128,6 @@ spacer :: proc (
 	return entity
 }
 
-// TODO
-	// need these to compose, so the basis needs to be dumped somehow.
-	// same would be true if I made a "scale" element.
-pad_edges :: proc (e: ^Entity, edges: [Direction]f32) -> ^Entity {
-	e.ui.padding = edges
-	return e
-}
-
 pad :: proc (e: ^Entity, all: f32) -> ^Entity {
 	e.ui.padding = {.Left = all, .Top = all, .Right = all, .Bottom = all}
 	return e
@@ -145,6 +142,11 @@ pad_h :: proc (e: ^Entity, horizontal_padding: f32) -> ^Entity {
 pad_v :: proc (e: ^Entity, vertical_padding: f32) -> ^Entity {
 	e.ui.padding[.Top] = vertical_padding
 	e.ui.padding[.Bottom] = vertical_padding
+	return e
+}
+
+pad_edges :: proc (e: ^Entity, edges: [Direction]f32) -> ^Entity {
+	e.ui.padding = edges
 	return e
 }
 
@@ -175,7 +177,8 @@ init_ui_container :: proc (entity: ^Entity) {
 	// num_unknowns_cross: f32
 	num_children := len(entity.children)
 	children := &entity.children
-	for i in 0..< num_children { child := children[i];
+	for i in 0..< num_children {
+	child := children[i];
 		switch sizer_along_axis(child, entity.ui.main_axis) {
 		case .Specified, .Sum_Children, .Max_Child: // In these cases, assume it's computed.
 			main_axis_size := size_along_axis(child, entity.ui.main_axis)
@@ -204,33 +207,34 @@ init_ui_container :: proc (entity: ^Entity) {
 		child.parent = entity
 	}
 
-	entity_main_size: ^f32 = axis_ptr(entity.ui.main_axis, &entity.basis.scale)
+	main_size: ^f32 = axis_ptr(entity.ui.main_axis, &entity.basis.scale)
 	switch axis_sizer(entity.ui.main_axis, entity.ui.sizer) {
 	case .Specified:
 	 // NOOP, in fact there's room to save work above.
 	case .Sum_Children:
-		entity_main_size^ = sum_main
+		main_size^ = sum_main
 	case .Max_Child:
-		entity_main_size^ = max_child_main
+		main_size^ = max_child_main
 	case .Flexed_By_Parent:
 		// NOOP, deferred for the tree-pass.
 	}
-	entity_cross_size: ^f32 = axis_ptr(cross_axis, &entity.basis.scale)
+	if num_children > 1 do main_size^ += entity.ui.child_spacing * f32(num_children - 1)
+	cross_size: ^f32 = axis_ptr(cross_axis, &entity.basis.scale)
 	switch axis_sizer(cross_axis, entity.ui.sizer) {
 	case .Specified:
 		// NOOP, in fact there's room to save work above.
 	case .Sum_Children:
-		entity_cross_size^ = sum_cross
+		cross_size^ = sum_cross
 	case .Max_Child:
-		entity_cross_size^ = max_child_cross
+		cross_size^ = max_child_cross
 	case .Flexed_By_Parent:
 		// NOOP, deferred for the tree-pass.
 	}
 }
 
 // Modifies the sizes and positions of elements.
+// FUTURE: Could introduce "bounds" param instead of modifying size in-place (for padding)
 ui_layout :: proc (
-	bounds: Vec2,
 	widget: ^Entity
 ) {
 	main_axis  := widget.ui.main_axis
@@ -241,13 +245,15 @@ ui_layout :: proc (
 	pad_cross_leading, pad_cross_trailing := padding_components_along_axis(widget, cross_axis)
 	main_offset:  ^f32 = axis_ptr(main_axis,  &widget.position)
 	cross_offset: ^f32 = axis_ptr(cross_axis, &widget.position)
-// Step 1. Shrink by padding and offset self by padding.
+// Step 1. Shrink container by padding and offset it by padding along leading-edge.
 	main_size^  -= pad_main_leading  + pad_main_trailing
 	cross_size^ -= pad_cross_leading + pad_cross_trailing
 	main_offset^  += pad_main_leading
 	cross_offset^ += pad_cross_leading
+	num_children := len(widget.children)
+	if num_children > 1 do main_size^ -= widget.ui.child_spacing * f32(num_children - 1)
 
-// Step 2. Infer unknown child sizes.
+// Step 2. Infer unknown child sizes. (everything is flex: 1)
 	main_axis_size_remaining: f32 = main_size^
 	num_unknowns_main: f32
 
@@ -269,8 +275,7 @@ ui_layout :: proc (
 	inferred_main := main_axis_size_remaining / num_unknowns_main
 	main_cursor := main_offset^
 
-	// Pass 2: Provide size to children, position them, and recurse.
-	num_children := len(widget.children)
+// Step 3: Provide size to children, position them, and recurse.
 	for _i in 0..<num_children {
 	i := main_axis == .Vertical ? (num_children-1 -_i) : _i
 	child := widget.children[i];
@@ -288,8 +293,8 @@ ui_layout :: proc (
 			axis_ptr(main_axis, &child.basis.scale)^ = inferred_main
 			child_main_size = inferred_main
 		}
-		ui_layout(0, child) // now it's sized and positioned, so layout below.
-		main_cursor += child_main_size
+		ui_layout(child) // now it's sized and positioned, so layout below.
+		main_cursor += child_main_size + widget.ui.child_spacing
 	}
 }
 

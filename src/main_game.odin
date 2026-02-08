@@ -27,7 +27,9 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
-RES :: Vec2 {640, 400} // 1/2 of Steam Deck, and pretty close to RG35SP
+RES_X :: 640 // 1/2 of Steam Deck, and pretty close to RG35SP
+RES_Y :: 400 // 1/2 of Steam Deck, and pretty close to RG35SP
+RES_SCALE :: 3
 
 gs: ^Game_State
 
@@ -100,18 +102,6 @@ SPACER :: 16
 
 @export
 game_step :: proc () {
-	// root := sized(RES, row(
-	// 	sized(PANEL_SIZE_MAX, column(
-	// 		row( label("Hello", green), label("Hello", green), label("Hello", green) ),
-	// 		row( label("ooooooooooooo", green), label("123", green) ),
-	// 		expander(),
-	// 		label("Hello", green),
-	// 	)), // column
-	// 	sized_by_parent(rect()),
-	// )) // row
-	// ui_layout(0, root)
-	// if true do return
-
 	gs.state_changed_this_frame = false
 	gs.events = {}
 
@@ -414,39 +404,45 @@ game_step :: proc () {
 				icon_bg(image("leader16.ase")),
 				label("LEADER:"),
 				expander(),
-				text(fmt.tprintf("%03d", gs.player.leaders), .bold_pixel),
-				wh_sizers=SIZERS_FLEX_ROW
+				text(fmt.tprintf("% 3d", gs.player.leaders), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW,
+				spacing = 4
 			)),
 			pad(row(
 				icon_bg(image("hammer16.ase")),
 				label("WORKER:"),
 				expander(),
-				text(fmt.tprintf("%03d", gs.player.workers), .bold_pixel),
-				wh_sizers=SIZERS_FLEX_ROW
+				text(fmt.tprintf("% 3d", gs.player.workers), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW,
+				spacing = 4
 			), 0),
 			(row(
 				icon_bg(image("ore16.ase")),
 				label("ORE:"),
 				expander(),
-				text(fmt.tprintf("%03d", gs.player.ore), .bold_pixel),
-				wh_sizers=SIZERS_FLEX_ROW
+				text(fmt.tprintf("% 3d", gs.player.ore), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW,
+				spacing = 4
 			)),
 			(row(
 				icon_bg(image("food16.ase")),
 				label("FOOD:"),
 				expander(),
-				text(fmt.tprintf("%03d", gs.player.food), .bold_pixel),
-				wh_sizers=SIZERS_FLEX_ROW
+				text(fmt.tprintf("% 3d", gs.player.food), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW,
+				spacing = 4
 			)),
 			pad(row(
 				icon_bg(image("water16.ase")),
 				label("WATER:"),
 				expander(),
-				text(fmt.tprintf("%03d", gs.player.water), .bold_pixel),
-				wh_sizers=SIZERS_FLEX_ROW
+				text(fmt.tprintf("% 3d", gs.player.water), .bold_pixel),
+				wh_sizers=SIZERS_FLEX_ROW,
+				spacing = 4
 			), 0),
-			wh_sizers=SIZERS_FLEX_WIDE_COLUMN
-		), 0) // column
+			wh_sizers=SIZERS_FLEX_WIDE_COLUMN,
+			spacing = 4
+		), 4) // column
 
 	h_separator :: proc(hash:=#caller_location)->^Entity{
 		separator := rect(hash=hash)
@@ -625,7 +621,7 @@ game_step :: proc () {
 	col := column(..menu[:])
 	col.basis.scale = panel_ctx.basis.scale
 
-	ui_layout(PANEL_SIZE_MAX, col)
+	ui_layout(col)
 
 	////////////////////////////////////////////////////////////////////////////////////////
 	// Build Panel Menu Highlight
@@ -727,6 +723,7 @@ tile_entity :: proc (
 		shape := circle(loop_hash("water", tile.index))
 		shape.basis = basis
 		shape.position.xy = it.position.xy
+		shape.position.xy += shape.basis.scale.xy/2
 		shape.color.rgb = resource_colors[.Water]
 		it.color.rgb = resource_colors[.Grass]
 	} else if tile.resource == .Grass {
