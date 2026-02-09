@@ -208,7 +208,6 @@ game_step :: proc () {
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.tile_select_mode {
 			case .First_Tile:
-				deselect_action()
 				if focused_tile == nil do break
 
 				if focused_tile.resource == .Barracks\
@@ -261,6 +260,7 @@ game_step :: proc () {
 			gs.events += {.Panel_Dropped_Focus}
 			set_state(.Selecting_Tile)
 			gs.tile_select_mode = .First_Tile
+			deselect_action()
 		}
 	case .Build_Menu, .Upgrade_Menu, .Mission_Menu:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
