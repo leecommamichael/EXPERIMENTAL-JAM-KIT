@@ -460,17 +460,18 @@ game_step :: proc () {
 	}
 	append(&menu,
 		resource_panel,
-		// spacer(8),
 		h_separator(),
 	)
+	header: ^Entity
 	switch gs.state {
-	case .Selecting_Tile: append(&menu, label("  ACTIONS:"))
-	case .Panel_Menu:     append(&menu, label("  ACTIONS:"))
-	case .Build_Menu:     append(&menu, label("< BUILD:"))
-	case .Upgrade_Menu:   append(&menu, label("< UPGRADE:"))
-	case .Mission_Menu:   append(&menu, label("< MISSION:"))
+	case .Selecting_Tile: header = label("  ACTIONS:")
+	case .Panel_Menu:     header = label("  ACTIONS:")
+	case .Build_Menu:     header = label("< BUILD:")
+	case .Upgrade_Menu:   header = label("< UPGRADE:")
+	case .Mission_Menu:   header = label("< MISSION:")
 	}
-	append(&menu,spacer(4))
+	append(&menu, header)
+	append(&menu, spacer(4))
 	menu_start: int = len(menu)
 	if contains([]States{.Selecting_Tile, .Panel_Menu}, gs.state) {
 		append(&menu, 
@@ -531,8 +532,8 @@ game_step :: proc () {
 			if mission, ok := action.mission.?; ok {
 				#partial switch mission {
 				case .Laner_Gather_Resource, .Leader_Gather_Resource:
-					if action.target != nil {
-						#partial switch action.target.resource {
+					if action != nil {
+						#partial switch focused_tile.resource {
 						case .Ore:   gain_ore += 1
 						case .Water: gain_water += 1
 						case .Food:  gain_food += 1
@@ -582,22 +583,24 @@ game_step :: proc () {
 			spacer(8),
 			expander()
 		)
-		if gain_leaders > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_leaders), green))
-		if gain_workers > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_workers), green))
-		if gain_ore     > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_ore), green))
-		if gain_food    > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_food), green))
-		if gain_water   > 0 do append(&gain_column, label(fmt.tprintf("%+d", gain_water), green))
+		if gain_leaders > 0 do append(&gain_column, cost_icon(1, "leader16.ase", gain_leaders))
+		if gain_workers > 0 do append(&gain_column, cost_icon(2, "hammer16.ase", gain_workers))
+		if gain_ore     > 0 do append(&gain_column, cost_icon(3, "ore16.ase",    gain_ore))
+		if gain_food    > 0 do append(&gain_column, cost_icon(4, "food16.ase",   gain_food))
+		if gain_water   > 0 do append(&gain_column, cost_icon(5, "water16.ase",  gain_water))
 		append(&gain_column, spacer(8))
 
 		v_sep := v_separator(12)
 		v_sep.ui.sizer.y = Sizer.Flexed_By_Parent
 		lose_gain_panel := (row(
+			spacer(11),
+			(column(..lose_column[:], spacing=2)),
 			spacer(12),
-			(column(..lose_column[:])),
-			spacer(14),
 			v_sep,
 			spacer(10),
-			(column(..gain_column[:], wh_sizers=SIZERS_FLEX_COLUMN)),
+			(column(..gain_column[:],
+				spacing=2,
+				wh_sizers=SIZERS_FLEX_COLUMN)),
 		))
 
 		append(&menu,
