@@ -225,7 +225,7 @@ game_step :: proc () {
 					if gs.tile_select_mode == .Actor do gs.actor = focused_tile
 					if gs.tile_select_mode == .Target do gs.target = focused_tile
 					buy_action(gs.selected_action)
-					add_new_action()
+					add_new_action(gs.selected_action)
 				}
 			}//switch
 		}
@@ -237,9 +237,9 @@ game_step :: proc () {
 			case .Actor, .Target:
 				// Go back to the panel-menu we came from.
 				switch gs.panel_menu_state {
-				case .Build_Menu:     set_state(.Build_Menu)
-				case .Upgrade_Menu:   set_state(.Upgrade_Menu)
-				case .Mission_Menu:   set_state(.Mission_Menu)
+				case .Build_Menu:   set_state(.Build_Menu)
+				case .Upgrade_Menu: set_state(.Upgrade_Menu)
+				case .Mission_Menu: set_state(.Mission_Menu)
 				}
 				gs.events += {.Panel_Focused}
 			}
@@ -247,9 +247,9 @@ game_step :: proc () {
 	case .Panel_Menu:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
 			switch gs.panel_menu_state {
-			case .Build_Menu:     set_state(.Build_Menu)
-			case .Upgrade_Menu:   set_state(.Upgrade_Menu)
-			case .Mission_Menu:   set_state(.Mission_Menu)
+			case .Build_Menu:   set_state(.Build_Menu)
+			case .Upgrade_Menu: set_state(.Upgrade_Menu)
+			case .Mission_Menu: set_state(.Mission_Menu)
 			}
 		}
 		if sugar.on_button_press(.B) || sugar.on_key_press(.Q) {
@@ -260,10 +260,14 @@ game_step :: proc () {
 		}
 	case .Build_Menu, .Upgrade_Menu, .Mission_Menu:
 		if sugar.on_button_press(.A) || sugar.on_key_press(.Space) {
-			action := gs.focused_action // Need to mutate it if substituting leaders for workers.
+			action := &gs.focused_action // Need to mutate it if substituting leaders for workers.
 			cost_estimate := estimate_cost(action.cost)
 			switch {
 			case gs.cost_estimate.can_simply_afford:
+				if action.mission == .Leader_Gather_Resource {
+					action.one_off = true
+					action.leaders_to_reimburse = 1
+				}
 				set_selected_action(action)
 				gs.cost_estimate = cost_estimate
 				set_state(.Selecting_Tile) // ASSUME: tile_select_mode preconfigured
@@ -310,7 +314,7 @@ game_step :: proc () {
 	}
 
 	//////////////////////////////////////////////////////////////////////////////
-	// Dispatch Actions
+	// Start Actions
 	//////////////////////////////////////////////////////////////////////////////
 	#reverse for &action in gs.actions {
 		asset := "worker.ase" if action.cost.leaders > 0 else "lil_worker.ase"
@@ -326,8 +330,8 @@ game_step :: proc () {
 			action.state = .Moving_To_Target
 		case .Moving_To_Target:
 			action.move_time += globals.tick
-			if action.move_time > action.move_tiles_per_second {
-				action.move_time -= action.move_tiles_per_second
+			if action.move_time > action.move_seconds_per_tile {
+				action.move_time -= action.move_seconds_per_tile
 				action.move_path_index += 1
 			}
 			if action.target == action.path[action.move_path_index] {
@@ -351,8 +355,8 @@ game_step :: proc () {
 		case .Fighting: unimplemented() // TODO
 		case .Moving_Home:
 			action.move_time += globals.tick
-			if action.move_time > action.move_tiles_per_second {
-				action.move_time -= action.move_tiles_per_second
+			if action.move_time > action.move_seconds_per_tile {
+				action.move_time -= action.move_seconds_per_tile
 				action.move_path_index -= 1
 			}
 			if action.actor == action.path[action.move_path_index] {
@@ -362,7 +366,7 @@ game_step :: proc () {
 		case .Will_Get_Home:
 			if mission, ok := action.mission.?; ok {
 				#partial switch mission {
-				case .Laner_Gather_Resource:
+				case .Laner_Gather_Resource, .Leader_Gather_Resource:
 					#partial switch action.target.resource {
 					case .Ore:   gs.player.ore += 1
 					case .Water: gs.player.water += 1

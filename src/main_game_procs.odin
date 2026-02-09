@@ -331,14 +331,17 @@ buy_action :: proc (action: Action) {
 }
 
 // Spawn some units which go to the job site and work.
-add_new_action :: proc () {
+add_new_action :: proc (action: Action) {
 	assert(gs.target != nil)
 	action := gs.selected_action
 	action.id = make_next_action_id()
 	action.actor = gs.actor
 	action.target = gs.target
 	action.path = clone_to_dynamic(action.path[:])
-	action.move_tiles_per_second = 1
+	action.move_seconds_per_tile = 1
+	if action.leaders_to_reimburse > 0 {
+		action.move_seconds_per_tile = 1.0 / 4.0
+	}
 	append(&gs.actions, action)
 	virtual.arena_free_all(&gs.preview_arena) // preview is over. action is made.
 	deselect_action()
@@ -360,8 +363,8 @@ unordered_remove_action :: proc (action: ^Action) {
 }
 
 // Also adjusts the action's costs.
-set_selected_action :: proc (action: Action) {
-	gs.selected_action = action
+set_selected_action :: proc (action: ^Action) {
+	gs.selected_action = action^
 	gs.has_selected_action = true
 	assert(gs.selected_action.path == nil)
 	gs.selected_action.path = make([dynamic]^Tile, gs.preview_allocator)

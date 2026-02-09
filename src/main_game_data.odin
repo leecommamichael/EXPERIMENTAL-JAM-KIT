@@ -169,7 +169,7 @@ Action :: struct {
 	workers_to_reimburse: int,
 	leaders_to_reimburse: int,
 	move_path_index:      int, // 0 is .actor, end is .target
-	move_tiles_per_second: f32,
+	move_seconds_per_tile: f32,
 	move_time:      f32,
 	work_time:      f32,
 }

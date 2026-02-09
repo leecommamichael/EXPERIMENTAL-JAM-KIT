@@ -7,7 +7,7 @@ recent_project: path: game
 window:
 {
   size: 3059 1957
-  pos: 1470 65
+  pos: 390 65
   monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0
@@ -17,7 +17,7 @@ window:
   split_x
   panels:
   {
-    0.432402:
+    0.288268:
     {
       0.366045:
       {
@@ -42,14 +42,12 @@ window:
       }
       0.296563:
       {
-        selected
         watch: expression: "query:threads"
         watch: expression: "query:targets"
-        watch: expression: "query:breakpoints"
+        watch: selected expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
-          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
@@ -74,8 +72,9 @@ window:
         }
       }
     }
-    0.567592:
+    0.378395:
     {
+      selected
       disasm:
       {
         expression: ""
@@ -231,6 +230,7 @@ window:
       }
       text:
       {
+        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query:
@@ -238,9 +238,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 235
+        cursor_line: 269
         cursor_column: 1
-        mark_line: 235
+        mark_line: 269
         mark_column: 1
       }
       text:
@@ -255,7 +255,6 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren_ui.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query: input: ""
@@ -265,7 +264,23 @@ window:
         mark_column: 1
       }
     }
+    0.333333: text:
+    {
+      selected
+      expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/main_game_procs.odin\".data"
+      project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+      query:
+      {
+        input: ""
+        cmd: search
+      }
+      cursor_line: 338
+      cursor_column: 1
+      mark_line: 338
+      mark_column: 1
+    }
   }
+  maximized
 }
 keybindings:
 {
