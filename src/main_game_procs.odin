@@ -447,6 +447,7 @@ vet_full_action :: proc (
 	case .Workshop:
 		if target.owner != .Player do return false // Can't improve what you don't own.
 	case .Barracks:
+		if target.resource not_in GATHERABLE do return false
 		return path_exists_between(actor, target, action.cost.leaders > 0)
 	}
 	panic("Exhaustive Switch")

@@ -174,15 +174,11 @@ game_step :: proc () {
 		if gs.tile_select_mode == .Actor {
 			actor := focused_tile
 			gs.action_fully_vetted = vet_full_action(actor, gs.selected_action, gs.target)
-			if gs.action_fully_vetted {
-				set_path(actor, gs.target, .Player, gs.selected_action.cost.leaders > 0)
-			}
+			set_path(actor, gs.target, .Player, gs.selected_action.cost.leaders > 0)
 		} else if gs.tile_select_mode == .Target {
 			target := focused_tile
 			gs.action_fully_vetted = vet_full_action(gs.actor, gs.selected_action, target)
-			if gs.action_fully_vetted {
-				set_path(gs.actor, target, .Player, gs.selected_action.cost.leaders > 0)
-			}
+			set_path(gs.actor, target, .Player, gs.selected_action.cost.leaders > 0)
 		}
 	case .Panel_Menu:
 	case .Build_Menu:
@@ -557,7 +553,9 @@ game_step :: proc () {
 			}
 			icon := image(icon_name, loop_hash("cost_icon", id))
 			elem := (row(
-				icon, label(fmt.tprintf("%+d", cost), _color, loop_hash("cost_label", id)),
+				icon, 
+				spacer(4,hash=loop_hash("cost_row_spacer", id)),
+				label(fmt.tprintf("%+d", cost), _color, loop_hash("cost_label", id)),
 				hash=loop_hash("cost_row", id)
 			))
 			icon_bg(icon, hash)
@@ -614,8 +612,7 @@ game_step :: proc () {
 	append(&menu,
 		expander(),
 		h_separator(),
-		spacer(4),
-		label("ON THIS TILE:"),
+		label(" ON THIS TILE"),
 		text(fmt.tprintf("  %v", focused_tile.resource), .bold_pixel),
 			spacer(8),
 	)
@@ -749,22 +746,26 @@ tile_entity :: proc (
 	// 	dist_label.position.z += 100
 	// }
 
-	in_path: bool
-	if gs.has_selected_action {
-		for t in gs.selected_action.path do if tile.index == t.index { in_path = true; break }
-	}
-	if in_path {
+	on_path: bool
+	// if gs.has_selected_action {
+	for t in gs.selected_action.path do if tile.index == t.index { on_path = true; break }
+	// }
+	if on_path {
 		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
 		focus_alpha := motion(4*globals.uptime)
 		// it.color.rgb += 0.5
 		shape, is_new := circle(loop_hash("path_dots", tile.index))
 		shape.basis = basis
-		shape.basis.scale.xy = basis.scale.xy - 8
+		s: Vec2 = gs.action_fully_vetted ? -8 : -12
+		shape.basis.scale.xy = basis.scale.xy + s
 		shape.basis.position.xy += basis.scale.xy/2
 		shape.position.xy = it.position.xy
 		shape.position.z = next_z() + 1 // overtop the focus highlight
 		shape.color = color("000")
 		shape.color.a = focus_alpha
+		if !gs.action_fully_vetted {
+			shape.color.a = 0.2
+		}
 	}
 
 	// TODO: Only do this if it's about building.
