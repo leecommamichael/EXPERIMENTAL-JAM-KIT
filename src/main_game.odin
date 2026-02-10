@@ -90,9 +90,9 @@ game_init :: proc () {
 	gs.tiles[TILES-1].resource = .Barracks
 	gs.tiles[TILES-1].owner = .Enemy
 	// Starting stats
-	gs.player.food = 0
-	gs.player.water = 0
-	gs.player.ore = 0
+	gs.player.food = 1
+	gs.player.water = 1
+	gs.player.ore = 1
 	gs.player.leaders = 1
 	gs.player.workers = 1
 }
@@ -264,8 +264,7 @@ game_step :: proc () {
 			cost_estimate := estimate_cost(action.cost)
 			switch {
 			case gs.cost_estimate.can_simply_afford:
-				if action.mission == .Leader_Gather_Resource {
-					action.one_off = true
+				if action.one_off {
 					action.leaders_to_reimburse = 1
 				}
 				set_selected_action(action)
@@ -654,16 +653,14 @@ game_step :: proc () {
 
 	if gs.has_focused_action {
 		if valid := vet_action(gs.focused_action); valid && gs.has_focused_action {
-			menu_highlight.color = color("f223")
-			switch {
-			case !valid: break
-			case gs.cost_estimate.can_simply_afford: // no change to UI
-			case gs.cost_estimate.can_afford_with_subs:
+			if gs.cost_estimate.can_afford_with_subs {
 				menu_highlight.color = color("fff4")
 				top_hat := image("leader16.ase")
 				top_hat.flags += {.Skip_Interpolation}
-				// top_hat.position.xy = hovered_text.position.xy - {5, 4}
+				top_hat.position.xy = hovered_text.position.xy - {5, 4}
 			}
+		} else {
+			menu_highlight.color = color("f223")
 		}
 	}
 

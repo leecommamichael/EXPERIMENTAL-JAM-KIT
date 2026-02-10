@@ -1,6 +1,7 @@
 package main
 
 import "core:time"
+import "core:log"
 import "core:mem/virtual"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +52,14 @@ _find_path :: proc (
 		} else {
 			tile._search_distance = UNKNOWN_DISTANCE
 		}
+	}
+
+// 1. A trivial path always exists to an adjacent tile.
+// I added this to try to get path-building simply.
+	for n in start.neighbors do if n == dest {
+		start._search_distance = 0
+		dest._search_distance = 1
+		return
 	}
 
 	for {
@@ -239,6 +248,7 @@ make_neighbors :: proc (
 
 action_for_building :: proc (option: Build_Menu) -> (action: Action) {
 	action.build_result = option
+	action.one_off = true
 
 	switch option {
 	case .Build_Barracks: action.cost = barracks_cost
@@ -267,6 +277,7 @@ action_for_mission :: proc (option: Mission_Menu) -> (action: Action) {
 	switch gs.mission_menu_state {
 	case .Leader_Gather_Resource:
 		action.cost = leader_gather_cost
+		action.one_off = true
 	case .Laner_Gather_Resource:
 		action.cost = laner_gather_cost
 	case .Laner_Fight:
@@ -375,6 +386,57 @@ deselect_action :: proc () {
 	gs.has_selected_action = false
 }
 
+// Returns true if the `actor` can perform the `action` to the `target`
+// TODO: re-vet cost since time can pass and resources can change.
+vet_full_action :: proc (
+	actor: ^Tile,
+	action: Action,
+	target: ^Tile,
+) -> bool {
+	assert(actor != nil && target != nil)
+	if !vet_action(action) do return false
+	// Define Actions which can be done by Actor
+	switch actor.resource {
+	case .Grass, .Ore, .Food, .Water, .Path:
+		return false
+	case .Workshop:
+		if target.owner != .Player do return false // Can't improve what you don't own.
+	case .Barracks:
+
+		switch action.mission {
+		case .Leader_Gather_Resource, .Laner_Gather_Resource:
+			if target.resource not_in GATHERABLE do return false
+			return path_exists_between(actor, target, action.cost.leaders > 0)
+		case .Laner_Fight:
+			unimplemented()
+		case .Spy_Tile:
+			unimplemented()
+		case .Spy_Sabotage_Tile:
+			unimplemented()
+		}
+
+		switch action.build_result {
+		case .Build_Barracks:
+			return path_exists_between(actor, target, action.cost.leaders > 0)
+		case .Build_Workshop:
+			return path_exists_between(actor, target, action.cost.leaders > 0)
+		case .Build_Path:
+			return path_exists_between(actor, target, action.cost.leaders > 0)
+		}
+
+		switch action.upgrade_result {
+		case .Unit_Speed:  fallthrough
+		case .Unit_Health: fallthrough
+		case .Unit_Power:  fallthrough
+		case .Unit_Capacity:
+			unimplemented("TODO: ensure upgrade can be done.")
+		}
+
+	} // switch (actor)
+	log.errorf("Unhandled Vet!")
+	return false
+}
+
 // Actions are selected after a target OR source is selected.
 vet_action :: proc (action: Action) -> bool {
 	if gs.target != nil {
@@ -431,27 +493,6 @@ can_do_mission_on_tile :: proc (team: Team, tile: ^Tile, mission: Mission_Menu) 
 		return true
 	case .Spy_Sabotage_Tile:
 		return true
-	}
-	panic("Exhaustive Switch")
-}
-
-// Returns true if the `actor` can perform the `action` to the `target`
-// TODO: re-vet cost since time can pass and resources can change.
-vet_full_action :: proc (
-	actor: ^Tile,
-	action: Action,
-	target: ^Tile,
-) -> bool {
-	assert(actor != nil && target != nil)
-	// Define Actions which can be done by Actor
-	switch actor.resource {
-	case .Grass, .Ore, .Food, .Water, .Path:
-		return false
-	case .Workshop:
-		if target.owner != .Player do return false // Can't improve what you don't own.
-	case .Barracks:
-		if target.resource not_in GATHERABLE do return false
-		return path_exists_between(actor, target, action.cost.leaders > 0)
 	}
 	panic("Exhaustive Switch")
 }

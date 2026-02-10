@@ -237,7 +237,7 @@ barracks_cost :: Resources {
 	food    = 1,
 	water   = 1,
 	workers = 1,
-	leaders = 1,
+	leaders = 0,
 	time = 1300 * time.Millisecond,
 }
 workshop_cost :: Resources {
@@ -245,7 +245,7 @@ workshop_cost :: Resources {
 	food    = 1,
 	water   = 1,
 	workers = 1,
-	leaders = 1,
+	leaders = 0,
 	time = 1300 * time.Millisecond,
 }
 // Gathering cost is 1 worker + distance / speed
@@ -253,7 +253,7 @@ path_cost :: Resources {
 	ore     = 1,
 	food    = 1,
 	water   = 1,
-	workers = 1,
+	workers = 0,
 	leaders = 1,
 	time = 1300 * time.Millisecond,
 }
@@ -262,7 +262,7 @@ aqueduct_cost :: Resources {
 	food    = 1,
 	water   = 1,
 	workers = 1,
-	leaders = 1,
+	leaders = 0,
 	time = 1300 * time.Millisecond,
 
 }
@@ -271,7 +271,7 @@ train_cost :: Resources {
 	food    = 1,
 	water   = 1,
 	workers = 1,
-	leaders = 1,
+	leaders = 0,
 	time = 1300 * time.Millisecond,
 }
 
