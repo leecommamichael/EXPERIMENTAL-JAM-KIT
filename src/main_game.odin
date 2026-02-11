@@ -225,7 +225,7 @@ game_step :: proc () {
 					if gs.tile_select_mode == .Actor do gs.actor = focused_tile
 					if gs.tile_select_mode == .Target do gs.target = focused_tile
 					buy_action(gs.selected_action)
-					add_new_action(gs.selected_action)
+					add_new_action()
 				}
 			}//switch
 		}

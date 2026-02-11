@@ -343,7 +343,7 @@ buy_action :: proc (action: Action) {
 }
 
 // Spawn some units which go to the job site and work.
-add_new_action :: proc (action: Action) {
+add_new_action :: proc () {
 	assert(gs.target != nil)
 	action := gs.selected_action
 	action.id = make_next_action_id()
@@ -364,10 +364,11 @@ add_new_action :: proc (action: Action) {
 }
 
 unordered_remove_action :: proc (action: ^Action) {
-	for it, i in gs.actions {
+	#reverse for it, i in gs.actions {
 		if it.id == action.id {
-			unordered_remove(&gs.actions, i)
+			// Defer, since the moment this runs, the loop-variable (always iterated by-reference) is invalid.
 			delete(action.path)
+			unordered_remove(&gs.actions, i) 
 			return
 		}
 	}
