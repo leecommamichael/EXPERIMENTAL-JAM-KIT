@@ -83,6 +83,15 @@ on_button_release :: proc (btn: Gamepad_Button, debounce: time.Duration = DEFAUL
 	return on_switch_release(&g.input.gamepad.buttons[btn], debounce)
 }
 
+button_held :: proc (btn: Gamepad_Button, frequency: time.Duration = DEFAULT_REPEAT) -> bool {
+	return switch_held(&g.input.gamepad.buttons[btn], frequency)
+}
+
+key_held :: proc (key: Key, frequency: time.Duration = DEFAULT_REPEAT) -> bool {
+	return switch_held(&g.input.keys[key], frequency)
+}
+
+
 //////////////////////////////////////////////////////////////////////
 // Device Interface
 //////////////////////////////////////////////////////////////////////
@@ -94,6 +103,15 @@ Display :: struct {
 //////////////////////////////////////////////////////////////////////
 // Input Interface
 //////////////////////////////////////////////////////////////////////
+switch_held :: proc (state: ^Switch_State, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
+	if state.pending_trigger { return true }
+	can_fire := state.is_pressed &&
+	            time.tick_since(state.last_trigger) >= debounce
+	if can_fire {
+		state.pending_trigger = true
+	}
+	return can_fire
+}
 
 on_switch_press :: proc (state: ^Switch_State, debounce: time.Duration = DEFAULT_DEBOUNCE) -> bool {
 	if state.pending_trigger { return true }
@@ -122,9 +140,10 @@ on_switch_release :: proc (state: ^Switch_State, debounce: time.Duration = DEFAU
 // The world record is 16 button-presses in one second.
 // This allows 20 presses per second and prevents spamming without feeling shoddy.
 DEFAULT_DEBOUNCE :: 50.0 * time.Millisecond
+DEFAULT_REPEAT   :: 100.0 * time.Millisecond
 
 // This isn't really necessary to use, since procs exist to use its data idiomatically.
-
+// repeats can be exposed, but not all are "OS" repeats which exists for text-editing.
 Switch_State :: struct {
 	is_pressed:   bool,
 	prev_press:   time.Tick,
@@ -158,7 +177,6 @@ begin_input_frame :: proc () {
 
 end_input_frame :: proc () {
 	g.mouse_delta = 0
-	// TODO?: Allocate switch state from one array and rip through it with handles.
 	// Allows sugar.on_press(.Space) to return true more than once per frame,
 	//   but not more often than the debounce.
 	for &key in g.input.keys {

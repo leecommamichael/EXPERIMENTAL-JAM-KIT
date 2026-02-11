@@ -114,20 +114,21 @@ game_step :: proc () {
 	//////////////////////////////////////////////////////////////////////////////
 	switch gs.state {
 	case .Selecting_Tile:
-		// TODO: Wraps to 0 and TILES-1 on vertical movement.
-		if sugar.on_button_press(.Up) || sugar.on_key_press(.W) {
-			gs.focused_tile = clamp(gs.focused_tile + COLUMNS, 0, TILES-1)
+		if sugar.button_held(.Up) || sugar.key_held(.W) {
+			next := gs.focused_tile + COLUMNS
+			if next >= TILES do next = gs.focused_tile
+			gs.focused_tile = next
 		}
-		if sugar.on_button_press(.Down) || sugar.on_key_press(.S) {
+		if sugar.button_held(.Down) || sugar.key_held(.S) {
 			gs.focused_tile = clamp(gs.focused_tile - COLUMNS, 0, TILES-1)
 		}
-		if sugar.on_button_press(.Left) || sugar.on_key_press(.A) {
+		if sugar.button_held(.Left) || sugar.key_held(.A) {
 			row := gs.focused_tile / COLUMNS 
 			row_min := row * COLUMNS
 			row_max := row_min + COLUMNS - 1
 			gs.focused_tile = clamp(gs.focused_tile - 1, row_min, row_max)
 		}
-		if sugar.on_button_press(.Right) || sugar.on_key_press(.D) {
+		if sugar.button_held(.Right) || sugar.key_held(.D) {
 			row := gs.focused_tile / COLUMNS 
 			row_min := row * COLUMNS
 			row_max := row_min + COLUMNS - 1
