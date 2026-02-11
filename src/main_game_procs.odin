@@ -42,6 +42,7 @@ _find_path :: proc (
 	team: Team,
 	leader: bool
 ) {
+// 0. Initialize the graph. This is all in-place with entities.
 	graph := &gs.tiles
 	for &tile in graph {
 		// "Visited" means we've measured distance to all neighbors from start,

@@ -80,7 +80,7 @@ window:
         expression: ""
         query:
         {
-          input: data
+          input: ""
           cmd: search
         }
       }
@@ -238,10 +238,10 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 243
-        cursor_column: 6
-        mark_line: 243
-        mark_column: 6
+        cursor_line: 324
+        cursor_column: 9
+        mark_line: 324
+        mark_column: 9
       }
       text:
       {
@@ -263,6 +263,16 @@ window:
         mark_line: 252
         mark_column: 1
       }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin/base/runtime/heap_allocator.odin\".data"
+        auto: 1
+        query: input: ""
+        cursor_line: 65
+        cursor_column: 1
+        mark_line: 65
+        mark_column: 1
+      }
     }
     0.333333: text:
     {
@@ -274,9 +284,9 @@ window:
         input: ""
         cmd: search
       }
-      cursor_line: 338
+      cursor_line: 370
       cursor_column: 1
-      mark_line: 338
+      mark_line: 370
       mark_column: 1
     }
   }

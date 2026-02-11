@@ -90,11 +90,11 @@ game_init :: proc () {
 	gs.tiles[TILES-1].resource = .Barracks
 	gs.tiles[TILES-1].owner = .Enemy
 	// Starting stats
-	gs.player.food = 1
-	gs.player.water = 1
-	gs.player.ore = 1
-	gs.player.leaders = 1
-	gs.player.workers = 1
+	gs.player.food = 15
+	gs.player.water = 15
+	gs.player.ore = 15
+	gs.player.leaders = 15
+	gs.player.workers = 15
 }
 
 PANEL_SIZE_MAX: Vec2 = {120, 400}
@@ -748,9 +748,7 @@ tile_entity :: proc (
 	// }
 
 	on_path: bool
-	// if gs.has_selected_action {
 	for t in gs.selected_action.path do if tile.index == t.index { on_path = true; break }
-	// }
 	if on_path {
 		motion :: proc (theta: f32) -> f32 { return clamp(((sin(theta) + 1) / 2) + 0.2, 0.4, 0.7) }
 		focus_alpha := motion(4*globals.uptime)
@@ -761,7 +759,7 @@ tile_entity :: proc (
 		shape.basis.scale.xy = basis.scale.xy + s
 		shape.basis.position.xy += basis.scale.xy/2
 		shape.position.xy = it.position.xy
-		shape.position.z = next_z() + 1 // overtop the focus highlight
+		shape.position.z = next_z() + 13 // overtop the focus highlight
 		shape.color = color("000")
 		shape.color.a = focus_alpha
 		if !gs.action_fully_vetted {

@@ -136,11 +136,6 @@ TRANSPORT :: bit_set[Tile_Type]{.Path}
 BUILDABLE_TERRAIN :: bit_set[Tile_Type]{.Grass, .Path}
 GATHERABLE :: bit_set[Tile_Type]{.Ore, .Water, .Food}
 
-// To have a global array and add target param or not?
-// Would happening and finish need to exist?
-// Some actions are recurring. So a state-machine would make sense.
-
-
 Action_State :: enum {
 	Will_Leave_Home,
 	Moving_To_Target,

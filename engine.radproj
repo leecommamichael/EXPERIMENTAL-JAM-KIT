@@ -2,6 +2,7 @@
 
 recent_file: path: "src/main_game.odin"
 recent_file: path: "src/main_game_procs.odin"
+recent_file: path: "../../Applications (Compilers)/odin/base/runtime/heap_allocator.odin"
 recent_file: path: "src/ren_ui.odin"
 recent_file: path: "src/ren_sprite.odin"
 recent_file: path: "src/ren_image.odin"
@@ -38,7 +39,7 @@ target:
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66206221569992
+  timestamp: 66206248413922
 }
 debug_info:
 {
@@ -62,4 +63,9 @@ debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/new_game.pdb"
   timestamp: 66206221745074
+}
+breakpoint:
+{
+  source_location: "src/main_game_procs.odin:370:1"
+  hit_count: 1
 }
