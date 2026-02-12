@@ -29,7 +29,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 // STEAM_DECK_RES: Vec2 = {1280, 800}
 RES_X :: 640 // 1/2 of Steam Deck, and pretty close to RG35SP
 RES_Y :: 400 // 1/2 of Steam Deck, and pretty close to RG35SP
-RES_SCALE :: 3
+RES_SCALE :: 2
 
 gs: ^Game_State
 
@@ -643,9 +643,11 @@ game_step :: proc () {
 	hovered_text := menu[menu_start + menu_offset]
 	menu_highlight := rect()
 	@static is_animating := false
-	menu_highlight_size := vec3({PANEL_SIZE_MAX.x, 16}, 1)
-	menu_highlight.transform.scale = menu_highlight_size
-	menu_highlight.transform.position.xy = hovered_text.position.xy - { 0, 4}
+		menu_highlight_size := vec3({PANEL_SIZE_MAX.x, 16}, 1)
+		if !is_animating {
+			menu_highlight.transform.scale = menu_highlight_size
+			menu_highlight.transform.position.xy = hovered_text.position.xy - { 0, 4}
+		}
 	// If the two objects have different bases, can't interpolate and store in xform.
 	// The object will appear to come from the wrong location.
 
@@ -670,17 +672,16 @@ game_step :: proc () {
 	Transform_Lerp_Data :: struct { sink: ^Transform, start: Transform, end: Transform }
 	switch {
 	case .Panel_Focused in gs.events:
-		menu_highlight.flags += {.Skip_Next_Interpolation}
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
 			start = transform_add(focused_tile.entity.basis, focused_tile.entity.transform),
 			end   = { menu_highlight.position, {}, menu_highlight_size },
 		}
+		menu_highlight.old_transform = lerp_data.start
 		effect := timed_effect(lerp_data, 0.1, proc (data: ^Transform_Lerp_Data, percent: f32) {
 			data.sink^ = lerp_transform(data.start, data.end, percent)
 		})
 	case .Panel_Dropped_Focus in gs.events:
-		menu_highlight.flags += {.Skip_Next_Interpolation}
 		lerp_data: Transform_Lerp_Data = {
 			sink  = &menu_highlight.transform,
 			start = { menu_highlight.position, {}, menu_highlight_size },

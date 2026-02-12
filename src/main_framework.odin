@@ -198,6 +198,10 @@ when !sugar.platform_calls_step { // When !web
 		if .Allocated not_in entity.flags {
 			continue
 		}
+		if entity.create_tick == globals.tick_counter {
+			entity.old_basis = entity.basis
+			entity.old_transform = entity.transform
+		}
 		if .Immediate_Mode not_in entity.flags {
 			switch &variant in entity.variant {
 			case nil: // general-purpose entity
