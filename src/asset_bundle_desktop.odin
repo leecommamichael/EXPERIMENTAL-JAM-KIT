@@ -334,7 +334,8 @@ assert(dir_err2 == nil)
 			continue
 		}
 
-		ase_info, error_getting_info := aseprite_utils.get_info(&ase_doc)
+		ase_info: aseprite_utils.Info
+		error_getting_info := aseprite_utils.get_info(&ase_doc, &ase_info)
 		if error_getting_info != nil {
 			log.errorf("Failed to get_info from %s after unmarshalling. %v",
 				file.name, error_getting_info)
