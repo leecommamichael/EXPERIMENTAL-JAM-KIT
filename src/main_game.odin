@@ -120,7 +120,9 @@ game_step :: proc () {
 			gs.focused_tile = next
 		}
 		if sugar.button_held(.Down) || sugar.key_held(.S) {
-			gs.focused_tile = clamp(gs.focused_tile - COLUMNS, 0, TILES-1)
+			next := gs.focused_tile - COLUMNS
+			if next < 0 do next = gs.focused_tile
+			gs.focused_tile = next
 		}
 		if sugar.button_held(.Left) || sugar.key_held(.A) {
 			row := gs.focused_tile / COLUMNS 
