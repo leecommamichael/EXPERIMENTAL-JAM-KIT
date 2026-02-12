@@ -4,7 +4,7 @@ import "base:runtime"
 import "core:log"
 import "core:time"
 import "core:sys/windows"
-import os "core:os/os2"
+import "core:os"
 import win "../windows"
 import wgi "vendor:windows/GameInput"
 

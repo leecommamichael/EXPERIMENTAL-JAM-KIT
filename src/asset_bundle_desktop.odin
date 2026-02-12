@@ -13,7 +13,7 @@ import "core:time"
 import "core:fmt"
 import "core:bytes"
 import "core:encoding/cbor"
-import "core:os/os2"
+import "core:os"
 import "core:image/qoi" // texture atlas
 import "core:image/tga" // font atlas
 import "core:image/png" // make bundle
@@ -44,26 +44,26 @@ desktop_load_binary_asset_cache :: proc () {
 	if !font_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
 		bundle_fonts(USE_BINARY_ASSET_CACHE)
-		err: os2.Error
-		font_atlas_bytes,          err = os2.read_entire_file(FONT_ATLAS_PATH, context.allocator)
+		err: os.Error
+		font_atlas_bytes,          err = os.read_entire_file(FONT_ATLAS_PATH, context.allocator)
 	assert(err == nil)
-		font_atlas_metadata_bytes, err = os2.read_entire_file(FONT_ATLAS_METADATA, context.allocator)
+		font_atlas_metadata_bytes, err = os.read_entire_file(FONT_ATLAS_METADATA, context.allocator)
 	assert(err == nil)
 	}
 	if !texture_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
 		bundle_textures(USE_BINARY_ASSET_CACHE)
-		err: os2.Error
-		texture_atlas_bytes,    err = os2.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
+		err: os.Error
+		texture_atlas_bytes,    err = os.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
 	assert(err == nil) // TODO: Occurs when no textures were packed.
-		texture_atlas_metadata, err = os2.read_entire_file(TEXTURE_ATLAS_METADATA, context.allocator)
+		texture_atlas_metadata, err = os.read_entire_file(TEXTURE_ATLAS_METADATA, context.allocator)
 	assert(err == nil)
 	}
 	if !audio_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
 		bundle_audio()
-		err: os2.Error
-		audio_metadata_bytes, err = os2.read_entire_file(AUDIO_METADATA, context.allocator)
+		err: os.Error
+		audio_metadata_bytes, err = os.read_entire_file(AUDIO_METADATA, context.allocator)
 	assert(err == nil)
 	}
 }
@@ -228,7 +228,7 @@ rects := make([]stbrp.Rect, GLYPH_COUNT * FONT_COUNT)
 log_time("render_font")
 log_time("write_font")
 	if use_binary {
-		err3 := os2.write_entire_file(FONT_ATLAS_PATH, cropped_atlas_bytes)
+		err3 := os.write_entire_file(FONT_ATLAS_PATH, cropped_atlas_bytes)
 		assert(err3 == nil)
 	} else {
 		ok := cast(b32) stbi.write_tga(
@@ -258,9 +258,9 @@ log_time("write_font")
 			i += 1
 		}
 	}
-	file, err := os2.open(FONT_ATLAS_METADATA, {.Write, .Trunc, .Create})
+	file, err := os.open(FONT_ATLAS_METADATA, {.Write, .Trunc, .Create})
 	assert(err == nil)
-	writer := os2.to_writer(file)
+	writer := os.to_writer(file)
 	merr := cbor.marshal_into_writer(writer, serialized_fonts)
 	if merr != nil {
 		log.errorf("Failed to write cbor. %v", merr)
@@ -268,7 +268,7 @@ log_time("write_font")
 		// log.errorf("POSIX err is %v", posix.get_errno())
 	}
 	assert(merr == nil)
-	os2.close(file)
+	os.close(file)
 	log.infof("FYI: Wrote %d fonts", len(serialized_fonts))
 	delete(serialized_fonts)
 	log_time("write_font")
@@ -515,7 +515,7 @@ log_time("render_textures")
 	atlas_rgba = atlas_rgba[:width*height*4] // 4 channels
 	err2: Image_File_Error
 	if use_binary {
-		err2 = os2.write_entire_file(TEXTURE_ATLAS_PATH, atlas_rgba[:])
+		err2 = os.write_entire_file(TEXTURE_ATLAS_PATH, atlas_rgba[:])
 	} else {
 		err2 = write_rgba_qoi(atlas_rgba[:], width, height, TEXTURE_ATLAS_PATH)
 	}
@@ -533,10 +533,10 @@ log_time("render_textures")
 			entries.sprites[asset.filename] = asset.sprite
 		}
 	}
-	file, err := os2.open(TEXTURE_ATLAS_METADATA, {.Write, .Trunc, .Create})
-	defer os2.close(file)
+	file, err := os.open(TEXTURE_ATLAS_METADATA, {.Write, .Trunc, .Create})
+	defer os.close(file)
 assert(err == nil)
-	writer := os2.to_writer(file)
+	writer := os.to_writer(file)
 	cbor.marshal_into_writer(writer, entries)
 	delete(pack_list)
 log_time("write_textures")
@@ -567,14 +567,14 @@ assert(dir_err == nil)
 		}
 		append(&asset_array, asset)
 		path := strings.concatenate({CACHE_DIR, file.name}) // LEAK
-		file_write_err := os2.write_entire_file(path, clip.bytes)
+		file_write_err := os.write_entire_file(path, clip.bytes)
 	}
 	// Now write the cache ///////////////////////////////////////////////////////
-	file_write_err := os2.write_entire_file(AUDIO_METADATA, slice.reinterpret([]u8, asset_array[:]))
+	file_write_err := os.write_entire_file(AUDIO_METADATA, slice.reinterpret([]u8, asset_array[:]))
 	assert(file_write_err == nil)
 }
 
-Image_File_Error :: union #shared_nil { image.Error, os2.Error }
+Image_File_Error :: union #shared_nil { image.Error, os.Error }
 
 @(require_results)
 write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Error {
@@ -588,10 +588,10 @@ write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Erro
 	assert(len(img.pixels.buf) == w*h*4)
 	buffer: bytes.Buffer
 	qoi.save_to_buffer(&buffer, &img) or_return
-	file: ^os2.File
-	file = os2.open(path, {.Write, .Trunc, .Create}) or_return
-	num_bytes := os2.write(file, buffer.buf[:]) or_return
-	os2.close(file)
+	file: ^os.File
+	file = os.open(path, {.Write, .Trunc, .Create}) or_return
+	num_bytes := os.write(file, buffer.buf[:]) or_return
+	os.close(file)
 	return nil
 }
 
@@ -599,12 +599,12 @@ write_rgba_qoi :: proc (pixels: []u8, w,h: int, path: string) -> Image_File_Erro
 read_files_in_directory_with_suffix :: proc (
 	dirpath: string,
 	suffix: string
-) -> (result: [dynamic]runtime.Load_Directory_File, error: os2.Error) {
-	files := os2.read_all_directory_by_path(dirpath, context.allocator) or_return
+) -> (result: [dynamic]runtime.Load_Directory_File, error: os.Error) {
+	files := os.read_all_directory_by_path(dirpath, context.allocator) or_return
 	result = make([dynamic]runtime.Load_Directory_File)
 	for file_info in files {
 		(strings.ends_with(file_info.name, suffix)) or_continue
-		file_bytes, err := os2.read_entire_file_from_path(file_info.fullpath, context.allocator)
+		file_bytes, err := os.read_entire_file_from_path(file_info.fullpath, context.allocator)
 		if err != nil {
 			log.errorf("Failed to read a file. %s %v", file_info.fullpath, err)
 			error = err
@@ -621,13 +621,13 @@ read_files_in_directory_with_suffix :: proc (
 read_files_in_directory_with_suffixes :: proc (
 	dirpath: string,
 	suffixes: []string
-) -> (result: [dynamic]runtime.Load_Directory_File, error: os2.Error) {
-	files := os2.read_all_directory_by_path(dirpath, context.allocator) or_return
+) -> (result: [dynamic]runtime.Load_Directory_File, error: os.Error) {
+	files := os.read_all_directory_by_path(dirpath, context.allocator) or_return
 	result = make([dynamic]runtime.Load_Directory_File)
 	for file_info in files {
 		for suffix in suffixes {
 			(strings.ends_with(file_info.name, suffix)) or_continue
-			file_bytes, err := os2.read_entire_file_from_path(file_info.fullpath, context.allocator)
+			file_bytes, err := os.read_entire_file_from_path(file_info.fullpath, context.allocator)
 			if err != nil {
 				log.errorf("Failed to read a file. %s %v", file_info.fullpath, err)
 				error = err
@@ -644,11 +644,11 @@ read_files_in_directory_with_suffixes :: proc (
 
 read_files_in_directory :: proc (
 	dirpath: string,
-) -> (result: [dynamic]runtime.Load_Directory_File, error: os2.Error) {
-	files := os2.read_all_directory_by_path(dirpath, context.allocator) or_return
+) -> (result: [dynamic]runtime.Load_Directory_File, error: os.Error) {
+	files := os.read_all_directory_by_path(dirpath, context.allocator) or_return
 	result = make([dynamic]runtime.Load_Directory_File)
 	for file_info in files {
-		file_bytes, err := os2.read_entire_file_from_path(file_info.fullpath, context.allocator)
+		file_bytes, err := os.read_entire_file_from_path(file_info.fullpath, context.allocator)
 		if err != nil {
 			log.errorf("Failed to read a file. %s %v", file_info.fullpath, err)
 			error = err
