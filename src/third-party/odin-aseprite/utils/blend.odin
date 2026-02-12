@@ -56,7 +56,7 @@ blend_bytes :: proc(last, cur: []byte, opacity: int, mode: Blend_Mode) -> (err: 
 
 
 alpha :: mul
-mul :: proc{mul_u8, mul_i32, mul_int, mul_vec4, mul_vec3}
+mul :: proc{ mul_u8, mul_i32, mul_int, mul_vec4, mul_vec3 }
 
 mul_vec4 :: proc(a, b: [4]i32) -> [4]i32 {
     t := a * b + 128
@@ -562,7 +562,7 @@ set_sat :: proc(p: [3]f64, s: f64) -> (res: [3]f64) {
 
     } else {
         val: [3]struct{v: f64, p: int} = {
-            {p.r, 0}, {p.g, 1}, {p.b, 2}
+            {p.r, 0}, {p.g, 1}, {p.b, 2},
         }
         val.rg = val.r.v < val.g.v ? val.rg : val.gr
         val.rb = val.r.v < val.b.v ? val.rb : val.br

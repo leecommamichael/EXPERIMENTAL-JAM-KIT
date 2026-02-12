@@ -11,7 +11,8 @@ import "core:image"
 import ase ".."
 
 
-UTILS_DEBUG_MODE :: #config(ASE_UTILS_DEBUG, ODIN_DEBUG)
+UTILS_DEBUG_MODE   :: #config(ASE_UTILS_DEBUG, ODIN_DEBUG)
+ASE_DEBUG_MESSAGES :: #config(ASE_DEBUG_MESSAGES, UTILS_DEBUG_MODE)
 
 
 /* ================================== Destruction procs ================================== */
@@ -91,6 +92,10 @@ destroy_slice :: proc(sl: Slice, alloc := context.allocator) -> runtime.Allocato
     return delete(sl.keys)
 }
 
+destroy_sheet :: proc(s: Sprite_Sheet, alloc := context.allocator) -> runtime.Allocator_Error {
+    return destroy_image(s.img, alloc)
+}
+
 destroy :: proc {
     destroy_frames, 
     destroy_image, 
@@ -104,6 +109,7 @@ destroy :: proc {
     destroy_palette,
     destroy_slices,
     destroy_slice,
+    destroy_sheet,
 }
 /* ======================================================================================= */
 
@@ -174,7 +180,7 @@ upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor := 10, alloc 
     }
 
     res = make([]byte, len(img) * factor * factor, alloc) or_return
-    res_md = {md.width*factor, md.height*factor, md.bpp, md.trans_idx}
+    res_md = { md.width*factor, md.height*factor, md.bpp, md.trans_idx }
 
     for h in 0..<md.height {
         for w in 0..<md.width {
@@ -198,7 +204,7 @@ upscale_image_from_bytes :: proc(img: []byte, md: Metadata, factor := 10, alloc 
 
 // Uses Nearest-neighbor Upscaling
 upscale_image_from_img :: proc(img: Image, factor := 10, alloc := context.allocator) -> (res: Image, err: Errors) {
-    res.data, res.md = upscale_image_from_bytes(img.data, img.md, factor, alloc) or_return
+    res.data, res.md, err = upscale_image_from_bytes(img.data, img.md, factor, alloc)
     return
 }
 
@@ -287,9 +293,12 @@ to_core_image_non_alloc :: proc(buf: []byte, md: Metadata) -> (img: image.Image)
         data      = raw_data(buf),
         len       = len(buf),
         cap       = len(buf),
-        allocator = runtime.nil_allocator()
+        allocator = runtime.nil_allocator(),
     }
 
     img.pixels.buf = transmute([dynamic]byte)raw
     return
 }
+
+
+

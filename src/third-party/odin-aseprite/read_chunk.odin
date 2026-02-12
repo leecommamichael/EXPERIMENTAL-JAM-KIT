@@ -126,7 +126,7 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
         cel: Raw_Cel
         cel.width = read_word(r, rt) or_return
         cel.height = read_word(r, rt) or_return
-        cel.pixels = make([]PIXEL, int(cel.width * cel.height)) or_return
+        cel.pixels = make([]PIXEL, (color_depth / 8) * int(cel.width) * int(cel.height)) or_return
         read_bytes(r, cel.pixels[:], rt) or_return
         chunk.cel = cel
 
@@ -152,7 +152,7 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
 
         read_bytes(r, data[:], rt) or_return
 
-        exp_size := color_depth / 8 * int(cel.height) * int(cel.width)
+        exp_size := (color_depth / 8) * int(cel.height) * int(cel.width)
         zlib.inflate(data[:], &buf, expected_output_size=exp_size) or_return
 
         cel.pixels = make([]byte, exp_size) or_return
@@ -204,11 +204,12 @@ read_cel :: proc(r: io.Reader, rt: ^int, color_depth: int, c_size: int, allocato
 }
 
 read_cel_extra :: proc(r: io.Reader, rt: ^int) -> (chunk: Cel_Extra_Chunk, err: Unmarshal_Error) {
-    chunk.flags = transmute(Cel_Extra_Flags)read_word(r, rt) or_return
+    chunk.flags = transmute(Cel_Extra_Flags)read_dword(r, rt) or_return
     chunk.x = read_fixed(r, rt) or_return
     chunk.y = read_fixed(r, rt) or_return
     chunk.width = read_fixed(r, rt) or_return
     chunk.height = read_fixed(r, rt) or_return
+    read_skip(r, 16, rt) or_return
     return
 }
 

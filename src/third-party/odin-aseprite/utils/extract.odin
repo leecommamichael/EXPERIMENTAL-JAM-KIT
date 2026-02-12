@@ -42,10 +42,10 @@ cels_from_doc_frame :: proc(frame: ase.Frame, alloc := context.allocator) -> (re
         #partial switch c in chunk {
         case ase.Cel_Chunk:
             cel := Cel {
-                pos    = { int(c.x), int(c.y) },
+                pos     = { int(c.x), int(c.y) },
                 opacity = int(c.opacity_level),
                 z_index = int(c.z_index),
-                layer   = int(c.layer_index)
+                layer   = int(c.layer_index),
             }
     
             switch v in c.cel {
@@ -206,13 +206,11 @@ frames_from_doc_frames :: proc(data: []ase.Frame, alloc := context.allocator) ->
     for frame in data {
         append(&res, get_frame(frame) or_return) or_return
     }
-    return
+
+    return res[:], nil
 }
 
-get_frames :: proc {
-    frames_from_doc, 
-    frames_from_doc_frames, 
-}
+get_frames :: proc { frames_from_doc, frames_from_doc_frames }
 
 get_frame :: proc(data: ase.Frame, alloc := context.allocator) -> (frame: Frame, err: runtime.Allocator_Error) {
     frame.duration = i64(data.header.duration)
@@ -345,7 +343,7 @@ tileset_from_doc_frame :: proc(frame: ase.Frame, buf: ^[dynamic]Tileset, alloc :
 get_tileset :: proc{ tileset_from_doc, tileset_from_doc_frame }
 
 
-get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info, err: Errors) {
+get_info :: proc(doc: ^ase.Document, info: ^Info, alloc := context.allocator) -> (err: Errors) {
     context.allocator = alloc
     info.allocator = alloc
 
@@ -363,7 +361,8 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
     all_lays := make([dynamic]^ase.Layer_Chunk) or_return
     defer delete(all_lays)
 
-    hue_sat_warn: bool
+    @static hue_warn: bool
+    @static sat_warn: bool
 
     // TODO: Make big assumption that only Cel Chunks appear after first frame.
 
@@ -380,7 +379,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                     pos = {int(c.x), int(c.y)},
                     opacity = int(c.opacity_level),
                     z_index = int(c.z_index),
-                    layer = int(c.layer_index)
+                    layer = int(c.layer_index),
                 } 
         
                 switch v in c.cel {
@@ -442,13 +441,19 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                     blend_mode = Blend_Mode(c.blend_mode),
                     visiable = .Visiable in c.flags,
                     tileset = int(c.tileset_index),
+                    is_background = .Background in c.flags,
                 }
 
                 when !ASE_USE_BUGGED_SAT {
-                    if !hue_sat_warn && (lay.blend_mode == .Saturation || lay.blend_mode == .Hue) {
-                        log.infof("Layer: \"%v\"; \"%v\" blend mode is bugged in Aseprite, in ways we can't replicate.", lay.name, lay.blend_mode)
-                        log.info("By default we use a fixed version. Compile with `ASE_USE_BUGGED_SAT=true` to use a bugged version.")
-                        hue_sat_warn = true
+                    if !hue_warn && lay.blend_mode == .Hue {
+                        log.infof("Layer: \"%v\"; \"Hue\" blend mode is bugged in Aseprite.", lay.name)
+                        log.info("By default we use a fixed version. Compile with `-define:ASE_USE_BUGGED_SAT=true` to use a bugged version.")
+                        hue_warn = true
+                    }
+					if !sat_warn && lay.blend_mode == .Saturation {
+                        log.infof("Layer: \"%v\"; \"Saturation\" blend mode is bugged in Aseprite.", lay.name)
+                        log.info("By default we use a fixed version. Compile with `-define:ASE_USE_BUGGED_SAT=true` to use a bugged version.")
+                        sat_warn = true
                     }
                 }
                 
@@ -476,7 +481,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                         int(t.from_frame), 
                         int(t.to_frame), 
                         t.loop_direction, 
-                        t.name
+                        t.name,
                     }
                     append(&tags, tag) or_return
                 }
@@ -580,7 +585,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
                     if center, ok := c_key.center.(ase.Slice_Center); ok {
                         key.center = {
                             int(center.x), int(center.y),
-                            int(center.width), int(center.height)
+                            int(center.width), int(center.height),
                         }
                     }
 
@@ -596,7 +601,7 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
         append(&frames, frame) or_return
     }
 
-    info = { 
+    info^ = { 
         frames    = frames[:], 
         layers    = lays[:], 
         tags      = tags[:],
@@ -607,6 +612,6 @@ get_info :: proc(doc: ^ase.Document, alloc := context.allocator) -> (info: Info,
         allocator = alloc,
     }
 
-    return info, nil
+    return nil
 }
 

@@ -27,7 +27,6 @@ Unmarshal_Errors :: enum {
 
     User_Data_Maps_Not_Supported,
 }
-
 Unmarshal_Error :: union #shared_nil {
     Unmarshal_Errors, 
     Read_Error,
@@ -46,8 +45,7 @@ Read_Errors :: enum {
     Unable_Make_Seeker,
     Comp_Tileset_Not_Expected_Size,
 }
-
-Read_Error :: union #shared_nil { Read_Errors, io.Error, runtime.Allocator_Error }
+Read_Error :: union #shared_nil {Read_Errors, io.Error, runtime.Allocator_Error}
 
 Marshal_Errors :: enum {
     None,
@@ -59,7 +57,6 @@ Marshal_Errors :: enum {
     Invalid_Cel_Type,
     Invalid_Property_Type,
 }
-
 Marshal_Error :: union #shared_nil {
     Marshal_Errors, 
     Write_Error,
@@ -75,7 +72,6 @@ Write_Errors :: enum {
     Array_To_Small,
     Unable_Make_Seeker,
 }
-
 Write_Error :: union #shared_nil {
     Write_Errors, 
     io.Error, 
@@ -105,7 +101,7 @@ LONG64 :: i64
 
 BYTE_N :: [dynamic]BYTE
 
-// https://odin-lang.org/docs/overview/#packed
+
 STRING :: string
 POINT :: struct {
     x: LONG,
@@ -146,7 +142,7 @@ Frame :: struct {
     chunks: []Chunk,
 }
 
-Chunk :: union{
+Chunk :: union {
     Old_Palette_256_Chunk, Old_Palette_64_Chunk, Layer_Chunk, Cel_Chunk, 
     Cel_Extra_Chunk, Color_Profile_Chunk, External_Files_Chunk, Mask_Chunk, 
     Path_Chunk, Tags_Chunk, Palette_Chunk, User_Data_Chunk, Slice_Chunk, 
@@ -158,7 +154,7 @@ FILE_MAGIC_NUM : WORD : 0xA5E0
 FILE_HEADER_SIZE :: 128
 
 
-Color_Depth :: enum(WORD){
+Color_Depth :: enum(WORD) {
     Indexed   = 8,
     Grayscale = 16,
     RGBA      = 32,
@@ -241,7 +237,7 @@ Chunk_Set :: bit_set[Chunk_Types_Set]
 Old_Palette_Packet :: struct {
     entries_to_skip: BYTE, // start from 0
     num_colors:      BYTE, // 0 == 256
-    colors:         []Color_RGB,
+    colors:          []Color_RGB,
 }
 
 Old_Palette_256_Chunk :: distinct []Old_Palette_Packet
@@ -297,7 +293,7 @@ Layer_Chunk :: struct {
     opacity:        BYTE, // valid when header flag is 1
     name:           string,
     tileset_index:  DWORD, // set if type == Tilemap
-    uuid:           Maybe(UUID)
+    uuid:           Maybe(UUID),
 }
 
 
@@ -326,9 +322,9 @@ Com_Tilemap_Cel :: struct{
     width, height:    WORD,
     bits_per_tile:    WORD, // always 32
     bitmask_id:       Tile_ID,
-    bitmask_x:        DWORD `fmt:"b"`,
-    bitmask_y:        DWORD `fmt:"b"`,
-    bitmask_diagonal: DWORD `fmt:"b"`,
+    bitmask_x:        DWORD  `fmt:"b"`,
+    bitmask_y:        DWORD  `fmt:"b"`,
+    bitmask_diagonal: DWORD  `fmt:"b"`,
     tiles:            []TILE, // ZLIB compressed
 }
 
@@ -352,8 +348,8 @@ Cel_Chunk :: struct {
 }
 
 
-Cel_Extra_Flag  :: enum(WORD){ Precise }
-Cel_Extra_Flags :: bit_set[Cel_Extra_Flag; WORD]
+Cel_Extra_Flag  :: enum(DWORD){ Precise }
+Cel_Extra_Flags :: bit_set[Cel_Extra_Flag; DWORD]
 
 Cel_Extra_Chunk :: struct {
     flags:  Cel_Extra_Flags,
