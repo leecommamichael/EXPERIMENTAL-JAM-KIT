@@ -157,10 +157,12 @@ create_and_link_program :: proc(shader_ids: []Shader) -> (program_id: Program, o
 // }
 
 load_shaders_file :: proc(vs_filename, fs_filename: string) -> (program_id: Program, ok: bool) {
-	vs_data := os.read_entire_file(vs_filename) or_return
+	vs_data, vs_err := os.read_entire_file(vs_filename, context.allocator)
+	(vs_err != nil) or_return
 	defer delete(vs_data)
-	
-	fs_data := os.read_entire_file(fs_filename) or_return
+
+	fs_data, fs_err := os.read_entire_file(fs_filename, context.allocator)
+	(fs_err != nil) or_return
 	defer delete(fs_data)
 
 	return load_shaders_source(string(vs_data), string(fs_data))
