@@ -59,7 +59,6 @@ main :: proc() {
 	framework_init()
 
 	when sugar.platform_calls_step { return }
-	// TODO: Only do this on Windows and Linux. Sorry Mac...
 	when ODIN_OS != .Darwin {
 	gl_debug_proc :: proc "c" (
 		source: gl.GLuint,
