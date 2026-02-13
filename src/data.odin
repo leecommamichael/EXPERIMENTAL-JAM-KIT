@@ -28,7 +28,8 @@ Globals :: struct {
 	sugar:      sugar.Memory,
 	// Seconds in one tick.
 	tick:       f32,
-	tick_counter: int,
+	tick_counter:  int,
+	frame_counter: int,
 	// Seconds since last game-loop iteration.
 	dt:         f32,
 	uptime:     f32,

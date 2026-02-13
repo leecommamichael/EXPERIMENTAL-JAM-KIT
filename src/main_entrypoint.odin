@@ -104,17 +104,6 @@ main :: proc() {
 @export
 step :: proc (dt: f64) -> bool {
 	dt: f32 = f32(dt)
-////////////////////////////////////////////////////////////////////////////////
-	@static start_time: time.Tick
-	if globals.tick_counter == 1 {
-		log_runtime("first_paint")
-		start_time = time.tick_now()
-	}
-	globals.avg_fps = f64(globals.tick_counter) / time.duration_seconds(time.tick_since(start_time))
-	if globals.tick_counter % 300 == 0 {
-		// log.infof("[FPS] %v", globals.avg_fps)
-	}
-////////////////////////////////////////////////////////////////////////////////
 	@static tick_buildup: f32
 	for tick_buildup += dt; tick_buildup >= globals.tick; tick_buildup -= globals.tick {
 		events := sugar.poll_events() // begins input frame.
@@ -137,6 +126,18 @@ step :: proc (dt: f64) -> bool {
 
 	framework_draw(tick_buildup/globals.tick)
 	free_all(context.temp_allocator)
+
+	////////////////////////////////////////////////////////////////////////////////
+	@static start_time: time.Tick
+	if globals.frame_counter == 1 {
+		log_runtime("first_paint")
+		start_time = time.tick_now()
+	}
+	globals.avg_fps = f64(globals.frame_counter) / time.duration_seconds(time.tick_since(start_time))
+	if globals.frame_counter % 300 == 0 {
+		// log.infof("[FPS] %v", globals.avg_fps)
+	}
+	////////////////////////////////////////////////////////////////////////////////
 	return true
 }
 
