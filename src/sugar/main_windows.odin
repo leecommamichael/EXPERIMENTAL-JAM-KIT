@@ -393,9 +393,20 @@ poll_events :: proc () -> (feedback: bit_set[Feedback]) {
   return
 }
 
-on_key_down :: proc (message: windows.MSG) {
-	if message.wParam < windows.VK_LBUTTON || message.wParam > windows.VK_OEM_CLEAR { return }
-	virtual_keycode := cast(Key) message.wParam
+@require_results
+key_from_wparam :: proc (w: windows.WPARAM) -> (Key, bool) {
+	for k in Key {
+		if Key(w) == k do return cast(Key) w, true
+	}
+	return min(Key), false
+}
+
+on_key_down :: proc (message: windows.MSG, loc := #caller_location) {
+	virtual_keycode, known := key_from_wparam(message.wParam)
+	if !known {
+		log.errorf("[sugar] 0x%X wasn't a sugar.Key\n%v <- unknown Key.", message.wParam, loc)
+		return
+	}
 	down := win.Key_LPARAM(message.lParam)
 	// Don't process key repeats. Those are for text editing, not games.
 	if down.was_down { return }
@@ -403,9 +414,9 @@ on_key_down :: proc (message: windows.MSG) {
 	set_pressed(virtual_keycode)
 }
 
-on_key_up :: proc (message: windows.MSG) {
-	if message.wParam < windows.VK_LBUTTON || message.wParam > windows.VK_OEM_CLEAR { return }
-	virtual_keycode := cast(Key) message.wParam
+on_key_up :: proc (message: windows.MSG, loc := #caller_location) {
+	virtual_keycode, known := key_from_wparam(message.wParam)
+	if !known do return // There's already a log-line for key-down
 	set_released(virtual_keycode)
 }
 
