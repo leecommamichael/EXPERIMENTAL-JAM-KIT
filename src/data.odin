@@ -227,8 +227,8 @@ Ren :: struct {
 	frame_UBO: gl.Buffer,
 	programs:  [Game_Shader]gl.Program,
 	textures:  [16]GPU_Texture,
-	// linear_sampler:  gl.Sampler,
-	// nearest_sampler: gl.Sampler,
+	linear_sampler:  gl.Sampler,
+	nearest_sampler: gl.Sampler,
 }
 
 Game_Shader :: enum {
