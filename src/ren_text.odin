@@ -157,7 +157,7 @@ set_text :: proc (entity: ^Entity, message: string) {
 	if entity.draw_command.VAO == 0 {
 		entity.draw_command = ren_make_text_draw_cmd(globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
 	} else {
-		ren_reuse_text_draw_cmd(&entity.draw_command, globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
+		ren_reuse_basic_draw_cmd(&entity.draw_command, globals.instance_buffer, cast(int) entity.id, verts[:], indices[:])
 	}
 }
 

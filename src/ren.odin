@@ -240,13 +240,14 @@ ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
 	}
 }
 
-ren_force_draw_entity :: proc (ren: ^Ren, entity: ^Entity) {
+ren_force_draw_entity :: proc (ren: ^Ren, entity: ^Entity, loc := #caller_location) {
 	ren_bind_or_reuse_draw_command(entity)
 	gl.DrawElements(
 		ren_mode_to_primitive(entity.draw_command.mode),
 		count  = entity.draw_command.index_count,
 		type   = .UNSIGNED_INT,
 		indices = cast(uintptr) 0,
+		_loc = loc
 	)
 }
 
@@ -305,13 +306,24 @@ ren_draw :: proc (ren: ^Ren) {
 					geom_append_quad(&mesh, entity.position, entity.collider.size) // <-------------| NOTE not interpolated
 				}
 			}
-			ent := globals.collider_visualization
-			ent.draw_command = ren_make_basic_draw_cmd(
-				globals.instance_buffer,
-				cast(int) ent.id,
-				mesh.vertices[:],
-				mesh.indices[:])
-			ren_force_draw_entity(globals.ren, ent)
+			if len(mesh.vertices) == 0 do return // INTENT: Silence logs for empty buffer-copies.
+			viz := globals.collider_visualization
+			if viz.draw_command.VAO == 0 {
+				viz.draw_command = ren_make_basic_draw_cmd(
+					globals.instance_buffer,
+					cast(int) viz.id,
+					mesh.vertices[:],
+					mesh.indices[:])
+			} else {
+				ren_reuse_basic_draw_cmd(
+					&viz.draw_command,
+					globals.instance_buffer,
+					cast(int) viz.id,
+					mesh.vertices[:],
+					mesh.indices[:])
+			}
+			gl.BindVertexArray(viz.draw_command.VAO) // TODO: IDK why I need this.
+			ren_force_draw_entity(globals.ren, viz)
 		}
 		ren_draw_colliders(context.temp_allocator)
 	}
@@ -517,6 +529,7 @@ ren_make_basic_draw_cmd :: proc (
 	instance_index: int,
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
+	loc := #caller_location
 ) -> (cmd: Draw_Command) {
 	cmd.program = globals.ren.programs[.Basic]
 	gl.GenVertexArrays(1, &cmd.VAO)
@@ -525,15 +538,15 @@ ren_make_basic_draw_cmd :: proc (
 	// Create Vertex Buffer
 	VBO: gl.Buffer
 	gl.GenBuffers(1, &VBO)
-	gl.BindBuffer(.ARRAY_BUFFER, VBO)
-	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
-	gl.BindBuffer(.ARRAY_BUFFER, 0)
+	gl.BindBuffer(.ARRAY_BUFFER, VBO, loc)
+	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW, loc)
+	gl.BindBuffer(.ARRAY_BUFFER, 0, loc)
 
 	// Create Index Buffer
 	cmd.index_count = len(indices)
-	gl.GenBuffers(1, &cmd.index_buffer)
-	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
-	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+	gl.GenBuffers(1, &cmd.index_buffer, loc)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer, loc)
+	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices, _loc=loc)
 	init_cmd_with_basic_vertex_attributes(&cmd, VBO, instance_buffer, instance_index)
 	return
 }
@@ -591,14 +604,13 @@ ren_make_text_draw_cmd :: proc (
 	return
 }
 
-ren_reuse_text_draw_cmd :: proc (
+ren_reuse_basic_draw_cmd :: proc (
 	cmd: ^Draw_Command,
 	instance_buffer: gl.Buffer,
 	instance_index: int,
 	vertices: []Ren_Vertex_Base,
 	indices:  []u32,
 ) {
-	cmd.program = globals.ren.programs[.Text]
 	gl.BindVertexArray(cmd.VAO)
 	// works because ASSUMING created with init_cmd_with_basic_vertex_attributes
 	VBO := cmd.attributes[0].buffer
