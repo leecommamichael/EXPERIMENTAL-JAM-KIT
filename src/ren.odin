@@ -38,12 +38,12 @@ ren_make :: proc () -> ^Ren {
 	ren.programs[Game_Shader.Sprite] = ren_make_basic_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
 	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_basic_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
 
-	// ren.linear_sampler = gl.CreateSampler()
-	// gl.Set_Sampler_Min_Filter(ren.linear_sampler, .LINEAR)
-	// gl.Set_Sampler_Mag_Filter(ren.linear_sampler, .LINEAR)
-	// ren.nearest_sampler = gl.CreateSampler()
-	// gl.Set_Sampler_Min_Filter(ren.nearest_sampler, .NEAREST)
-	// gl.Set_Sampler_Mag_Filter(ren.nearest_sampler, .NEAREST)
+	ren.linear_sampler = gl.CreateSampler()
+	gl.Set_Sampler_Min_Filter(ren.linear_sampler, .LINEAR)
+	gl.Set_Sampler_Mag_Filter(ren.linear_sampler, .LINEAR)
+	ren.nearest_sampler = gl.CreateSampler()
+	gl.Set_Sampler_Min_Filter(ren.nearest_sampler, .NEAREST)
+	gl.Set_Sampler_Mag_Filter(ren.nearest_sampler, .NEAREST)
 
 	return ren
 }

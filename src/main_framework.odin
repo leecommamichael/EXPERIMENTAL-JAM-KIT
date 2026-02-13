@@ -80,9 +80,9 @@ framework_init :: proc () {
 		cast(int) debug_colliders.id, {},{})
 	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.55)
 	globals.collider_visualization = debug_colliders
-	// gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.linear_sampler)
-	// gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
-	// gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.linear_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.linear_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.linear_sampler)
 	game_init()
 	assert(globals.canvas_size_px != 0)
 	set_canvas_size(array_cast(globals.canvas_size_px, int))

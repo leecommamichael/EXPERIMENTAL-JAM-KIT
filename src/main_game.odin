@@ -35,9 +35,9 @@ gs: ^Game_State
 
 import gl "angle"
 game_init :: proc () {
-	// gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.nearest_sampler)
-	// gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
-	// gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.nearest_sampler)
 	globals.cursor = make_entity()
 	globals.cursor.flags += {.Hidden}
 	globals.cursor.position.xy = globals.mouse_position.xy
