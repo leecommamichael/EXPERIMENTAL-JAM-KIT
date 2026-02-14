@@ -34,7 +34,10 @@ main :: proc() {
 		runtime.default_context_ptr().logger = create_sublime_text_logger()
 		context = runtime.default_context_ptr()^
 	}
-	_, k := audio.init(); assert(k)
+	k: bool
+	globals.audio, k = audio.init();
+	assert(k)
+
 	sugar.set_memory(&globals.sugar)
 	sugar.init()
 	asset_init()

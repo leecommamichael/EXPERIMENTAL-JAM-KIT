@@ -15,14 +15,14 @@ System :: struct {
 
 init :: proc () -> (sys: System, ok: bool) {
 	// assert CoInitializeEx called already.
+	// false means it's already initialized.
+	// RPC_E_CHANGED_MODE is the only documented error, but it's not defined in Odin.
 	result := windows.CoInitializeEx()
-// false means it's already initialized.
-// RPC_E_CHANGED_MODE is the only documented error, but it's not defined in Odin.
 assert(result == windows.S_OK || result == windows.S_FALSE)
 	result, ok = win.ok(xa2.Create(&sys.xaudio))
 	// This result is logged, it's just unclear whether Create will cause an error.
 assert(ok)
-	// result, ok = win.ok(sys.xaudio->CreateMasteringVoice(&sys.mastering_voice))
+	result, ok = win.ok(sys.xaudio->CreateMasteringVoice(&sys.mastering_voice))
 assert(ok)
 	return
 }
@@ -75,5 +75,4 @@ play :: proc (sys: System, it: Clip) {
 assert(ok)
 	result, ok = win.ok(source_voice->Start())
 assert(ok)
-	windows.Sleep(cast(u32) (it.seconds * 1000))
 }

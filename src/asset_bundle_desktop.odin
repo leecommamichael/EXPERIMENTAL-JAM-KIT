@@ -553,7 +553,7 @@ log_time("write_textures")
 bundle_audio :: proc () {
 // TODO: Compressed version. (cbor for metadata, copy ogg to cache for release.)
 	asset_array := make([dynamic]Audio_Asset)
-	log_time("LOAD_AUDIO"); defer log_time("LOAD_AUDIO")
+	log_time("BUNDLE_AUDIO"); defer log_time("BUNDLE_AUDIO")
 	oggvs, dir_err := read_files_in_directory_with_suffix("../assets", "ogg") 
 assert(dir_err == nil)
 	for file in oggvs {
@@ -569,10 +569,15 @@ assert(dir_err == nil)
 		append(&asset_array, asset)
 		path := strings.concatenate({CACHE_DIR, file.name}) // LEAK
 		file_write_err := os.write_entire_file(path, clip.bytes)
+		assert(file_write_err == nil)
 	}
 	// Now write the cache ///////////////////////////////////////////////////////
-	file_write_err := os.write_entire_file(AUDIO_METADATA, slice.reinterpret([]u8, asset_array[:]))
-	assert(file_write_err == nil)
+	file, err := os.open(AUDIO_METADATA, {.Write, .Trunc, .Create})
+	assert(err == nil)
+	merr := cbor.marshal_into_writer(os.to_writer(file), asset_array[:])
+	assert(merr == nil)
+	os.close(file)
+	delete(asset_array)
 }
 
 Image_File_Error :: union #shared_nil { image.Error, os.Error }

@@ -26,7 +26,7 @@ Asset_Bundle :: struct {
 
 Audio_Asset :: struct {
 	filename: string,
-	using clip: audio.Clip,
+	clip: audio.Clip,
 }
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
@@ -267,4 +267,27 @@ load_bundled_textures :: proc (result: ^image.Image, use_binary: bool) {
 }
 
 load_audio :: proc (use_binary: bool) {
+	log_time("LOAD_AUDIO"); defer log_time("LOAD_AUDIO")
+	if use_binary {
+		serialized_audio_assets := make([]Audio_Asset, 10)
+		assert(len(audio_metadata_bytes) > 0)
+		unmarshal_err := cbor.unmarshal_from_bytes(audio_metadata_bytes, &serialized_audio_assets)
+		if unmarshal_err != nil {
+			log.errorf("Failed to unmarshal audio metadata %v", unmarshal_err)
+		}
+		assert(unmarshal_err == nil)
+		asset_loop: for asset in serialized_audio_assets {
+			globals.assets.audio[asset.filename] = asset
+			stored_asset := &globals.assets.audio[asset.filename]
+			for cf in cache_files {
+				if cf.name == asset.filename {
+					stored_asset.clip.bytes = cf.data
+					continue asset_loop
+				}
+			}
+			assert(false, "Missing audio asset.")
+		}
+	} else {
+		unimplemented()
+	}
 }

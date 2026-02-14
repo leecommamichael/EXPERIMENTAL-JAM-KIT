@@ -6,7 +6,8 @@ package main
 import "core:time"
 import "core:dynlib"
 import "core:mem"
-import sugar "sugar"
+import "sugar"
+import "audio"
 import gl "angle"
 
 //////////////////////////////////////////////////////////////////////
@@ -25,6 +26,7 @@ Globals :: struct {
 	game_dll:   dynlib.Library,
 	// General
 	cursor:     ^Entity,
+	audio:      audio.System,
 	sugar:      sugar.Memory,
 	// Seconds in one tick.
 	tick:       f32,
