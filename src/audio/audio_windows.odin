@@ -8,9 +8,14 @@ import xa2 "vendor:windows/XAudio2"
 import stbv "vendor:stb/vorbis"
 import win "../windows"
 
+// TODO: Only expose Sink_Handle and Source_Handle?
+// TODO: System -> Memory (consider fully type-erased.)
+
 System :: struct {
 	xaudio: ^xa2.IXAudio2,
 	mastering_voice: ^xa2.IXAudio2MasteringVoice,
+	sources: []xa2.IXAudio2SourceVoice,
+	sinks:   []xa2.IXAudio2SubmixVoice,
 }
 
 init :: proc () -> (sys: System, ok: bool) {
@@ -25,6 +30,10 @@ assert(ok)
 	result, ok = win.ok(sys.xaudio->CreateMasteringVoice(&sys.mastering_voice))
 assert(ok)
 	return
+}
+
+make_sink :: proc () -> Sink {
+	return {}
 }
 
 load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
@@ -49,7 +58,7 @@ load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
 	return clip, true
 }
 
-play :: proc (sys: System, it: Clip) {
+make_source_from_clip :: proc (sys: System, it: Clip) -> Source {
 	wave_format: xa2.WAVEFORMATEX
 	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
 	wave_format.nChannels  = cast(u16) it.channels
@@ -73,6 +82,10 @@ play :: proc (sys: System, it: Clip) {
   ok: bool
 	result, ok = win.ok(source_voice->SubmitSourceBuffer(&buffer))
 assert(ok)
-	result, ok = win.ok(source_voice->Start())
+	return {}
+}
+
+play :: proc (sys: System, sink: Sink, src: Source) {
+	result, ok := win.ok(sys.sources[src.id]->Start())
 assert(ok)
 }

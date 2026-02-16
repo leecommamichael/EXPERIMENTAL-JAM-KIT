@@ -564,7 +564,8 @@ assert(dir_err == nil)
 		}
 		asset: Audio_Asset = {
 			file.name,
-			clip
+			clip,
+			{}
 		}
 		append(&asset_array, asset)
 		path := strings.concatenate({CACHE_DIR, file.name}) // LEAK

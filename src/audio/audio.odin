@@ -7,3 +7,10 @@ Clip :: struct {
 	channels: int,
 	sample_rate: int,
 }
+
+Source :: struct {
+	id: int,
+	name: string,
+}
+
+Sink   :: distinct int
