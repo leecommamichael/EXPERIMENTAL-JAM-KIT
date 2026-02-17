@@ -21,6 +21,7 @@ window:
     {
       0.366045:
       {
+        selected
         watch: expression: "query:types"
         watch:
         {
@@ -74,7 +75,6 @@ window:
     }
     0.596658:
     {
-      selected
       disasm:
       {
         expression: ""
@@ -237,10 +237,10 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 324
-        cursor_column: 9
-        mark_line: 324
-        mark_column: 9
+        cursor_line: 71
+        cursor_column: 1
+        mark_line: 71
+        mark_column: 1
       }
       text:
       {
@@ -264,14 +264,24 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query: input: ""
-        cursor_line: 280
-        cursor_column: 35
-        mark_line: 280
-        mark_column: 35
+        cursor_line: 282
+        cursor_column: 1
+        mark_line: 282
+        mark_column: 1
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/audio/audio.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 18
+        cursor_column: 1
+        mark_line: 18
+        mark_column: 1
       }
     }
   }

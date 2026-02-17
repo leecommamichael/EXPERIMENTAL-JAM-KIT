@@ -13,7 +13,8 @@ Platform_System :: struct {
 }
 
 Platform_Source :: struct {
-	using source_voice: ^xa2.IXAudio2SourceVoice
+	using source_voice: ^xa2.IXAudio2SourceVoice,
+	buffer: xa2.BUFFER
 }
 
 Platform_Sink :: struct {
@@ -43,34 +44,78 @@ init_platform_source :: proc (sys: System, it: ^Source) {
 	wave_format.nBlockAlign = wave_format.nChannels * wave_format.wBitsPerSample / 8 // block align 2 channels sending 16bits (kind of a stride)
 	wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * u32(wave_format.nBlockAlign) //avgbytes/sec
 
-	buffer: xa2.BUFFER
+	buffer: ^xa2.BUFFER = &it.platform.buffer
 	buffer.AudioBytes = cast(u32) it.samples * (2 * 16 / 8)
 	buffer.pAudioData = raw_data(it.bytes)
+	buffer.pContext = it
+
 	buffer.Flags = { .END_OF_STREAM }
-	result := sys.xaudio->CreateSourceVoice(&it.source_voice, &wave_format)
+	result := sys.xaudio->CreateSourceVoice(&it.source_voice, &wave_format, pCallback = &default_source_voice_callback)
   switch result {
 	case xa2.INVALID_CALL        : assert(false)
 	case xa2.XMA_DECODER_ERROR   : assert(false)
 	case xa2.XAPO_CREATION_FAILED: assert(false)
 	case xa2.DEVICE_INVALIDATED  : assert(false)
   }
-  ok: bool
-	result, ok = win.ok(it.source_voice->SubmitSourceBuffer(&buffer))
-assert(ok)
+}
+
+default_source_voice_callback: xa2.IXAudio2VoiceCallback = { &_default_source_voice_callback }
+_default_source_voice_callback: xa2.IXAudio2VoiceCallback_VTable = {
+	// Called just before this voice's processing pass begins.
+	OnVoiceProcessingPassStart = proc "system" (this: ^xa2.IXAudio2VoiceCallback, BytesRequired: u32) {
+
+	},
+
+	// Called just after this voice's processing pass ends.
+	OnVoiceProcessingPassEnd = proc "system" (this: ^xa2.IXAudio2VoiceCallback) {
+
+	},
+
+	// Called when this voice has just finished playing a buffer stream (as marked with the END_OF_STREAM flag on the last buffer).
+	OnStreamEnd = proc "system" (this: ^xa2.IXAudio2VoiceCallback) {
+
+	},
+
+	// Called when this voice is about to start processing a new buffer.
+	OnBufferStart = proc "system" (this: ^xa2.IXAudio2VoiceCallback, pBufferContext: rawptr) {
+	},
+
+	// Called when this voice has just finished processing a buffer.
+	// The buffer can now be reused or destroyed.
+	OnBufferEnd = proc "system" (this: ^xa2.IXAudio2VoiceCallback, pBufferContext: rawptr) {
+		// ASSUMES 1 Buffer to 1 Voice
+		src := cast(^Source) pBufferContext
+		src.busy = false
+		result := src.platform.source_voice->Stop()
+		assert_contextless(result == {})
+	},
+
+	// Called when this voice has just reached the end position of a loop.
+	OnLoopEnd = proc "system" (this: ^xa2.IXAudio2VoiceCallback, pBufferContext: rawptr) {
+
+	},
+
+	// Called in the event of a critical error during voice processing, such as a failing xAPO or an error from the hardware XMA decoder.
+	// The voice may have to be destroyed and re-created to recover from the error.
+	// The callback arguments report which buffer was being processed when the error occurred, and its HRESULT code.
+	OnVoiceError = proc "system" (this: ^xa2.IXAudio2VoiceCallback, pBufferContext: rawptr, Error: xa2.HRESULT) {
+
+	}
 }
 
 init_platform_sink :: proc () {
-	unimplemented("TODO: submix voice")
+unimplemented("TODO: submix voice")
 }
 
 platform_destroy_source :: proc (sys: ^System, handle: Source_Handle) {
 unimplemented("TODO: free the xa2buffer and source voice.")
 }
 
-platform_play :: proc (sys: System, sink: Sink, clip: Source) {
-	// TODO: check the ring for one that isn't playing. use it.
-	//       if all are busy, make one (under a limit)
-	//       NOTE: If lots of sounds are doing this you'll make lots of xa2.BUFFERs.
-	result, ok := win.ok(clip.platform.source_voice->Start())
+platform_play :: proc (sys: System, sink: Sink, src: ^Source) {
+	src.busy = true
+	src := src
+	result, ok := win.ok(src.source_voice->SubmitSourceBuffer(&src.platform.buffer))
+assert(ok)
+	result, ok = win.ok(src.platform.source_voice->Start())
 assert(ok)
 }

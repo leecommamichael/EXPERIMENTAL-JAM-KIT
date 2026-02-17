@@ -58,14 +58,14 @@ game_init :: proc () {
 	for _, &asset in globals.assets.audio {
 		audio.add_source_from_clip(&globals.audio, asset)
 	}
-	// audio.play(globals.audio, gs.music_sink, "music_flower_duet.ogg")
+	// audio.play(&globals.audio, gs.music_sink, "music_flower_duet.ogg")
 } // game_init
 
 @export
 game_step :: proc () {
 	box := rect()
 	box.basis.scale = 44
-	if sugar.is_key_pressed(.Space) {
-		audio.play(globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
+	if sugar.on_key_release(.Space) {
+		audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
 	}
 } // game step
