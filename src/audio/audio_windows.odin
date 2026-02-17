@@ -5,20 +5,22 @@ import "core:log"
 import "core:slice"
 import "core:sys/windows"
 import xa2 "vendor:windows/XAudio2"
-import stbv "vendor:stb/vorbis"
 import win "../windows"
 
-// TODO: Only expose Sink_Handle and Source_Handle?
-// TODO: System -> Memory (consider fully type-erased.)
-
-System :: struct {
+Platform_System :: struct {
 	xaudio: ^xa2.IXAudio2,
 	mastering_voice: ^xa2.IXAudio2MasteringVoice,
-	sources: []xa2.IXAudio2SourceVoice,
-	sinks:   []xa2.IXAudio2SubmixVoice,
 }
 
-init :: proc () -> (sys: System, ok: bool) {
+Platform_Source :: struct {
+	using source_voice: ^xa2.IXAudio2SourceVoice
+}
+
+Platform_Sink :: struct {
+	using _: ^xa2.IXAudio2SubmixVoice
+}
+
+platform_init :: proc (sys: ^System) -> (ok: bool) {
 	// assert CoInitializeEx called already.
 	// false means it's already initialized.
 	// RPC_E_CHANGED_MODE is the only documented error, but it's not defined in Odin.
@@ -32,33 +34,7 @@ assert(ok)
 	return
 }
 
-make_sink :: proc () -> Sink {
-	return {}
-}
-
-load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
-	sample_data: [^]u8
-	clip.samples = cast(int) stbv.decode_memory(raw_data(bytes),
-																					cast(c.int) len(bytes),
-																					cast(^c.int) &clip.channels,
-																					cast(^c.int) &clip.sample_rate,
-																					cast(^[^]c.short) &sample_data)
-	clip.bytes = sample_data[:clip.samples]
-	if clip.samples < 1 {
-		return {}, false
-	}
-	// PULLING INPUT API
-	err: stbv.Error
-	decoder: ^stbv.vorbis = stbv.open_memory(raw_data(bytes), cast(c.int) clip.samples, &err, nil)
-	if err != nil {
-		return {}, false
-	}
-	clip.seconds = cast(f64) clip.samples / cast(f64) clip.sample_rate
-	assert(clip.seconds > 0)
-	return clip, true
-}
-
-make_source_from_clip :: proc (sys: System, it: Clip) -> Source {
+init_platform_source :: proc (sys: System, it: ^Source) {
 	wave_format: xa2.WAVEFORMATEX
 	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
 	wave_format.nChannels  = cast(u16) it.channels
@@ -71,8 +47,7 @@ make_source_from_clip :: proc (sys: System, it: Clip) -> Source {
 	buffer.AudioBytes = cast(u32) it.samples * (2 * 16 / 8)
 	buffer.pAudioData = raw_data(it.bytes)
 	buffer.Flags = { .END_OF_STREAM }
-	source_voice: ^xa2.IXAudio2SourceVoice
-	result := sys.xaudio->CreateSourceVoice(&source_voice, &wave_format)
+	result := sys.xaudio->CreateSourceVoice(&it.source_voice, &wave_format)
   switch result {
 	case xa2.INVALID_CALL        : assert(false)
 	case xa2.XMA_DECODER_ERROR   : assert(false)
@@ -80,12 +55,22 @@ make_source_from_clip :: proc (sys: System, it: Clip) -> Source {
 	case xa2.DEVICE_INVALIDATED  : assert(false)
   }
   ok: bool
-	result, ok = win.ok(source_voice->SubmitSourceBuffer(&buffer))
+	result, ok = win.ok(it.source_voice->SubmitSourceBuffer(&buffer))
 assert(ok)
-	return {}
 }
 
-play :: proc (sys: System, sink: Sink, src: Source) {
-	result, ok := win.ok(sys.sources[src.id]->Start())
+init_platform_sink :: proc () {
+	unimplemented("TODO: submix voice")
+}
+
+platform_destroy_source :: proc (sys: ^System, handle: Source_Handle) {
+unimplemented("TODO: free the xa2buffer and source voice.")
+}
+
+platform_play :: proc (sys: System, sink: Sink, clip: Source) {
+	// TODO: check the ring for one that isn't playing. use it.
+	//       if all are busy, make one (under a limit)
+	//       NOTE: If lots of sounds are doing this you'll make lots of xa2.BUFFERs.
+	result, ok := win.ok(clip.platform.source_voice->Start())
 assert(ok)
 }

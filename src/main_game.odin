@@ -53,16 +53,19 @@ game_init :: proc () {
 
 	gs.sfx_sink = audio.make_sink()
 	gs.music_sink = audio.make_sink()
-
-	for k,&v in globals.assets.audio {
-		v.source = audio.make_source_from_clip(globals.audio, v)
+	// 1. Clips are already loaded from the asset bundler.
+	// Just have to init their platform.
+	for _, &asset in globals.assets.audio {
+		audio.add_source_from_clip(&globals.audio, asset)
 	}
-	// audio.play(globals.audio, gs.sfx_sink, globals.assets.audio["sfx_get_coin.ogg"])
-	// audio.play(globals.audio, gs.music_sink, globals.assets.audio["music_flower_duet.ogg"])
+	// audio.play(globals.audio, gs.music_sink, "music_flower_duet.ogg")
 } // game_init
 
 @export
 game_step :: proc () {
 	box := rect()
 	box.basis.scale = 44
+	if sugar.is_key_pressed(.Space) {
+		audio.play(globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
+	}
 } // game step

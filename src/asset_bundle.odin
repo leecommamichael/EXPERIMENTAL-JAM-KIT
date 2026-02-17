@@ -27,7 +27,6 @@ Asset_Bundle :: struct {
 Audio_Asset :: struct {
 	filename: string,
 	using clip:   audio.Clip,   // the raw playable audio samples and metadata.
-	using source: audio.Source, // the first loaded instance of the clip.
 }
 
 MAX_ATLAS_PIXELS :: 1 << 14 // 2^14th (Common Modern OpenGL MAX_TEXTURE_SIZE)
@@ -286,7 +285,8 @@ load_audio :: proc (use_binary: bool) {
 					continue asset_loop
 				}
 			}
-			assert(false, "Missing audio asset.")
+			log.errorf("Missing audio asset named:%s.", asset.filename)
+			assert(false)
 		}
 	} else {
 		unimplemented()

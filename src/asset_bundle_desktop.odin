@@ -557,19 +557,17 @@ bundle_audio :: proc () {
 	oggvs, dir_err := read_files_in_directory_with_suffix("../assets", "ogg") 
 assert(dir_err == nil)
 	for file in oggvs {
-		clip, ok := audio.load_from_bytes(file.data)
+		asset: Audio_Asset
+		asset.filename = file.name
+		asset.name = file.name
+		ok := audio.init_clip_from_bytes(&asset.clip, file.data)
 		if !ok {
-			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", clip.samples, file.name)
+			log.errorf("[%v] Failed to import ogg. Is it vorbis? %s", asset.clip.samples, asset.name)
 			continue
-		}
-		asset: Audio_Asset = {
-			file.name,
-			clip,
-			{}
 		}
 		append(&asset_array, asset)
 		path := strings.concatenate({CACHE_DIR, file.name}) // LEAK
-		file_write_err := os.write_entire_file(path, clip.bytes)
+		file_write_err := os.write_entire_file(path, asset.clip.bytes)
 		assert(file_write_err == nil)
 	}
 	// Now write the cache ///////////////////////////////////////////////////////

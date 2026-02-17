@@ -24,5 +24,4 @@ import "audio"
 Game_State :: struct {
 	sfx_sink:   audio.Sink,
 	music_sink: audio.Sink,
-
 }
