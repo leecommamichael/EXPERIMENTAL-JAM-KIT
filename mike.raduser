@@ -17,7 +17,7 @@ window:
   split_x
   panels:
   {
-    0.403336:
+    0.355115:
     {
       0.366045:
       {
@@ -45,10 +45,11 @@ window:
       {
         watch: expression: "query:threads"
         watch: expression: "query:targets"
-        watch: selected expression: "query:breakpoints"
+        watch: expression: "query:breakpoints"
         watch: expression: "query:watch_pins"
         watch:
         {
+          selected
           expression: ""
           watch: globals
           root_type: 0.486283 0.363717 0.150000
@@ -60,6 +61,7 @@ window:
           watch: "child.basis.scale"
           watch: "child.transform.position"
           watch: "widget.transform.position"
+          watch: "src.clip.bytes.len"
         }
       }
       0.337392:
@@ -73,7 +75,7 @@ window:
         }
       }
     }
-    0.596658:
+    0.366388:
     {
       disasm:
       {
@@ -267,25 +269,43 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/asset_bundle.odin\".data"
         project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
         query: input: ""
-        cursor_line: 282
+        cursor_line: 284
         cursor_column: 1
-        mark_line: 282
+        mark_line: 284
+        mark_column: 1
+      }
+      text:
+      {
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/audio/audio.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 46
+        cursor_column: 1
+        mark_line: 46
         mark_column: 1
       }
       text:
       {
         selected
-        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/audio/audio.odin\".data"
-        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin/base/runtime/core.odin\".data"
+        auto: 1
         query: input: ""
-        cursor_line: 18
+        cursor_line: 810
         cursor_column: 1
-        mark_line: 18
+        mark_line: 810
         mark_column: 1
       }
     }
+    0.278493: memory:
+    {
+      selected
+      mark: 0x7ff78cb99085
+      size: "cf.data.len"
+      expression: "cf.data.data"
+      cursor_size: 1
+      cursor: 0x7ff78cb99085
+    }
   }
-  maximized
 }
 keybindings:
 {

@@ -28,6 +28,11 @@ platform_init :: proc (sys: ^System) -> (ok: bool) {
 	result := windows.CoInitializeEx()
 assert(result == windows.S_OK || result == windows.S_FALSE)
 	result, ok = win.ok(xa2.Create(&sys.xaudio))
+when ODIN_DEBUG {
+	cfg: xa2.DEBUG_CONFIGURATION
+	cfg.TraceMask = {.WARNINGS}
+	sys.xaudio->SetDebugConfiguration(&cfg)
+}
 	// This result is logged, it's just unclear whether Create will cause an error.
 assert(ok)
 	result, ok = win.ok(sys.xaudio->CreateMasteringVoice(&sys.mastering_voice))
@@ -35,17 +40,20 @@ assert(ok)
 	return
 }
 
+// ASSUMES PCM DATA
 init_platform_source :: proc (sys: System, it: ^Source) {
 	wave_format: xa2.WAVEFORMATEX
 	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
 	wave_format.nChannels  = cast(u16) it.channels
-	wave_format.wBitsPerSample = 16 // bits per sample
+	wave_format.wBitsPerSample = 16 // bits per sample (stbv.decode_memory only outputs 16)
 	wave_format.nSamplesPerSec = cast(c.uint) it.sample_rate
-	wave_format.nBlockAlign = wave_format.nChannels * wave_format.wBitsPerSample / 8 // block align 2 channels sending 16bits (kind of a stride)
-	wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * u32(wave_format.nBlockAlign) //avgbytes/sec
+
+	// The following two are documented formulae
+	wave_format.nBlockAlign = wave_format.nChannels * wave_format.wBitsPerSample / 8
+	wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * u32(wave_format.nBlockAlign)
 
 	buffer: ^xa2.BUFFER = &it.platform.buffer
-	buffer.AudioBytes = cast(u32) it.samples * (2 * 16 / 8)
+	buffer.AudioBytes = cast(u32) it.samples * size_of(c.short) // stbvorbis interleaves in shorts
 	buffer.pAudioData = raw_data(it.bytes)
 	buffer.pContext = it
 
@@ -132,8 +140,18 @@ platform_play :: proc (sys: System, sink: Sink, src: ^Source, volume: f32) {
 	src.voice->SetOutputVoices(&sends)
 	src.voice->SetVolume(volume)
 	src.busy = true
-	result, ok := win.ok(src.voice->SubmitSourceBuffer(&src.platform.buffer))
-assert(ok)
-	result, ok = win.ok(src.platform.voice->Start())
-assert(ok)
+	result := src.voice->SubmitSourceBuffer(&src.platform.buffer)
+  switch result {
+	case xa2.INVALID_CALL        : assert(false)
+	case xa2.XMA_DECODER_ERROR   : assert(false)
+	case xa2.XAPO_CREATION_FAILED: assert(false)
+	case xa2.DEVICE_INVALIDATED  : assert(false)
+  }
+	result = src.platform.voice->Start()
+  switch result {
+	case xa2.INVALID_CALL        : assert(false)
+	case xa2.XMA_DECODER_ERROR   : assert(false)
+	case xa2.XAPO_CREATION_FAILED: assert(false)
+	case xa2.DEVICE_INVALIDATED  : assert(false)
+  }
 }

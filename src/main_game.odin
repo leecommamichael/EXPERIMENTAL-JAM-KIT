@@ -58,7 +58,7 @@ game_init :: proc () {
 	for _, &asset in globals.assets.audio {
 		audio.add_source_from_clip(&globals.audio, asset)
 	}
-	audio.play(&globals.audio, gs.music_sink, "music_flower_duet.ogg")
+	// audio.play(&globals.audio, gs.music_sink, "music_flower_duet.ogg")
 } // game_init
 
 @export
@@ -76,8 +76,12 @@ game_step :: proc () {
 		audio.sink_set_volume(gs.music_sink, vol)
 		audio.sink_set_volume(gs.sfx_sink, vol)
 	}
-	log.infof("vol %2.2f", vol)
+	// log.infof("vol %2.2f", vol)
 	if sugar.on_key_release(.Space) {
-		audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg", 0.5)
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Enemy_Kill.ogg")
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg")
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg") // works if comment out stbverr
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Done.ogg") // crash
+		audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
 	}
 } // game step

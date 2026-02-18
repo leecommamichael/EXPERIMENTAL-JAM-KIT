@@ -1,8 +1,12 @@
 // raddbg 0.9.24 project file
 
+recent_file: path: "../../Applications (Compilers)/odin/base/runtime/core.odin"
+recent_file: path: "src/audio/audio_windows.odin"
 recent_file: path: "src/audio/audio.odin"
-recent_file: path: "src/main_game.odin"
 recent_file: path: "src/asset_bundle.odin"
+recent_file: path: "../../Applications (Compilers)/odin/core/strconv/decimal/decimal.odin"
+recent_file: path: "../../Applications (Compilers)/odin/core/reflect/reflect.odin"
+recent_file: path: "src/main_game.odin"
 recent_file: path: "src/main_game_procs.odin"
 recent_file: path: "src/framework_entity.odin"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcruntime/src/string/amd64/memset.asm"
@@ -17,7 +21,6 @@ recent_file: path: "../../Applications (Compilers)/odin_fork/src/check_decl.cpp"
 recent_file: path: "src/main_game_full_tilt.odin"
 recent_file: path: "src/ren_image.odin"
 recent_file: path: "src/main_entrypoint.odin"
-recent_file: path: "../../Applications (Compilers)/odin/base/runtime/core.odin"
 recent_file: path: "src/ren_shape.odin"
 recent_file: path: "src/ren.odin"
 recent_file: path: "src/angle/interface.odin"
@@ -39,7 +42,7 @@ target:
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66206844104181
+  timestamp: 66206927925689
 }
 debug_info:
 {
@@ -63,9 +66,4 @@ debug_info:
 {
   path: "C:/Users/leeco/Documents/GitHub/EXPERIMENTAL-JAM-KIT/engine.pdb"
   timestamp: 66205115047362
-}
-breakpoint:
-{
-  source_location: "src/audio/audio.odin:17:1"
-  hit_count: 1
 }

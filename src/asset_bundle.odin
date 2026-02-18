@@ -269,7 +269,7 @@ load_bundled_textures :: proc (result: ^image.Image, use_binary: bool) {
 load_audio :: proc (use_binary: bool) {
 	log_time("LOAD_AUDIO"); defer log_time("LOAD_AUDIO")
 	if use_binary {
-		serialized_audio_assets := make([]Audio_Asset, 10)
+		serialized_audio_assets := make([]Audio_Asset, 100) // LEAK?
 		assert(len(audio_metadata_bytes) > 0)
 		unmarshal_err := cbor.unmarshal_from_bytes(audio_metadata_bytes, &serialized_audio_assets)
 		if unmarshal_err != nil {

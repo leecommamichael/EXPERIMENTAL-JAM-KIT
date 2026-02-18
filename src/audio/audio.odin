@@ -62,7 +62,7 @@ System :: struct {
 }
 
 init :: proc () -> (sys: System, ok: bool) {
-	sys.sources = make([]Source, 10)
+	sys.sources = make([]Source, 100)
 	ok = platform_init(&sys)
 assert(ok)
 	return
@@ -86,18 +86,12 @@ init_clip_from_bytes :: proc (clip: ^Clip, bytes: []u8) -> (ok: bool) {
 																					cast(^c.int) &clip.channels,
 																					cast(^c.int) &clip.sample_rate,
 																					cast(^[^]c.short) &sample_data)
-	clip.bytes = sample_data[:clip.samples]
+	log.infof("%s Channels: %d", clip.name, clip.channels)
+	clip.bytes = sample_data[:clip.samples * size_of(c.short) ]
 	if clip.samples < 1 {
 		return false
 	}
-	// PULLING INPUT API
-	err: stbv.Error
-	decoder: ^stbv.vorbis = stbv.open_memory(raw_data(bytes), cast(c.int) clip.samples, &err, nil)
-	if err != nil {
-		return false
-	}
 	clip.seconds = cast(f64) clip.samples / cast(f64) clip.sample_rate
-	assert(clip.seconds > 0)
 	return true
 }
 
