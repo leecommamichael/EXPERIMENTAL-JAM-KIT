@@ -13,12 +13,12 @@ Platform_System :: struct {
 }
 
 Platform_Source :: struct {
-	using source_voice: ^xa2.IXAudio2SourceVoice,
-	buffer: xa2.BUFFER
+	using voice: ^xa2.IXAudio2SourceVoice,
+	buffer: xa2.BUFFER,
 }
 
 Platform_Sink :: struct {
-	using _: ^xa2.IXAudio2SubmixVoice
+	using voice: ^xa2.IXAudio2SubmixVoice,
 }
 
 platform_init :: proc (sys: ^System) -> (ok: bool) {
@@ -50,7 +50,7 @@ init_platform_source :: proc (sys: System, it: ^Source) {
 	buffer.pContext = it
 
 	buffer.Flags = { .END_OF_STREAM }
-	result := sys.xaudio->CreateSourceVoice(&it.source_voice, &wave_format, pCallback = &default_source_voice_callback)
+	result := sys.xaudio->CreateSourceVoice(&it.voice, &wave_format, pCallback = &default_source_voice_callback)
   switch result {
 	case xa2.INVALID_CALL        : assert(false)
 	case xa2.XMA_DECODER_ERROR   : assert(false)
@@ -86,7 +86,7 @@ _default_source_voice_callback: xa2.IXAudio2VoiceCallback_VTable = {
 		// ASSUMES 1 Buffer to 1 Voice
 		src := cast(^Source) pBufferContext
 		src.busy = false
-		result := src.platform.source_voice->Stop()
+		result := src.platform.voice->Stop()
 		assert_contextless(result == {})
 	},
 
@@ -103,19 +103,37 @@ _default_source_voice_callback: xa2.IXAudio2VoiceCallback_VTable = {
 	}
 }
 
-init_platform_sink :: proc () {
-unimplemented("TODO: submix voice")
+init_platform_sink :: proc (sys: ^System, sink: ^Sink) {
+	result := sys.xaudio->CreateSubmixVoice(&sink.voice, 2, 44100)
+assert(result == windows.S_OK)
+	send_desc := xa2.SEND_DESCRIPTOR { {}, sys.mastering_voice }
+	sends: xa2.VOICE_SENDS
+	sends.SendCount = 1
+	sends.pSends = &send_desc
+	sink.voice->SetOutputVoices(&sends)
 }
 
 platform_destroy_source :: proc (sys: ^System, handle: Source_Handle) {
 unimplemented("TODO: free the xa2buffer and source voice.")
 }
 
-platform_play :: proc (sys: System, sink: Sink, src: ^Source) {
+platform_sink_set_volume :: proc (sink: Sink, volume: f32) {
+	result := sink.voice->SetVolume(volume)
+	assert(result == windows.S_OK)
+}
+
+platform_play :: proc (sys: System, sink: Sink, src: ^Source, volume: f32) {
+	sink := sink
+	// TODO: Skip SetOutputVoices: array & Sink_Handle to store them on the source to diff.
+	send_desc := xa2.SEND_DESCRIPTOR { {}, sink.voice }
+	sends: xa2.VOICE_SENDS
+	sends.SendCount = 1
+	sends.pSends = &send_desc
+	src.voice->SetOutputVoices(&sends)
+	src.voice->SetVolume(volume)
 	src.busy = true
-	src := src
-	result, ok := win.ok(src.source_voice->SubmitSourceBuffer(&src.platform.buffer))
+	result, ok := win.ok(src.voice->SubmitSourceBuffer(&src.platform.buffer))
 assert(ok)
-	result, ok = win.ok(src.platform.source_voice->Start())
+	result, ok = win.ok(src.platform.voice->Start())
 assert(ok)
 }

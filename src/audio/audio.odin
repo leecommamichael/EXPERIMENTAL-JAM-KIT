@@ -10,7 +10,7 @@ import "core:log"
 
 // Play the entire clip. Spawn more sources if needed.
 // ASSUMES: the "root" Source is first in the list (due to linear search)
-play :: proc (sys: ^System, sink: Sink, clip_name: string) {
+play :: proc (sys: ^System, sink: Sink, clip_name: string, volume: f32 = 1) {
 	player: ^Source
 	for &s in sys.sources {
 		if s.id == 0 do continue
@@ -33,7 +33,7 @@ play :: proc (sys: ^System, sink: Sink, clip_name: string) {
 	}
 	PER_SOURCE_POLYPHONY :: 5 // i.e. we can only play N coin-grabs at a time.
 	if found {
-		platform_play(sys^, sink, player)
+		platform_play(sys^, sink, player, volume)
 	} else if iter.index < PER_SOURCE_POLYPHONY {
 		new_source := new_source_ptr(sys)
 		if new_source == nil {
@@ -43,9 +43,14 @@ play :: proc (sys: ^System, sink: Sink, clip_name: string) {
 		init_platform_source(sys^, new_source)
 		_append_source(sys, player, new_source)
 		player = new_source
-		platform_play(sys^, sink, player)
+		platform_play(sys^, sink, player, volume)
 	}
 }
+
+sink_set_volume :: proc (sink: Sink, volume: f32) {
+	platform_sink_set_volume(sink, volume)
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // The entry-fee
@@ -169,11 +174,12 @@ _append_source :: proc (sys: ^System, src: ^Source, child: ^Source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sink :: struct {
-	id: Sink_Handle,
+	name: string,
 	using platform: Platform_Sink,
 }
-Sink_Handle :: distinct int
 
-make_sink :: proc () -> Sink {
-	return {}
+make_sink :: proc (sys: ^System, name: string = "") -> (sink: Sink) {
+	sink.name = name
+	init_platform_sink(sys, &sink)
+	return sink
 }
