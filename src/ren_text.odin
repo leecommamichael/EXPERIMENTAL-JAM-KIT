@@ -98,7 +98,6 @@ Font :: struct {
 set_text :: proc (entity: ^Entity, message: string) {
 	text := entity.variant.(Text_State)
 	text.text = message
-	entity.basis.scale = text.font.line_height
 	verts_needed   := len(text.text) * 4
 	indices_needed := len(text.text) * 6
 	verts := make([]Ren_Vertex_Base, verts_needed, context.temp_allocator)
