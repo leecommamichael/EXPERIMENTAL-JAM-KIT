@@ -70,7 +70,6 @@ cache_files: []runtime.Load_Directory_File
 // Rebuilds cache if necessary
 asset_init :: proc () {
 	cache_files = #load_directory(CACHE_DIR)
-	// It's a debug build on a desktop and we're going to try to re-use the cache.
 	for file in cache_files {
 		target: ^[]u8
 		switch file.name {
