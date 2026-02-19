@@ -53,7 +53,7 @@ init_platform_source :: proc (sys: System, it: ^Source) {
 	wave_format.nAvgBytesPerSec = wave_format.nSamplesPerSec * u32(wave_format.nBlockAlign)
 
 	buffer: ^xa2.BUFFER = &it.platform.buffer
-	buffer.AudioBytes = cast(u32) it.samples * size_of(c.short) // stbvorbis interleaves in shorts
+	buffer.AudioBytes = cast(u32) len(it.bytes)
 	buffer.pAudioData = raw_data(it.bytes)
 	buffer.pContext = it
 
