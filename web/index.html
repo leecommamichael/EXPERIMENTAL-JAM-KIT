@@ -2,16 +2,42 @@
 	<script type="text/javascript" src="odin.js"></script>
 	<script type="text/javascript" src="kv5.js"></script>
 </head>
-<body style="background-color: antiquewhite;">
+
+<style>
+#the_body {
+	background-color: #1d1d1d;
+}
+
+#the_canvas {
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+	margin-bottom: 22px;
+	margin-top: 22px;
+}
+
+#the_output {
+	background-color: #303030; 
+	color: #bbb; 
+	border: 2px solid #666; 
+	max-height: 200px; 
+	overflow-y: auto; 
+	white-space: pre-wrap; 
+	word-wrap: break-word;
+}
+</style>
+
+<body id="the_body">
 	<canvas id="the_canvas"
-		width="1152"
-		height="648"
+		<!--
+		Don't expect editing height and width to do anything.
+		|	height and width are HTMLCanvasElement properties. They are in logical-pixels.
+		|	Specifying a CSS height or width will override these values. They are in CSS-pixels.
+		-->
+		width="1"
+		height="1"
 		></canvas>
-	<pre id="the_output"
-		style="background-color: white;"
-		width="640"
-		height="200"
-		></pre>
+	<pre id="the_output"></pre>
 	<script defer type="text/javascript">
 		const wasmMemoryInterface = new odin.WasmMemoryInterface();
 		const foreignImports = {
