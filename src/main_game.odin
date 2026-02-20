@@ -41,7 +41,7 @@ game_init :: proc () {
 	globals.cursor.flags += {.Hidden}
 	globals.cursor.position.xy = globals.mouse_position.xy
 	globals.draw_colliders = false
-	globals.canvas_size_px = {640,400}
+	globals.canvas_size_px = {320,200}
 	globals.canvas_scaling = .None
 	globals.canvas_stretching = .Integer_Aspect
 	globals.canvas_stretching = .Integer_Aspect
@@ -63,8 +63,8 @@ game_init :: proc () {
 
 @export
 game_step :: proc () {
-	box := rect()
-	box.basis.scale = 44
+	box := text("game_step", .bold_pixel)
+	box.position = 100
 	@static vol: f32 = 1.0
 	if sugar.on_key_release(.Up_Arrow) {
 		vol = clamp(vol+0.1, 0, 1)
@@ -78,10 +78,11 @@ game_step :: proc () {
 	}
 	// log.infof("vol %2.2f", vol)
 	if sugar.on_key_release(.Space) {
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Enemy_Kill.ogg")
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg")
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg") // works if comment out stbverr
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Done.ogg") // crash
-		audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
+		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg", 0.5)
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Get_HeartPiece.ogg")
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_ItemFanfare.ogg")
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
+		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Done.ogg")
+		// audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
 	}
 } // game step
