@@ -129,7 +129,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		target = .TEXTURE_2D,
 		minify_filter = .LINEAR,
 		magnify_filter = .LINEAR,
-		format = .R8, // <----------- CANT RELEASE .TGA UNTIL THEY TAKE MY PR (RGB8 otherwise)
+		format = .R8,
 	}
 	bw := globals.assets.bw_atlas_image
 	init_and_upload_texture(cast(u32) Texture_Unit.Font, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})

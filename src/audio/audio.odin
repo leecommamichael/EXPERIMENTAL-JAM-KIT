@@ -40,7 +40,7 @@ play :: proc (sys: ^System, sink: Sink, clip_name: string, volume: f32 = 1) {
 			return
 		}
 		new_source.clip = player.clip
-		init_platform_source(sys^, new_source)
+		platform_init_source(sys^, new_source)
 		_append_source(sys, player, new_source)
 		player = new_source
 		platform_play(sys^, sink, player, volume)
@@ -110,7 +110,7 @@ add_source_from_clip :: proc (sys: ^System, clip: Clip) -> Source_Handle {
 	if src == nil do return 0
 
 	src.clip = clip
-	init_platform_source(sys^, src)
+	platform_init_source(sys^, src)
 	return src.id
 }
 
@@ -173,6 +173,6 @@ Sink :: struct {
 
 make_sink :: proc (sys: ^System, name: string = "") -> (sink: Sink) {
 	sink.name = name
-	init_platform_sink(sys, &sink)
+	platform_init_sink(sys, &sink)
 	return sink
 }

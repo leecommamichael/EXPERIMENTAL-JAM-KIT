@@ -1,17 +1,30 @@
 package audio
 
-System :: struct {
-	// xaudio: ^xa2.IXAudio2,
-	// mastering_voice: ^xa2.IXAudio2MasteringVoice,
+Platform_System :: struct {
 }
 
-init :: proc () -> (sys: System, ok: bool) {
-	return {}, true
+Platform_Source :: struct {
 }
 
-load_from_bytes :: proc (bytes: []u8) -> (clip: Clip, ok: bool) {
-	return {}, true
+Platform_Sink :: struct {
 }
 
-play :: proc (sys: System, it: Clip) {
+platform_init :: proc (sys: ^System) -> (ok: bool) {
+	return true
+}
+
+// ASSUMES PCM DATA
+platform_init_source :: proc (sys: System, it: ^Source) {
+}
+
+platform_init_sink :: proc (sys: ^System, sink: ^Sink) {
+}
+
+platform_destroy_source :: proc (sys: ^System, handle: Source_Handle) {
+}
+
+platform_sink_set_volume :: proc (sink: Sink, volume: f32) {
+}
+
+platform_play :: proc (sys: System, sink: Sink, src: ^Source, volume: f32) {
 }
