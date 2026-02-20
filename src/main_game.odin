@@ -27,8 +27,8 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
-RES_X :: 640 // 1/2 of Steam Deck
-RES_Y :: 400 // 1/2 of Steam Deck
+RES_X :: 320 // 1/2 of Steam Deck
+RES_Y :: 200 // 1/2 of Steam Deck
 RES_SCALE :: 1
 
 gs: ^Game_State
@@ -41,7 +41,7 @@ game_init :: proc () {
 	globals.cursor.flags += {.Hidden}
 	globals.cursor.position.xy = globals.mouse_position.xy
 	globals.draw_colliders = false
-	globals.canvas_size_px = {320,200}
+	globals.canvas_size_px = array_cast([2]int{RES_X, RES_Y}, f32)
 	globals.canvas_scaling = .None
 	globals.canvas_stretching = .Integer_Aspect
 	globals.canvas_stretching = .Integer_Aspect

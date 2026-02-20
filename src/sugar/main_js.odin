@@ -46,6 +46,8 @@ create_window :: proc (
 	}
 	// ok := js.add_resize_observer(canvas_id, canvas_resize_callback)
 	// assert(ok, "failed to add resize observer")
+	js.set_element_key_f64(canvas_id, "width", cast(f64) rect.z)
+	js.set_element_key_f64(canvas_id, "height", cast(f64) rect.w)
 	js.add_event_listener(canvas_id, .Pointer_Move, user_data = nil, callback = js_on_canvas_event)
 	js.add_event_listener(canvas_id, .Pointer_Up,   user_data = nil, callback = js_on_canvas_event)
 	js.add_event_listener(canvas_id, .Pointer_Down, user_data = nil, callback = js_on_canvas_event)
