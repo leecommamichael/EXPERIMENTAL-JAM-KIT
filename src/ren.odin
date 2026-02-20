@@ -51,7 +51,7 @@ ren_make :: proc () -> ^Ren {
 ren_init :: proc (ren: ^Ren) {
 	set_canvas_size([2]int{2,2}) // arbitrary non-zero number creates the canvas.
 	gl.FrontFace(.CCW)
-	gl.ClearColor(0.0, 0.0, 0.0, 0.0)
+	gl.ClearColor(0.0, 0.0, 0.0, 1.0) // web wants 0001, (canvas element is transparent otherwise)
 	gl.glClearDepth(1.0)
 	// gl.glClearStencil(0.0)
 	gl.glDepthMask(true)
