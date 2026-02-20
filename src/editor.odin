@@ -1,10 +1,6 @@
 package main
 
-import gl "vendor:OpenGL"
-import ngl "angle"
 import "core:math/linalg"
-import "core:math"
-import "core:log"
 
 // Returns the position of the cursor, and its direction thru the camera frustum.
 // e.g. cursor_in_world, cursor_direction := cursor_direction_in_world()
