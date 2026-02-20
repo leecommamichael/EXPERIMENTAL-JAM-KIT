@@ -52,7 +52,7 @@ main :: proc() {
 	}
 	ok := sugar.create_window(
 		xywh,
-		"SimSettlement",
+		"Jam Kit",
 		use_gl = true
 	)
 	if !ok { panic("Window creation failed.") }

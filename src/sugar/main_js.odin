@@ -48,15 +48,15 @@ create_window :: proc (
 	// assert(ok, "failed to add resize observer")
 	js.set_element_key_f64(canvas_id, "width", cast(f64) rect.z)
 	js.set_element_key_f64(canvas_id, "height", cast(f64) rect.w)
-	js.add_event_listener(canvas_id, .Pointer_Move, user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Pointer_Up,   user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Pointer_Down, user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Key_Up,       user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Key_Down,     user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Wheel,        user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Scroll,       user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Gamepad_Connected,     user_data = nil, callback = js_on_canvas_event)
-	js.add_event_listener(canvas_id, .Gamepad_Disconnected,  user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Pointer_Move, user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Pointer_Up,   user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Pointer_Down, user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Key_Up,       user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Key_Down,     user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Wheel,        user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Scroll,       user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Gamepad_Connected,     user_data = nil, callback = js_on_canvas_event)
+	js.add_window_event_listener(.Gamepad_Disconnected,  user_data = nil, callback = js_on_canvas_event)
 	return true
 }
 
@@ -79,7 +79,6 @@ set_cursor_visible :: proc (show: bool) {
 
 @export
 canvas_resize_callback :: proc "c" (w,h: f64) {
-	// log.infof("resized: %v,%v", w, h)
 	js_should_resize = true
 	pixels_per_css_pixel := js.device_pixel_ratio()
 	wpx := cast(int) (pixels_per_css_pixel * w)
@@ -168,6 +167,9 @@ js_mouse_button_from_event :: proc (event: js.Event) -> Key {
 
 on_key_down :: proc (event: js.Event) {
 	virtual_keycode := js_key_from_code(event.key.code)
+	if virtual_keycode == .None {
+		log.errorf("unknown key: %v", event.key.code)
+	}
 
 	// Don't process key repeats. Those are for text editing, not games.
 	if event.key.repeat { return }
