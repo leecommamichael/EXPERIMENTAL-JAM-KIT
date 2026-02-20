@@ -6,6 +6,12 @@ import "core:sys/wasm/js"
 import "core:math/linalg"
 import gl "../angle"
 
+load_gl :: proc () {}
+
+Platform_State :: struct {
+
+}
+
 platform_calls_step :: true
 js_should_capture_pointer := false
 js_should_release_pointer := false
@@ -173,10 +179,10 @@ on_key_up :: proc (event: js.Event) {
 }
 
 on_pointer_move :: proc (event: js.Event) {
-	mouse_position = linalg.array_cast(event.mouse.offset, f32)
-	mouse_position.y = cast(f32)viewport_size.y - mouse_position.y
+	g.mouse_position = linalg.array_cast(event.mouse.offset, f32)
+	g.mouse_position.y = cast(f32)g.viewport_size.y - g.mouse_position.y
 	// Deltas are zeroed each input frame.
-	mouse_delta += linalg.array_cast(event.mouse.movement, f32)
+	g.mouse_delta += linalg.array_cast(event.mouse.movement, f32)
 }
 
 on_pointer_up :: proc (event: js.Event) {
