@@ -41,7 +41,7 @@ assert(ok)
 }
 
 // ASSUMES PCM DATA
-init_platform_source :: proc (sys: System, it: ^Source) {
+platform_init_source :: proc (sys: System, it: ^Source) {
 	wave_format: xa2.WAVEFORMATEX
 	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
 	wave_format.nChannels  = cast(u16) it.channels
@@ -111,7 +111,7 @@ _default_source_voice_callback: xa2.IXAudio2VoiceCallback_VTable = {
 	}
 }
 
-init_platform_sink :: proc (sys: ^System, sink: ^Sink) {
+platform_init_sink :: proc (sys: ^System, sink: ^Sink) {
 	result := sys.xaudio->CreateSubmixVoice(&sink.voice, 2, 44100)
 assert(result == windows.S_OK)
 	send_desc := xa2.SEND_DESCRIPTOR { {}, sys.mastering_voice }
