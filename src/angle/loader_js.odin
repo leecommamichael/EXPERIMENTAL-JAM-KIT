@@ -6,8 +6,6 @@ foreign import "webgl2"
 import glm "core:math/linalg/glsl"
 import "base:intrinsics"
 
-
-
 ContextAttribute :: enum GLuint {
 	disableAlpha                 = 0,
 	disableAntialias             = 1,

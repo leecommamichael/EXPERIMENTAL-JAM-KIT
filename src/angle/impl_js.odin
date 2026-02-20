@@ -594,6 +594,22 @@ BindSampler :: proc (unit: GLuint, sampler: Sampler) {
 CheckFramebufferStatus :: proc (target: Framebuffer_Target) -> GLenum {
 	return glCheckFramebufferStatus(auto_cast target)
 }
+
+
+
+
+DeleteVertexArray :: proc (it: VertexArrayObject) {
+	glDeleteVertexArray(it)
+}
+
+DeleteBuffer :: proc (it: Buffer) {
+	glDeleteBuffer(it)
+}
+
+DeleteProgram :: proc (it: Program) {
+	glDeleteProgram(it)
+}
+
 // Get_Texture_Base_Level   :: proc (target: Texture_Parameter_Target) -> GLuint {}
 // Get_Texture_Max_Level    :: proc (target: Texture_Parameter_Target) -> GLuint {}
 // Get_Texture_Min_LOD      :: proc (target: Texture_Parameter_Target) -> f32 {}
