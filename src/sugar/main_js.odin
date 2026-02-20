@@ -82,7 +82,7 @@ canvas_resize_callback :: proc "c" (w,h: f64) {
 	pixels_per_css_pixel := js.device_pixel_ratio()
 	wpx := cast(int) (pixels_per_css_pixel * w)
 	hpx := cast(int) (pixels_per_css_pixel * h)
-	viewport_size = {wpx, hpx}
+	g.viewport_size = {wpx, hpx}
 }
 
 // Convert callback to pollable structure.

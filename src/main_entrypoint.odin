@@ -62,7 +62,7 @@ main :: proc() {
 	framework_init()
 
 	when sugar.platform_calls_step { return }
-	when ODIN_OS != .Darwin {
+	when ODIN_OS != .Darwin && ODIN_OS != .JS {
 	gl_debug_proc :: proc "c" (
 		source: gl.GLuint,
 		type: gl.GLuint,

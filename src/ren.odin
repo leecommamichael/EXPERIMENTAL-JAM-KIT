@@ -806,7 +806,7 @@ bind_texture_to_unit :: proc (texture_unit: u32, texture: GPU_Texture) {
 init_and_upload_texture :: proc (texture_unit: u32, texture: ^GPU_Texture, pixels: []$T, size_px: [2]int) -> bool {
 	assert(texture.texture == 0)
 	assert(pixels != nil)
-	assert(gl.glGenTextures != nil)
+	when ODIN_OS != .JS do assert(gl.glGenTextures != nil)
 	err, new_texture_name := gl.CreateTexture()
 	if err != nil { return false }
 	texture.texture = new_texture_name
