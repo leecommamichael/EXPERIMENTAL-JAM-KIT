@@ -67,6 +67,7 @@ game_step :: proc () {
 	box.position = 100
 	@static vol: f32 = 1.0
 	if sugar.on_key_release(.Up_Arrow) {
+		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg", 0.5)
 		vol = clamp(vol+0.1, 0, 1)
 		audio.sink_set_volume(gs.music_sink, vol)
 		audio.sink_set_volume(gs.sfx_sink, vol)
@@ -85,7 +86,7 @@ game_step :: proc () {
 		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Done.ogg")
 		// audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
 	}
-	if sugar.key_held(.Space) {
-		box.position.x += 0.01
-	}
+	// if sugar.key_held(.Space) {
+	// 	box.position.x += 0.01
+	// }
 } // game step

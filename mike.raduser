@@ -21,7 +21,6 @@ window:
     {
       0.366045:
       {
-        selected
         watch: expression: "query:types"
         watch:
         {
@@ -77,6 +76,7 @@ window:
     }
     0.366388:
     {
+      selected
       disasm:
       {
         expression: ""
@@ -286,14 +286,24 @@ window:
       }
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin/base/runtime/core.odin\".data"
         auto: 1
         query: input: ""
-        cursor_line: 810
-        cursor_column: 1
-        mark_line: 810
-        mark_column: 1
+        cursor_line: 793
+        cursor_column: 24
+        mark_line: 793
+        mark_column: 24
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/audio/audio.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 84
+        cursor_column: 35
+        mark_line: 84
+        mark_column: 35
       }
     }
     0.278493: memory:
@@ -427,7 +437,7 @@ keybindings:
   { toggle_dev_menu d ctrl shift alt }
   { add_target o ctrl }
 }
-current_path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src"
+current_path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/audio"
 file_path_map:
 {
   source: "C:/Users/thatl/usr/repositories/angle/src/math.odin"

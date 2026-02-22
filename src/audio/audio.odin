@@ -61,9 +61,9 @@ System :: struct {
 	using platform: Platform_System
 }
 
-init :: proc () -> (sys: System, ok: bool) {
+init :: proc (sys: ^System) -> (ok: bool) {
 	sys.sources = make([]Source, 100)
-	ok = platform_init(&sys)
+	ok = platform_init(sys)
 assert(ok)
 	return
 }
@@ -175,4 +175,4 @@ make_sink :: proc (sys: ^System, name: string = "") -> (sink: Sink) {
 	sink.name = name
 	platform_init_sink(sys, &sink)
 	return sink
-}
+} 

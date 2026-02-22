@@ -3,7 +3,7 @@
 // Duplicates potentially large buffers. Slow.
 function planar_f32_from_interleaved_i16(odin, data_ptr, num_channels, num_samples) {
   const total_elements = num_samples * num_channels
-  const i16_view = new Int16Array(odin.memory.buffer, data_ptr, total_elements)
+  const i16_view = odin.loadI16Array(data_ptr, total_elements)
   const planar_data = [] // Untracked allocation.
   
   for (let c = 0; c < num_channels; c++) {
@@ -53,7 +53,7 @@ const web_audio_create_module = (odin) =>  {
 				console.log(`[web_audio.js] ERROR. nil Source_Handle.`);
 				return 
 			}
-			
+
 			let src_obj = src_nodes[src_handle]
 			if (src_obj == null) {
 				src_nodes[src_handle] = {}
@@ -66,15 +66,13 @@ const web_audio_create_module = (odin) =>  {
 			src_node.connect(gain_node)
 			gain_node.connect(master_gain)
 
-			src_obj = {
-				node:      src_node,
-				gain_node: gain_node,
-				gain:      gain_node.gain,
-				out_node:  master_gain
-			}
+			src_obj.node=      src_node,
+			src_obj.gain_node= gain_node,
+			src_obj.gain=      gain_node.gain,
+			src_obj.out_node=  master_gain
 
 			src_obj.node.onended = () => {
-				const spent_node = src_obj.node
+				let spent_node = src_obj.node
 				src_obj.node = ctx.createBufferSource()
 				src_obj.node.buffer = buffer
 				src_obj.node.onended = spent_node.onended // reuse this event handler
@@ -92,7 +90,7 @@ const web_audio_create_module = (odin) =>  {
 			return handle
 		},
 
-		web_audio_set_sink: (src_obj, new_out) => {
+		web_audio_set_sink: (src_handle, new_out) => {
 			try {
 				if (!src_handle) {
 					console.log(`[web_audio.js] ERROR. nil Source_Handle.`);
@@ -124,7 +122,7 @@ const web_audio_create_module = (odin) =>  {
 			return len
 		},
 
-		web_audio_start_source: (sys, src_handle) => {
+		web_audio_start_source: (src_handle, sink_handle) => {
 			if (!src_handle) {
 				console.log(`[web_audio.js] ERROR. nil Source_Handle.`);
 				return 

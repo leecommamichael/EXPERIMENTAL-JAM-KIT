@@ -1,5 +1,7 @@
 package audio
 
+import "core:log"
+
 foreign import "web_audio"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -8,7 +10,7 @@ foreign import "web_audio"
 
 @(default_calling_convention="contextless")
 foreign web_audio {
-	web_audio_platform_init :: proc (sys: System)  ---
+	web_audio_platform_init :: proc (sys: ^System)  ---
 
 	web_audio_platform_init_source :: proc (src: Source_Handle, buf: Buffer_Handle) ---
 
@@ -27,7 +29,7 @@ foreign web_audio {
 }
 
 @export
-web_audio_source_buffer_on_ended :: proc (system: System, _src: Source_Handle) {
+web_audio_source_buffer_on_ended :: proc (system: ^System, _src: Source_Handle) {
 	system.sources[_src].busy = false
 }
 
@@ -51,7 +53,7 @@ Platform_Sink :: struct {
 }
 
 platform_init :: proc (sys: ^System) -> (ok: bool) {
-	web_audio_platform_init(sys^) // wasm passes structs as pointers.
+	web_audio_platform_init(sys)
 	return true
 }
 
@@ -80,6 +82,7 @@ platform_sink_set_volume :: proc (sink: Sink, volume: f32) {
 }
 
 platform_play :: proc (sys: System, sink: Sink, src: ^Source, volume: f32) {
+	src.busy = true
 	web_audio_start_source(src.id, sink.impl)
 	// 1. ensure src is hooked to sink
 	// 2. set voume on src's gain
