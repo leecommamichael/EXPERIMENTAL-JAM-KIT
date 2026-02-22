@@ -41,7 +41,7 @@ assert(ok)
 }
 
 // ASSUMES PCM DATA
-platform_init_source :: proc (sys: System, it: ^Source) {
+platform_init_source :: proc (sys: ^System, it: ^Source) {
 	wave_format: xa2.WAVEFORMATEX
 	wave_format.wFormatTag = windows.WAVE_FORMAT_PCM
 	wave_format.nChannels  = cast(u16) it.channels

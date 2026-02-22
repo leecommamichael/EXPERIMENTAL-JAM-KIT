@@ -39,8 +39,9 @@ play :: proc (sys: ^System, sink: Sink, clip_name: string, volume: f32 = 1) {
 		if new_source == nil {
 			return
 		}
+		// Point the new source to existing audio data.
 		new_source.clip = player.clip
-		platform_init_source(sys^, new_source)
+		platform_init_source(sys, new_source)
 		_append_source(sys, player, new_source)
 		player = new_source
 		platform_play(sys^, sink, player, volume)
@@ -85,7 +86,6 @@ init_clip_from_bytes :: proc (clip: ^Clip, bytes: []u8) -> (ok: bool) {
 																					cast(^c.int) &clip.channels,
 																					cast(^c.int) &clip.sample_rate,
 																					cast(^[^]c.short) &sample_data)
-	log.infof("%s Channels: %d", clip.name, clip.channels)
 	clip.bytes = sample_data[:clip.samples * size_of(c.short) ]
 	if clip.samples < 1 {
 		return false
@@ -110,7 +110,7 @@ add_source_from_clip :: proc (sys: ^System, clip: Clip) -> Source_Handle {
 	if src == nil do return 0
 
 	src.clip = clip
-	platform_init_source(sys^, src)
+	platform_init_source(sys, src)
 	return src.id
 }
 

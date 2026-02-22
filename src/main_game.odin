@@ -76,13 +76,16 @@ game_step :: proc () {
 		audio.sink_set_volume(gs.music_sink, vol)
 		audio.sink_set_volume(gs.sfx_sink, vol)
 	}
-	// log.infof("vol %2.2f", vol)
 	if sugar.on_key_release(.Space) {
 		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg", 0.5)
+		log.infof("vol %2.2f", vol)
 		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Get_HeartPiece.ogg")
 		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_ItemFanfare.ogg")
 		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
 		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Done.ogg")
 		// audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
+	}
+	if sugar.key_held(.Space) {
+		box.position.x += 0.01
 	}
 } // game step

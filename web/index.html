@@ -1,6 +1,7 @@
 <head>
 	<script type="text/javascript" src="odin.js"></script>
 	<script type="text/javascript" src="kv5.js"></script>
+	<script type="text/javascript" src="web_audio.js"></script>
 </head>
 
 <style>
@@ -42,7 +43,8 @@
 		const wasmMemoryInterface = new odin.WasmMemoryInterface();
 		const foreignImports = {
 			"kv5": kv5_create_module(wasmMemoryInterface),
+			"web_audio": web_audio_create_module(wasmMemoryInterface),
 		}
-		odin.runWasm("engine.wasm", document.getElementById("the_output"), foreignImports);
+		odin.runWasm("engine.wasm", document.getElementById("the_output"), foreignImports, wasmMemoryInterface);
 	</script>
 </body>

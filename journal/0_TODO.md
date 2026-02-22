@@ -2,6 +2,8 @@ TODO
 
 general:
 	- move create_window to userland (changes initialization a lot.)
+	- raddbg type-views
+	- errors in the GUI
 
 bundler:
 	- live atlases for add/remove sprite/image and arbitrary fonts.
