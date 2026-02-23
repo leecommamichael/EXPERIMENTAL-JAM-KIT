@@ -69,41 +69,54 @@ game_step :: proc () {
 	}
 
 
-	bg := rect()
-	bg.position.xy = 44
-	bg.scale = 44
-	bg.color.a = 0.2
-	linear_fill := rect()
-	linear_fill.position.xy = 44
-	linear_fill.scale.x = 44
-	bg2 := rect()
-	bg2.position.xy = 44 + {44 + 4,0}
-	bg2.scale = 44
-	bg2.color.a = 0.2
-	curved_fill := rect()
-	curved_fill.position.xy = 44 + {4,0}
-	curved_fill.position.x += 44
-	curved_fill.scale.x = 44
 
 	gamepad := globals.sugar.input.gamepad
 	pressure := gamepad.right_trigger
 	@static prev_pressure: f32; defer prev_pressure = pressure
 	d_pressure: f32 = pressure - prev_pressure
 
-	linear_fill.scale.y = 44 * pressure
-	curved_fill.scale.y = 44 * midtone(pressure, 2.0)
-
-	@static played_tick: time.Tick
+	shake_debounce :: .030
+	shake_duration :: .150
+	@static since_shake: f32 = 0; since_shake += globals.dt
 	played: bool
-	can_play := time.tick_since(played_tick) > 70*time.Millisecond
+	can_play := since_shake > shake_debounce
+	shake_alpha: f32 = clamp((shake_duration - since_shake) / shake_duration, 0, 1)
+	@static shake_power: f32 = 0
+
 	if can_play && (pressure <= 0 || pressure >= 1) && d_pressure != 0 {
-		log.infof("d_pressure=%2.2f", d_pressure)
-		linear_fill.scale.y += d_pressure * 44
-		curved_fill.scale.y += d_pressure * 44
 		played = true
-		played_tick = time.tick_now()
+		since_shake = 0
+		shake_power = d_pressure
 		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
 	}
+
+	basis: Vec2 = 44
+	if shake_alpha != 0 {
+	basis += { 
+		0,//cos((shake_power * 40)*shake_alpha) * 5 / 2,
+		sin((shake_power * 10)*shake_alpha) * 7 / 2
+	}
+	}
+
+	bg := rect()
+	bg.position.xy = 44 - 11
+	bg.scale = 66
+	bg.color = 0.2
+	// linear_fill := rect()
+	// linear_fill.position.xy = 44
+	// linear_fill.scale.x = 44
+	// linear_fill.scale.y = 44 * pressure
+
+	bg2 := rect()
+	bg2.position.xy = basis
+	bg2.scale = 44
+	bg2.color = 0.2
+	curved_fill := rect()
+	curved_fill.position.xy = basis
+	curved_fill.scale.x = 44
+	curved_fill.color.rb = 1 - shake_alpha
+	// curved_fill.scale.y = 44 * midtone(pressure, 2.0)
+
 
 	// I need a prepend which shoves other values aside.
 	if played {
