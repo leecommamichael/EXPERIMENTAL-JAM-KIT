@@ -70,6 +70,7 @@ game_step :: proc () {
 
 	gamepad := globals.sugar.input.gamepad
 	pressure := gamepad.right_trigger
+	pressure = precision(pressure, 2) // DENOISE INPUT. 1000 values.
 	@static _pp: f32; defer _pp = pressure
 	@static _pp2: f32; defer _pp2 = _pp
 	prev_pressure := pressure == 0 ? max(_pp, _pp2) : min(_pp, _pp2)
@@ -88,7 +89,8 @@ game_step :: proc () {
 		shook = true
 		since_shake = 0
 		shake_power = d_pressure
-		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
+		sfx := abs(d_pressure) >= 1 ? "LTTP_Text_Done.ogg" : "LTTP_Text_Letter.ogg"
+		audio.play(&globals.audio, gs.sfx_sink, sfx)
 	}
 
 
@@ -122,8 +124,7 @@ game_step :: proc () {
 	pressure_label: string = fmt.tprintf("Shake %2.1f", abs(last_d_pressure))
 	t := text(pressure_label, .bold_pixel)
 	t.position.y = 44 + 55 + 4
-	t.position.x = 44 - 4
-
+	t.position.x = 44 - 10
 
 
 

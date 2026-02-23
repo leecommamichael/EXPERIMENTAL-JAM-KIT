@@ -199,6 +199,13 @@ clamp_length :: proc "contextless" (direction: Vec3, max_length: f32) -> Vec3 {
 	return direction
 }
 
+precision :: proc (f: f32, digits: int) -> f32 {
+	k := pow(10, f32(digits))
+	kept_digits := (k * f)
+	kept_digits = trunc(kept_digits)
+	return kept_digits / k
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Curves
 ////////////////////////////////////////////////////////////////////////////////
