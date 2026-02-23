@@ -68,61 +68,63 @@ game_step :: proc () {
 		txt.position.xy = 8
 	}
 
-
-
 	gamepad := globals.sugar.input.gamepad
 	pressure := gamepad.right_trigger
-	@static prev_pressure: f32; defer prev_pressure = pressure
+	@static _pp: f32; defer _pp = pressure
+	@static _pp2: f32; defer _pp2 = _pp
+	prev_pressure := pressure == 0 ? max(_pp, _pp2) : min(_pp, _pp2)
 	d_pressure: f32 = pressure - prev_pressure
+
 
 	shake_debounce :: .030
 	shake_duration :: .150
 	@static since_shake: f32 = 0; since_shake += globals.dt
-	played: bool
+	shook: bool
 	can_play := since_shake > shake_debounce
 	shake_alpha: f32 = clamp((shake_duration - since_shake) / shake_duration, 0, 1)
 	@static shake_power: f32 = 0
 
 	if can_play && (pressure <= 0 || pressure >= 1) && d_pressure != 0 {
-		played = true
+		shook = true
 		since_shake = 0
 		shake_power = d_pressure
 		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
 	}
 
+
 	basis: Vec2 = 44
 	if shake_alpha != 0 {
-	basis += { 
-		0,//cos((shake_power * 40)*shake_alpha) * 5 / 2,
-		sin((shake_power * 10)*shake_alpha) * 7 / 2
-	}
+		basis += {
+			0,
+			6 * shake_power * shake_alpha * sin(shake_alpha)
+		}
 	}
 
 	bg := rect()
 	bg.position.xy = 44 - 11
 	bg.scale = 66
-	bg.color = 0.2
-	// linear_fill := rect()
-	// linear_fill.position.xy = 44
-	// linear_fill.scale.x = 44
-	// linear_fill.scale.y = 44 * pressure
+	bg.color = 0.4
 
 	bg2 := rect()
 	bg2.position.xy = basis
 	bg2.scale = 44
-	bg2.color = 0.2
+	bg2.color = 0.6
 	curved_fill := rect()
 	curved_fill.position.xy = basis
 	curved_fill.scale.x = 44
-	curved_fill.color.rb = 1 - shake_alpha
-	// curved_fill.scale.y = 44 * midtone(pressure, 2.0)
+	curved_fill.color.rbg = 0.7
+	curved_fill.scale.y = 44 * midtone(pressure, 2.0)
 
-
-	// I need a prepend which shoves other values aside.
-	if played {
-		// decide the velocity.
-		// backtrack until a value lower than the present value is found.
+	@static last_d_pressure: f32
+	if shook {
+		last_d_pressure = d_pressure
 	}
+	pressure_label: string = fmt.tprintf("Shake %2.1f", abs(last_d_pressure))
+	t := text(pressure_label, .bold_pixel)
+	t.position.y = 44 + 55 + 4
+	t.position.x = 44 - 4
+
+
 
 
 	// switch {
