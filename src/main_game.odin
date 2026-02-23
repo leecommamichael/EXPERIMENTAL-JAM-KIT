@@ -23,12 +23,12 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Brackeys Jam                                                         Feb 2026
+// Aster
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
-RES_X :: 320 // 1/2 of Steam Deck
-RES_Y :: 200 // 1/2 of Steam Deck
+RES_X :: 800
+RES_Y :: 800
 RES_SCALE :: 1
 
 gs: ^Game_State
@@ -63,30 +63,67 @@ game_init :: proc () {
 
 @export
 game_step :: proc () {
-	box := text("game_step", .bold_pixel)
-	box.position = 100
-	@static vol: f32 = 1.0
+	defer {
+		txt := text("Trigger Pressure Experiment", .bold_pixel)
+		txt.position.xy = 8
+	}
+
+
+	bg := rect()
+	bg.position.xy = 44
+	bg.scale = 44
+	bg.color.a = 0.2
+	linear_fill := rect()
+	linear_fill.position.xy = 44
+	linear_fill.scale.x = 44
+	bg2 := rect()
+	bg2.position.xy = 44 + {44 + 4,0}
+	bg2.scale = 44
+	bg2.color.a = 0.2
+	curved_fill := rect()
+	curved_fill.position.xy = 44 + {4,0}
+	curved_fill.position.x += 44
+	curved_fill.scale.x = 44
+
+	gamepad := globals.sugar.input.gamepad
+	pressure := gamepad.right_trigger
+	@static prev_pressure: f32; defer prev_pressure = pressure
+	d_pressure: f32 = pressure - prev_pressure
+
+	linear_fill.scale.y = 44 * pressure
+	curved_fill.scale.y = 44 * midtone(pressure, 2.0)
+
+	@static played_tick: time.Tick
+	played: bool
+	can_play := time.tick_since(played_tick) > 70*time.Millisecond
+	if can_play && (pressure <= 0 || pressure >= 1) && d_pressure != 0 {
+		log.infof("d_pressure=%2.2f", d_pressure)
+		linear_fill.scale.y += d_pressure * 44
+		curved_fill.scale.y += d_pressure * 44
+		played = true
+		played_tick = time.tick_now()
+		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
+	}
+
+	// I need a prepend which shoves other values aside.
+	if played {
+		// decide the velocity.
+		// backtrack until a value lower than the present value is found.
+	}
+
+
+	// switch {
+	// case pressure > 5.0/6.0: pressure = 5.0/5.0
+	// case pressure > 4.0/6.0: pressure = 4.0/5.0
+	// case pressure > 3.0/6.0: pressure = 3.0/5.0
+	// case pressure > 2.0/6.0: pressure = 2.0/5.0
+	// case pressure > 1.0/6.0: pressure = 1.0/5.0
+	// case: pressure = 0
+	// }
+
 	if sugar.on_key_release(.Up_Arrow) {
-		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg", 0.5)
-		vol = clamp(vol+0.1, 0, 1)
-		audio.sink_set_volume(gs.music_sink, vol)
-		audio.sink_set_volume(gs.sfx_sink, vol)
 	}
 	if sugar.on_key_release(.Down_Arrow) {
-		vol = clamp(vol-0.1, 0, 1)
-		audio.sink_set_volume(gs.music_sink, vol)
-		audio.sink_set_volume(gs.sfx_sink, vol)
 	}
-	if sugar.on_key_release(.Space) {
-		audio.play(&globals.audio, gs.sfx_sink, "LTTP_Rupee1.ogg", 0.5)
-		log.infof("vol %2.2f", vol)
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Get_HeartPiece.ogg")
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_ItemFanfare.ogg")
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Letter.ogg")
-		// audio.play(&globals.audio, gs.sfx_sink, "LTTP_Text_Done.ogg")
-		// audio.play(&globals.audio, gs.sfx_sink, "sfx_get_coin.ogg")
-	}
-	// if sugar.key_held(.Space) {
-	// 	box.position.x += 0.01
-	// }
 } // game step
+

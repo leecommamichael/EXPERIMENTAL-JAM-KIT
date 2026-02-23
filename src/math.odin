@@ -123,9 +123,10 @@ abs :: linalg.abs
 round :: linalg.round
 trunc :: glsl.trunc
 ceil :: glsl.ceil
+vec_len :: linalg.length
 vec_min :: linalg.min
 vec_max :: linalg.max
-lerp :: proc { 
+lerp :: proc {
 	math.lerp,
 	lerp_vec,
 	lerp_transform,
@@ -133,6 +134,8 @@ lerp :: proc {
 atan2 :: math.atan2
 sin :: math.sin
 cos :: math.cos
+exp :: math.exp
+pow :: math.pow
 sign :: math.sign
 sqrt :: math.sqrt
 PI :: math.PI
@@ -194,4 +197,15 @@ clamp_length :: proc "contextless" (direction: Vec3, max_length: f32) -> Vec3 {
 		return normalized * max_length
 	}
 	return direction
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Curves
+////////////////////////////////////////////////////////////////////////////////
+// k : -1 to 10000
+// -1 to 0: k will bow the curve to the bottom-right
+// 0 to 10000: k will bow the curve to the top-left
+// at 10000 and -1 the curve is a right-angle.
+midtone :: proc (x, k: f32) -> f32 {
+	return (k+1)*x/(1+k*x)
 }
