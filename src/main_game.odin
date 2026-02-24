@@ -85,14 +85,13 @@ game_step :: proc () {
 	shake_alpha: f32 = clamp((shake_duration - since_shake) / shake_duration, 0, 1)
 	@static shake_power: f32 = 0
 
-	if can_play && (pressure <= 0 || pressure >= 1) && d_pressure != 0 {
+	if can_play && pressure >= 1 && d_pressure != 0 {
 		shook = true
 		since_shake = 0
 		shake_power = d_pressure
 		sfx := abs(d_pressure) >= 1 ? "LTTP_Text_Done.ogg" : "LTTP_Text_Letter.ogg"
-		audio.play(&globals.audio, gs.sfx_sink, sfx)
+		audio.play(&globals.audio, gs.sfx_sink, sfx, shake_power)
 	}
-
 
 	basis: Vec2 = 44
 	if shake_alpha != 0 {
@@ -111,6 +110,7 @@ game_step :: proc () {
 	bg2.position.xy = basis
 	bg2.scale = 44
 	bg2.color = 0.6
+
 	curved_fill := rect()
 	curved_fill.position.xy = basis
 	curved_fill.scale.x = 44
@@ -125,6 +125,16 @@ game_step :: proc () {
 	t := text(pressure_label, .bold_pixel)
 	t.position.y = 44 + 55 + 4
 	t.position.x = 44 - 10
+
+	ship := mesh([]Vec3{
+		{  0.4,  0.0, 0 },
+		{ -0.2,  0.2, 0 },
+		{ -0.2, -0.2, 0 },
+		// {  0.4, -0.4, 0 },
+	})
+	ship.draw_command.mode = .Line_Loop
+	ship.basis.scale = 44
+	ship.position = 100
 
 
 

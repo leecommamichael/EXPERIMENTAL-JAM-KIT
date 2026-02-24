@@ -1,12 +1,36 @@
 package main
 
 import gl "angle"
+import "core:log"
 
-make_circle :: proc () -> (^Entity, bool) #optional_ok {
-	it, new := circle(); if new {
-		it.flags -= {.Immediate_Mode, .Immediate_In_Use}
+mesh :: proc (verts: []Vec3, hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+	entity, is_new := get_entity(hash)
+	// INTENT: Reference comparison.
+	if raw_data(verts) != raw_data(entity._verts) {
+		// They're just getting copied to the GPU, no need to retain.
+		temp_indices := make([dynamic]u32, context.temp_allocator)
+		for i in 0..<len(verts) {
+			append(&temp_indices, cast(u32)i)
+		}
+		temp_verts := make([dynamic]Ren_Vertex_Base, context.temp_allocator)
+		for v in verts {
+			append(&temp_verts, Ren_Vertex_Base{position=v})
+		}
+		if is_new {
+			entity.draw_command = ren_make_basic_draw_cmd(
+				globals.instance_buffer, cast(int) entity.id,
+				temp_verts[:],
+				temp_indices[:])
+		} else {
+			ren_reuse_basic_draw_cmd(&entity.draw_command,
+				globals.instance_buffer, cast(int) entity.id,
+				temp_verts[:],
+				temp_indices[:])
+		}
+		entity._verts = verts
 	}
-	return it, new
+	entity.position.z = next_z()
+	return entity, is_new
 }
 
 circle :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
@@ -21,6 +45,7 @@ circle :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 	return entity, is_new
 }
 
+// With anchor at bottom-left.
 rect :: proc (
 	color: Color4 = {1,1,1,1},
 	hash: Hash = #caller_location,
@@ -38,6 +63,7 @@ rect :: proc (
 	return entity, is_new
 }
 
+// With anchor at center.
 quad :: proc (
 	hash: Hash = #caller_location,
 ) -> (^Entity, bool) #optional_ok {
