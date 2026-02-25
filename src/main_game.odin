@@ -126,17 +126,18 @@ game_step :: proc () {
 	t.position.y = 44 + 55 + 4
 	t.position.x = 44 - 10
 
+	globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
+	log.infof("%#v", globals.camera.position)
 	ship := mesh([]Vec3{
-		{  0.4,  0.0, 0 },
-		{ -0.2,  0.2, 0 },
-		{ -0.2, -0.2, 0 },
+		{  0.4,  0.0, 1.0 },
+		{ -0.2,  0.2, 1.0 },
+		{ -0.2, -0.2, 1.0 },
 		// {  0.4, -0.4, 0 },
 	})
 	ship.draw_command.mode = .Line_Loop
 	ship.basis.scale = 44
-	ship.position = 100
-
-
+	ship.position.xyz = 1
+	ship.flags += {.Is_3D}
 
 	// switch {
 	// case pressure > 5.0/6.0: pressure = 5.0/5.0

@@ -1,7 +1,6 @@
 package main
 
 import gl "angle"
-import "core:log"
 
 mesh :: proc (verts: []Vec3, hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := get_entity(hash)
