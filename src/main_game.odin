@@ -126,18 +126,63 @@ game_step :: proc () {
 	t.position.y = 44 + 55 + 4
 	t.position.x = 44 - 10
 
+	globals.camera.position.y = 2
 	globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
-	log.infof("%#v", globals.camera.position)
-	ship := mesh([]Vec3{
-		{  0.4,  0.0, 1.0 },
-		{ -0.2,  0.2, 1.0 },
-		{ -0.2, -0.2, 1.0 },
-		// {  0.4, -0.4, 0 },
+
+	vehicle := mesh([]Vec3{
+    // --- BOTTOM FACE (y=0) ---
+    {0,0,0}, {1, 0, -1}, {1, 0, 1},
+    {0,0,0}, {-1, 0, -1}, {1, 0, -1},
+    {0,0,0}, {-1, 0, 1}, {-1, 0, -1},
+    {0,0,0}, {-1, 0, 1}, {1, 0, 1}, 
+    {-1, 0, 1}, {1, 0, 1}, {0, 0, 2},
+
+    // --- TOP FACE (y=1) ---
+    {0,1,0}, {1, 1, -1}, {1, 1, 1},
+    {0,1,0}, {-1, 1, -1}, {1, 1, -1},
+    {0,1,0}, {-1, 1, 1}, {-1, 1, -1},
+    {0,1,0}, {-1, 1, 1}, {1, 1, 1}, 
+    {-1, 1, 1}, {1, 1, 1}, {0, 1, 2},
+
+    // --- SIDE WALLS (Connecting y=0 to y=1) ---
+    
+    // Right Wall
+    {1, 0, -1}, {1, 1, -1}, {1, 1, 1},
+    {1, 0, -1}, {1, 1, 1}, {1, 0, 1},
+
+    // Front-Right Wall (to Tip)
+    {1, 0, 1}, {1, 1, 1}, {0, 1, 2},
+    {1, 0, 1}, {0, 1, 2}, {0, 0, 2},
+
+    // Front-Left Wall (from Tip)
+    {0, 0, 2}, {0, 1, 2}, {-1, 1, 1},
+    {0, 0, 2}, {-1, 1, 1}, {-1, 0, 1},
+
+    // Left Wall
+    {-1, 0, 1}, {-1, 1, 1}, {-1, 1, -1},
+    {-1, 0, 1}, {-1, 1, -1}, {-1, 0, -1},
+
+    // Back Wall
+    {-1, 0, -1}, {-1, 1, -1}, {1, 1, -1},
+    {-1, 0, -1}, {1, 1, -1}, {1, 0, -1},
 	})
-	ship.draw_command.mode = .Line_Loop
-	ship.basis.scale = 44
-	ship.position.xyz = 1
-	ship.flags += {.Is_3D}
+
+	vehicle.draw_command.mode = .Triangles
+	vehicle.basis.scale.xz = 1
+	vehicle.position.z = 0
+	vehicle.flags += {.Is_3D}
+
+	floor := mesh([]Vec3{
+		{-1, 0, -1}, { 1, 0, -1}, { 1, 0,  1},  
+		{ 1, 0,  1}, {-1, 0,  1}, {-1, 0, -1}
+	})
+	floor.position.z = 0
+	log.infof("%#v", floor.position)
+
+	floor.color = color("55f")
+	// floor.draw_command.mode = .Lines
+	floor.flags += {.Is_3D}
+	floor.basis.scale.xz = 100
 
 	// switch {
 	// case pressure > 5.0/6.0: pressure = 5.0/5.0
