@@ -7,12 +7,6 @@ import "base:runtime"
 
 // RATIONALE: I'm using u32 because OpenGL doesn't use 64bit index buffers.
 
-Geom_Mesh :: struct {
-  vertices: [dynamic]Vec3,
-  indices:  [dynamic]u32,
-  texcoord: [dynamic]Vec2,
-}
-
 Geom_Mesh2 :: struct {
   vertices: [dynamic]Ren_Vertex_Base,
   indices:  [dynamic]u32,
@@ -21,18 +15,19 @@ Geom_Mesh2 :: struct {
 // Prior to transformation, points are:
 //  - a circle in the XZ plane
 //  - centered on the origin
-//  - wound counter-clockwise when looking at -Y (Down)
-geom_make_ring :: proc (
-  mesh: ^[dynamic]Vec3,
-  sides: int,
-  radius: f32,
-  transform: Mat4,
+//  - wound counter-clockwise
+geom_write_ring :: proc (
+  vertices: []Ren_Vertex_Base,
+  position: Vec3 = 0,
+  sides: u32 = 12,
+  radius: f32 = 1,
+  transform: Mat4 = 1, // identity
 ) {
-  assert(mesh != nil)
+  position := vec4(position, 1)
   // Begin by appending zero. (center point)
-  append(mesh, (transform * Vec4{0,0,0,1}).xyz)
+  vertices[0] = {position = (transform * position).xyz}
 
-  // Find the step through the circle to make N sides. 0...(360-theta_step)
+  // Find the step through the circle to mkeake N sides. 0...(360-theta_step)
   theta_step := glsl.radians_f32(360.0) / f32(sides)
   for i in 0 ..< sides {
     theta := f32(i) * theta_step
@@ -44,27 +39,23 @@ geom_make_ring :: proc (
       math.sin(theta) * radius,
       1
     }
-    append(mesh, (transform * vertex).xyz)
+    vertices[1+i] = Ren_Vertex_Base{position=(transform * vertex).xyz}
   }
 }
 
-// start_of_mesh is both the center-point, and first vertex.
-geom_make_circle_indices :: proc (
-  indices: ^[dynamic]u32,
-  start_of_mesh: u32,
-  sides_in_mesh: u32,
-) {
-  // first, create the last triangle.
-  append(indices, start_of_mesh + 1)
-  append(indices, start_of_mesh)
-  append(indices, start_of_mesh + sides_in_mesh)
-  // create the rest
-  for i in 1 ..< sides_in_mesh {
-    index := (start_of_mesh + i);
-    append(indices, index + 1) // cant be zero.
-    append(indices, start_of_mesh)
-    append(indices, index)
-  }
+geom_append_ring :: proc (
+  mesh: ^Geom_Mesh2,
+  position: Vec3 = 0,
+  sides: u32 = 12,
+  radius: f32 = 1,
+  transform: Mat4 = 1
+  ) {
+  verts_needed := int(sides+1) // center-point is +1
+  v_len := len(mesh.vertices)
+  resize(&mesh.vertices, v_len + verts_needed)
+  vs := mesh.vertices[v_len:][:verts_needed]
+  geom_write_ring(vs, position, sides, radius, transform)
+  geom_append_circle_indices(&mesh.indices, 0, sides)
 }
 
 // Visualize this as creating faces between walls of a wheel.
@@ -108,7 +99,12 @@ geom_make_faces_between_rings :: proc (
 geom_make_cylinder :: proc (
   vector: Vec3,
   allocator: runtime.Allocator
-) -> Geom_Mesh {
+) -> Geom_Mesh2 {
+  mesh: Geom_Mesh2 = {
+    make([dynamic]Ren_Vertex_Base, allocator),
+    make([dynamic]u32, allocator),
+  }
+
   CYLINDER_SIDES :: 12
   CYLINDER_RADIUS :: 0.1
   y_axis :: Vec3{0,1,0}
@@ -134,19 +130,17 @@ geom_make_cylinder :: proc (
   // The tip's ring is translated away from the origin after rotating.
   rotate_tip_ring := _translate_back * rotate_tail_ring
 
-  mesh: [dynamic]Vec3 = make([dynamic]Vec3, allocator)
-  geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
-  geom_make_ring(&mesh, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
+  geom_append_ring(&mesh, 0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
+  geom_append_ring(&mesh, 0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
   verts_per_mesh: u32 : CYLINDER_SIDES + 1 // plus center-point
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
-  indices: [dynamic]u32 = make([dynamic]u32, allocator)
-  geom_make_circle_indices(&indices, 0, CYLINDER_SIDES)
-  geom_make_circle_indices(&indices, verts_per_mesh, CYLINDER_SIDES)
-  geom_make_faces_between_rings(&indices, 0, verts_per_mesh, CYLINDER_SIDES)
+  geom_append_circle_indices(&mesh.indices, 0, CYLINDER_SIDES)
+  geom_append_circle_indices(&mesh.indices, verts_per_mesh, CYLINDER_SIDES)
+  geom_make_faces_between_rings(&mesh.indices, 0, verts_per_mesh, CYLINDER_SIDES)
 
-  return { mesh, indices, {}, }
+  return mesh
 }
 
 // On the XY plane {0,0,0} is at the bottom left of the rect.
@@ -345,8 +339,27 @@ geom_append_circle :: proc (
   resize(&mesh.vertices, num_verts+sides+1) or_return
   geom_write_circle(mesh.vertices[num_verts:][:sides+1], sides, position, radius)
 
-  geom_make_circle_indices(&mesh.indices, u32(num_verts), u32(sides))
+  geom_append_circle_indices(&mesh.indices, u32(num_verts), u32(sides))
   return nil
+}
+
+// start_of_mesh is both the center-point, and first vertex.
+geom_append_circle_indices :: proc (
+  indices: ^[dynamic]u32,
+  start_of_mesh: u32,
+  sides_in_mesh: u32,
+) {
+  // first, create the last triangle.
+  append(indices, start_of_mesh + 1)
+  append(indices, start_of_mesh)
+  append(indices, start_of_mesh + sides_in_mesh)
+  // create the rest
+  for i in 1 ..< sides_in_mesh {
+    index := (start_of_mesh + i);
+    append(indices, index + 1) // cant be zero.
+    append(indices, start_of_mesh)
+    append(indices, index)
+  }
 }
 
 make_circle_2D :: proc (
@@ -363,8 +376,7 @@ make_circle_2D :: proc (
   // We can build an index buffer to from triagles from the points.
   indices: [dynamic]u32 = make([dynamic]u32)
   EDGE_SEGMENTS: u32 = cast(u32) sides
-  geom_make_circle_indices(&indices, 0, EDGE_SEGMENTS)
-  //geom_make_faces_between_rings(&indices, 0, VERTS_PER_CAP, EDGE_SEGMENTS)
+  geom_append_circle_indices(&indices, 0, EDGE_SEGMENTS)
 
   return { verts, indices }
 }

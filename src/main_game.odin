@@ -172,6 +172,23 @@ game_step :: proc () {
 	vehicle.position.z = 0
 	vehicle.flags += {.Is_3D}
 
+	// cylinder
+	@static cm: Geom_Mesh2
+	cylinder, nu := get_entity()
+	if nu {
+		cm = geom_make_cylinder({0,1,0}, context.allocator)
+		cylinder.flags += {.Is_3D}
+		cylinder.draw_command = ren_make_basic_draw_cmd(
+			globals.instance_buffer,
+			cast(int) cylinder.id,
+			cm.vertices[:],
+			cm.indices[:],
+			)
+		cylinder.color = color("f44")
+		cylinder.position = {2,1.9,2}
+		cylinder.draw_command.mode = .Lines
+	}
+
 	floor := mesh([]Vec3{
 		{-1, 0, -1}, { 1, 0, -1}, { 1, 0,  1},  
 		{ 1, 0,  1}, {-1, 0,  1}, {-1, 0, -1}
