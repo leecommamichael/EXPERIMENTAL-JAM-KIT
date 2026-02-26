@@ -147,13 +147,13 @@ Entity :: struct {
 	_verts:          []Vec3,
 }
 // #assert(size_of(Entity) >   512, "INFO:  32MB @ 2^12 entities.")
+//               REFERENCE: 600 ~= Unity's GameObject+Transform
 #assert(size_of(Entity) <   768, "INFO:  32MB @ 2^12 entities.")
 #assert(size_of(Entity) <  1024, "INFO:  64MB @ 2^12 entities.")
-#assert(size_of(Entity) <  2048, "INFO: 128MB @ 2^12 entities.")
-#assert(size_of(Entity) <  4096, "INFO: 256MB @ 2^16 entities.")
-#assert(size_of(Entity) <  8192, "WARN: 512MB @ 2^16 entities.")
-#assert(size_of(Entity) < 16384, "WARN:  >1GB @ 2^16 entities.")
-#assert(size_of(Entity) < 16384, "ERROR: >2GB @ 2^16 entities. What are you doing!?")
+//              REFERENCE: 1300 ~= Godot's Node3D (2D is larger lol)
+//              REFERENCE: 1500 ~= Unreal's AActor+RootComponent
+#assert(size_of(Entity) <  2048, "WARN: 128MB @ 2^12 entities.")
+#assert(size_of(Entity) <  4096, "WARN: 256MB @ 2^16 entities.")
 // #assert(size_of(Globals) >   32*Megabyte, "INFO: Know this figure.")
 #assert(size_of(Globals) <   64*Megabyte, "INFO: Know this figure.")
 #assert(size_of(Globals) <  128*Megabyte, "INFO: Know this figure.")
