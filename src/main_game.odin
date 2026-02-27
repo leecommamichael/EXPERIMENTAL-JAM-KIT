@@ -23,13 +23,13 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Aster
+// Wave Racer
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
-RES_X :: 800
+RES_X :: 1280
 RES_Y :: 800
-RES_SCALE :: 1
+RES_SCALE :: 2
 
 gs: ^Game_State
 
@@ -42,9 +42,8 @@ game_init :: proc () {
 	globals.cursor.position.xy = globals.mouse_position.xy
 	globals.draw_colliders = false
 	globals.canvas_size_px = array_cast([2]int{RES_X, RES_Y}, f32)
-	globals.canvas_scaling = .None
-	globals.canvas_stretching = .Integer_Aspect
-	globals.canvas_stretching = .Integer_Aspect
+	globals.canvas_scaling = .Integer_Aspect
+	globals.canvas_stretching = .None
 
 	r := rand.create(10)
 	context.random_generator = rand.default_random_generator(&r)
@@ -167,7 +166,7 @@ game_step :: proc () {
     {-1, 0, -1}, {1, 1, -1}, {1, 0, -1},
 	})
 
-	vehicle.draw_command.mode = .Triangles
+	vehicle.draw_command.program = globals.ren.programs[.Phong]
 	vehicle.basis.scale.xz = 1
 	vehicle.position.z = 0
 	vehicle.flags += {.Is_3D}
@@ -178,7 +177,7 @@ game_step :: proc () {
 	if nu {
 		cm = geom_make_cylinder({0,1,0}, context.allocator)
 		cylinder.flags += {.Is_3D}
-		cylinder.draw_command = ren_make_basic_draw_cmd(
+		cylinder.draw_command = ren_make_phong_draw_cmd(
 			globals.instance_buffer,
 			cast(int) cylinder.id,
 			cm.vertices[:],
@@ -186,18 +185,18 @@ game_step :: proc () {
 			)
 		cylinder.color = color("f44")
 		cylinder.position = {2,1.9,2}
-		cylinder.draw_command.mode = .Lines
 	}
+	globals.uniforms.lights[0].position = {0,2,0}
+	globals.uniforms.lights[0].power = 1.0
+	globals.uniforms.num_lights = 1
 
 	floor := mesh([]Vec3{
 		{-1, 0, -1}, { 1, 0, -1}, { 1, 0,  1},  
 		{ 1, 0,  1}, {-1, 0,  1}, {-1, 0, -1}
 	})
 	floor.position.z = 0
-	log.infof("%#v", floor.position)
 
 	floor.color = color("55f")
-	// floor.draw_command.mode = .Lines
 	floor.flags += {.Is_3D}
 	floor.basis.scale.xz = 100
 

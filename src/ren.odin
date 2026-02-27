@@ -37,6 +37,7 @@ ren_make :: proc () -> ^Ren {
 	ren.programs[Game_Shader.Image]  = ren_make_basic_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
 	ren.programs[Game_Shader.Sprite] = ren_make_basic_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
 	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_basic_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
+	ren.programs[Game_Shader.Phong] = ren_make_basic_shader(ren, phong_vertex_shader_source, phong_fragment_shader_source)
 
 	ren.linear_sampler = gl.CreateSampler()
 	gl.Set_Sampler_Min_Filter(ren.linear_sampler, .LINEAR)
@@ -652,6 +653,33 @@ ren_make_water_draw_cmd :: proc (
 	return
 }
 
+ren_make_phong_draw_cmd :: proc (
+	instance_buffer: gl.Buffer,
+	instance_index: int,
+	vertices: []Ren_Vertex_Base,
+	indices:  []u32,
+) -> (cmd: Draw_Command) {
+	cmd.program = globals.ren.programs[.Phong]
+	gl.GenVertexArrays(1, &cmd.VAO)
+	gl.BindVertexArray(cmd.VAO)
+
+	// Create Vertex Buffer
+	VBO: gl.Buffer
+	gl.GenBuffers(1, &VBO)
+	gl.BindBuffer(.ARRAY_BUFFER, VBO)
+	gl.BufferData(.ARRAY_BUFFER, vertices, .STREAM_DRAW)
+	gl.BindBuffer(.ARRAY_BUFFER, 0)
+
+	// Create Index Buffer
+	cmd.index_count = len(indices)
+	gl.GenBuffers(1, &cmd.index_buffer)
+	gl.BindBuffer(.ELEMENT_ARRAY_BUFFER, cmd.index_buffer)
+	gl.BufferData(.ELEMENT_ARRAY_BUFFER, indices)
+	
+
+	init_cmd_with_basic_vertex_attributes(&cmd, VBO, globals.instance_buffer, instance_index)
+	return
+}
 
 //////////////////////////////////////////////////////////////////////
 // GL_UTIL
@@ -897,19 +925,21 @@ precision_defaults :: `
 
 // Keep synchronized with Uniforms :: struct (stored at globals.uniforms.)
 frame_uniforms :: `
+	// #define MAX_LIGHTS 10
+
+	struct Light {
+		vec3 position;
+		float power;
+	};
+
 	layout(std140) uniform Frame_Uniforms {
 		mat4  view;       // where the camera is
 		mat4  projection; // camera lens
 		float time;
 		float tau_time;
-		vec2  ball_position;
-		vec2  ball_size;
-		vec2  hand_position;
-		vec2  hand_size;
 		vec2  canvas_size_px;
-		vec2  collision_position;
-		float collision_force;
-		float collision_time;
+		Light lights[10];
+		int   num_lights;
 	} frame;
 `
 
@@ -962,7 +992,46 @@ basic_fragment_shader_source :: fragment_preamble + `
 		outColor = io_color;
 	}
 `
+// Basic: Phong ////////////////////////////////////////////////////////////////
+phong_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
+`
+//phongvert
+	out vec4 color;
+	out vec3 world_position;
 
+	void main() {
+		vec4 position4 = vec4(v_position, 1);
+		world_position = (i_model_mat * position4).xyz;
+		color.rgb = i_color.rgb * i_color.a; // Convert to PMA
+		color.a = i_color.a; // Convert to PMA
+		mat4 mvp = frame.projection * frame.view * i_model_mat;
+		gl_Position = mvp * vec4(v_position, 1);
+	}
+`
+
+phong_fragment_shader_source :: fragment_preamble + `
+//phongfrag
+	in vec4 color;
+	in vec3 world_position;
+
+	out vec4 outColor;
+	void main() {
+		float ambient_luminance = 0.1;
+		vec3 ambient_light = ambient_luminance * color.xyz;
+
+		vec3 surface_normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
+		vec3 light = vec3(0, 0, 0);
+		for (int i = 0; i < frame.num_lights; ++i) {
+			Light _light = frame.lights[i];
+			vec3 surface_to_light = normalize(_light.position - world_position);
+			float diffuse_luminance = max(dot(surface_normal, surface_to_light), 0.0);
+			vec3 diffuse_light = diffuse_luminance * _light.power * vec3(1,1,1);
+			light += diffuse_light;
+		}
+
+		outColor = vec4(light, 1.0);
+	}
+`
 // Basic: Water ////////////////////////////////////////////////////////////////
 water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 `

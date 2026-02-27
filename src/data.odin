@@ -239,9 +239,10 @@ Game_Shader :: enum {
 	Text,
 	Image,
 	UI_Box,
-	Water,
 	Sprite,
 	Framebuffer_Texture,
+	Phong,
+	Water,
 }
 
 Color3 :: Vec3
@@ -258,14 +259,15 @@ Uniforms :: struct #align(16) {
 	projection:     Mat4, // 4 slots
 	time:           f32,  // 1 slot
 	tau_time:       f32,  // 1 slot
-	ball_position:  Vec2, // 2 slots
-	ball_size:      Vec2, // 2 slots
-	hand_position:  Vec2, // 2 slots
-	hand_size:      Vec2, // 2 slots
 	canvas_size_px: Vec2, // 2 slots
-	collision_position: Vec2, // 2 slots
-	collision_force:    f32, // 1 slots
-	collision_time:     f32, // 1 slots
+	lights:         [MAX_LIGHTS]Light,
+	num_lights:     i32
+}
+
+MAX_LIGHTS :: 10
+Light :: struct {
+	position: Vec3,
+	power: f32, // 0..=1
 }
 
 Ren_Vertex_Base :: struct {
