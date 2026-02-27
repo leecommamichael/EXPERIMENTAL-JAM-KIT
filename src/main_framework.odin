@@ -39,6 +39,7 @@ framework_init :: proc () {
 	globals.canvas_scaling = .None
 	globals.canvas_stretch = 1
 	globals.canvas_stretching = .Integer_Aspect
+	globals.camera.fov = 60
 	globals.camera.zoom = 1.0
 
 	globals.perspective_view = 1

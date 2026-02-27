@@ -214,7 +214,7 @@ build_camera :: proc () {
 	aspect_ratio := viewport_size.x / viewport_size.y
 
 	globals.perspective_projection = linalg.matrix4_perspective_f32(
-		fovy   = linalg.to_radians(f32(90.0)),
+		fovy   = linalg.to_radians(globals.camera.fov),
 		aspect = aspect_ratio,
 		near   = .1,
 		far    = 1000,

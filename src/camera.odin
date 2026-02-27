@@ -17,6 +17,7 @@ LEFT:    Vec3 : {-1, 0, 0}
 DOWN:    Vec3 : {0, -1, 0}
 
 Camera :: struct {
+  fov:       f32,
   position:  Vec3,
   right_rad: f32,
   up_rad:    f32,
