@@ -190,7 +190,7 @@ game_step :: proc () {
 
 	@static cs: Geom_Mesh2
 	sphere, nus := get_entity(); if nus || globals.hot_reloaded_this_frame {
-		cs = geom_make_sphere(sides=36, rings=24, allocator=context.allocator)
+		cs = geom_make_sphere(sides=48, rings=32, allocator=context.allocator)
 		sphere.flags += {.Is_3D}
 		sphere.draw_command = ren_make_phong_draw_cmd(
 			globals.instance_buffer,

@@ -124,11 +124,7 @@ geom_make_sphere :: proc (
   allocator: runtime.Allocator
 ) -> Geom_Mesh2 {
   height :: proc (s: f32) -> f32 {
-    if s >= 0 && s <= PI/2 {
-      return (sin(s) / 2) - 0.5
-    } else {
-      return -(sin(s) / 2) + 0.5
-    }
+    return -(cos(s) / 2)
   }
   xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({sin(k), 1, sin(k)}) }
   // xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({k/2, 1+(k*0.15), k/2}) }
@@ -138,25 +134,19 @@ geom_make_sphere :: proc (
     make([dynamic]Ren_Vertex_Base, allocator),
     make([dynamic]u32, allocator),
   }
-
-  ring: f32 = 0
-  ring_position: Vec3 = {0, -0.5, 0} // move from -0.5 to 0.5, leaving zero in the center.
   pi_step := PI / f32(rings+2)
-  ring_gap := 1.0 / f32(rings+2+2) // plus the Start and End caps
   theta: f32 = 0
-
-  first_tip := ring_position
-  ring_position.y += ring_gap
+  first_tip := Vec3{0,height(theta),0}
   theta += pi_step
+  first_ring := Vec3{0,height(theta),0}
   t: Mat4 = xform(theta)
-  geom_append_ring(&mesh, .Start, ring_position,first_tip, sides, 0.5, t)
+  geom_append_ring(&mesh, .Start, first_ring,first_tip, sides, 0.5, t)
   geom_append_ring_cap_indices(&mesh.indices, 0, sides, .Start)
 
   for i in 0..< rings {
     theta += pi_step
     t = xform(theta)
-    ring_position.y += ring_gap
-    geom_append_ring(&mesh, .Body, ring_position,0, sides, 0.5, t)
+    geom_append_ring(&mesh, .Body, {0,height(theta),0},0, sides, 0.5, t)
 
     prev_ring_start := i*sides + (+1)
     this_ring_start := i*sides + (sides+1)
@@ -167,12 +157,12 @@ geom_make_sphere :: proc (
   end_cap_start := final_ring_start + sides
   geom_make_faces_between_rings(&mesh.indices, final_ring_start, end_cap_start, sides)
 
-  ring_position.y += ring_gap
-  last_tip := ring_position
-  last_tip.y += ring_gap
   theta += pi_step
+  last_ring := Vec3{0,height(theta),0}
   t = xform(theta) 
-  geom_append_ring(&mesh, .End, ring_position,last_tip, sides, 0.5, t)
+  theta += pi_step
+  last_tip := Vec3{0,height(theta),0}
+  geom_append_ring(&mesh, .End, last_ring,last_tip, sides, 0.5, t)
   geom_append_ring_cap_indices(&mesh.indices, end_cap_start, sides, .End)
 
   return mesh
