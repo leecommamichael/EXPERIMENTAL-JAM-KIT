@@ -13,23 +13,24 @@ Geom_Mesh2 :: struct {
   indices:  [dynamic]u32,
 }
 
+// RENAME? Really a cone.
 // `len(vertices)` must be == `sides` (or `sides+1` if RingType.Start or .End)
 geom_write_ring :: proc (
   vertices: []Ren_Vertex_Base,
   type: Ring_Type,
-  position: Vec3 = 0,
+  ring_position: Vec3 = 0,
+  tip_position: Vec3 = 0,
   sides: u32 = 12,
   radius: f32 = 1,
   transform: Mat4 = 1, // identity
 ) {
   bias: int = 0
-  position := vec4(position, 1)
   #partial switch type {
   case .Start:
     bias = 1
-    vertices[0].position = (transform * position).xyz
+    vertices[0].position = (transform * vec4(tip_position,1)).xyz
   case .End:
-    vertices[len(vertices)-1].position = (transform * position).xyz
+    vertices[len(vertices)-1].position = (transform * vec4(tip_position,1)).xyz
   }
   // Find the step through the circle to mkeake N sides. 0...(360-theta_step)
   theta_step := glsl.radians_f32(360.0) / f32(sides)
@@ -38,9 +39,9 @@ geom_write_ring :: proc (
     // I find it easier to look down at this shape from above,
     // So for my imagination, the sine component is mapped to the Z dimension.
     vertex: Vec4 = {
-      position.x + math.cos(theta) * radius,
-      position.y + 0,
-      position.z + math.sin(theta) * radius,
+      ring_position.x + math.cos(theta) * radius,
+      ring_position.y + 0,
+      ring_position.z + math.sin(theta) * radius,
       1
     }
     vertices[i+bias] = Ren_Vertex_Base{position=(transform * vertex).xyz}
@@ -49,13 +50,15 @@ geom_write_ring :: proc (
 
 Ring_Type :: enum { Body, Start, End }
 
+// RENAME? Really a cone.
 geom_append_ring :: proc (
   mesh: ^Geom_Mesh2,
   type: Ring_Type,
-  position: Vec3 = 0,
+  ring_position: Vec3 = 0,
+  tip_position: Vec3 = 0,
   sides: u32 = 12,
   radius: f32 = 0.5,
-  transform: Mat4 = 1
+  transform: Mat4 = 1,
   ) {
   verts_needed := int(sides)
   if type != .Body { 
@@ -64,7 +67,7 @@ geom_append_ring :: proc (
   v_len := len(mesh.vertices)
   resize(&mesh.vertices, v_len + verts_needed)
   vs := mesh.vertices[v_len:][:verts_needed]
-  geom_write_ring(vs, type, position, sides, radius, transform)
+  geom_write_ring(vs, type, ring_position, tip_position, sides, radius, transform)
   // geom_append_ring_cap_indices(&mesh.indices, 0, sides, type)
 }
 
@@ -102,8 +105,8 @@ geom_make_cylinder :: proc (
   // The tip's ring is translated away from the origin after rotating.
   rotate_tip_ring := _translate_back * rotate_tail_ring
 
-  geom_append_ring(&mesh, .Start, 0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
-  geom_append_ring(&mesh, .End, 0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
+  geom_append_ring(&mesh, .Start, 0,0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
+  geom_append_ring(&mesh, .End, 0,0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
@@ -120,8 +123,15 @@ geom_make_sphere :: proc (
   rings: int = 12,
   allocator: runtime.Allocator
 ) -> Geom_Mesh2 {
+  height :: proc (s: f32) -> f32 {
+    if s >= 0 && s <= PI/2 {
+      return (sin(s) / 2) - 0.5
+    } else {
+      return -(sin(s) / 2) + 0.5
+    }
+  }
   xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({sin(k), 1, sin(k)}) }
-  // xform :: proc (k: f32) -> Mat4 { return 1 }
+  // xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({k/2, 1+(k*0.15), k/2}) }
   sides := u32(sides)
   rings := u32(rings)
   mesh: Geom_Mesh2 = {
@@ -129,33 +139,40 @@ geom_make_sphere :: proc (
     make([dynamic]u32, allocator),
   }
 
-  ring_gap := 1.0 / f32(rings + 2 - 1) // plus the Start and End caps
-  ring_position: Vec3
-  ring_position.y = -0.5
+  ring: f32 = 0
+  ring_position: Vec3 = {0, -0.5, 0} // move from -0.5 to 0.5, leaving zero in the center.
   pi_step := PI / f32(rings+2)
-  theta := pi_step
+  ring_gap := 1.0 / f32(rings+2+2) // plus the Start and End caps
+  theta: f32 = 0
 
-  t: Mat4 = xform(theta)
-  geom_append_ring(&mesh, .Start, ring_position, sides, 0.5, t)
+  first_tip := ring_position
   ring_position.y += ring_gap
   theta += pi_step
+  t: Mat4 = xform(theta)
+  geom_append_ring(&mesh, .Start, ring_position,first_tip, sides, 0.5, t)
   geom_append_ring_cap_indices(&mesh.indices, 0, sides, .Start)
 
   for i in 0..< rings {
-    t = xform(theta)
-    geom_append_ring(&mesh, .Body, ring_position, sides, 0.5, t)
-    ring_position.y += ring_gap
     theta += pi_step
+    t = xform(theta)
+    ring_position.y += ring_gap
+    geom_append_ring(&mesh, .Body, ring_position,0, sides, 0.5, t)
+
     prev_ring_start := i*sides + (+1)
     this_ring_start := i*sides + (sides+1)
     geom_make_faces_between_rings(&mesh.indices, prev_ring_start, this_ring_start, sides)
   }
+
   final_ring_start := (sides*rings) + 1
   end_cap_start := final_ring_start + sides
   geom_make_faces_between_rings(&mesh.indices, final_ring_start, end_cap_start, sides)
 
+  ring_position.y += ring_gap
+  last_tip := ring_position
+  last_tip.y += ring_gap
+  theta += pi_step
   t = xform(theta) 
-  geom_append_ring(&mesh, .End, ring_position, sides, 0.5, t)
+  geom_append_ring(&mesh, .End, ring_position,last_tip, sides, 0.5, t)
   geom_append_ring_cap_indices(&mesh.indices, end_cap_start, sides, .End)
 
   return mesh

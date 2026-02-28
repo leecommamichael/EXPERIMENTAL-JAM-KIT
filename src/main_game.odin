@@ -27,7 +27,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 ////////////////////////////////////////////////////////////////////////////////
 // RG35SP_RES: Vec2 = {640, 480}
 // STEAM_DECK_RES: Vec2 = {1280, 800}
-RES_X :: 1280
+RES_X :: 1000
 RES_Y :: 800
 RES_SCALE :: 1
 
@@ -58,6 +58,8 @@ game_init :: proc () {
 		audio.add_source_from_clip(&globals.audio, asset)
 	}
 	// audio.play(&globals.audio, gs.music_sink, "music_flower_duet.ogg")
+		globals.camera.position.y = 1.7
+		globals.camera.position.z = -1.7
 } // game_init
 
 @export
@@ -125,7 +127,6 @@ game_step :: proc () {
 	txt.position.y = 44 + 55 + 4
 	txt.position.x = 44 - 10
 
-	globals.camera.position.y = 1.7
 	globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
 
 	vehicle := mesh([]Vec3{
@@ -189,7 +190,7 @@ game_step :: proc () {
 
 	@static cs: Geom_Mesh2
 	sphere, nus := get_entity(); if nus || globals.hot_reloaded_this_frame {
-		cs = geom_make_sphere(4, 2,allocator=context.allocator)
+		cs = geom_make_sphere(sides=36, rings=24, allocator=context.allocator)
 		sphere.flags += {.Is_3D}
 		sphere.draw_command = ren_make_phong_draw_cmd(
 			globals.instance_buffer,
@@ -204,7 +205,7 @@ game_step :: proc () {
 	// ly := sin(globals.uptime)
 	// lz := sin(globals.uptime)
 	// sphere.position = {lx,1.2,lz}
-	sphere.position = {0,1.55,0}
+	sphere.position = {0,1.75,0}
 	sphere.rotation.y = globals.uptime
 	globals.uniforms.lights[0].position = sphere.position
 	globals.uniforms.lights[0].power = 1.0
