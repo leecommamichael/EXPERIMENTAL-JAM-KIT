@@ -29,7 +29,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 // STEAM_DECK_RES: Vec2 = {1280, 800}
 RES_X :: 1280
 RES_Y :: 800
-RES_SCALE :: 2
+RES_SCALE :: 1
 
 gs: ^Game_State
 
@@ -121,11 +121,11 @@ game_step :: proc () {
 		last_d_pressure = d_pressure
 	}
 	pressure_label: string = fmt.tprintf("Shake %2.1f", abs(last_d_pressure))
-	t := text(pressure_label, .bold_pixel)
-	t.position.y = 44 + 55 + 4
-	t.position.x = 44 - 10
+	txt := text(pressure_label, .bold_pixel)
+	txt.position.y = 44 + 55 + 4
+	txt.position.x = 44 - 10
 
-	globals.camera.position.y = 2
+	globals.camera.position.y = 1.7
 	globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
 
 	vehicle := mesh([]Vec3{
@@ -181,24 +181,50 @@ game_step :: proc () {
 			globals.instance_buffer,
 			cast(int) cylinder.id,
 			cm.vertices[:],
-			cm.indices[:],
-			)
+			cm.indices[:])
 		cylinder.color = color("f44")
-		cylinder.position = {2,1.9,2}
 	}
-	globals.uniforms.lights[0].position = {0,2,0}
+	cylinder.position = {0,1,1}
+	cylinder.basis.scale.x = 10
+
+	@static cs: Geom_Mesh2
+	sphere, nus := get_entity(); if nus || globals.hot_reloaded_this_frame {
+		cs = geom_make_sphere(4, 2,allocator=context.allocator)
+		sphere.flags += {.Is_3D}
+		sphere.draw_command = ren_make_phong_draw_cmd(
+			globals.instance_buffer,
+			cast(int) sphere.id,
+			cs.vertices[:],
+			cs.indices[:])
+	}
+	// sphere.draw_command.mode = .Lines
+	sphere.color = color("acf")
+
+	// lx := cos(globals.uptime)
+	// ly := sin(globals.uptime)
+	// lz := sin(globals.uptime)
+	// sphere.position = {lx,1.2,lz}
+	sphere.position = {0,1.55,0}
+	sphere.rotation.y = globals.uptime
+	globals.uniforms.lights[0].position = sphere.position
 	globals.uniforms.lights[0].power = 1.0
-	globals.uniforms.num_lights = 1
+	globals.uniforms.lights[1].position = cylinder.position + {1,0,0}
+	globals.uniforms.lights[1].power = 1.0
+	globals.uniforms.lights[2].position = {-200, -200, -200}
+	globals.uniforms.lights[2].power = 0.5
+	globals.uniforms.lights[3].position = {0,100,0}
+	globals.uniforms.lights[3].power = 0.2
+	globals.uniforms.num_lights = 4
 
-	floor := mesh([]Vec3{
-		{-1, 0, -1}, { 1, 0, -1}, { 1, 0,  1},  
-		{ 1, 0,  1}, {-1, 0,  1}, {-1, 0, -1}
-	})
-	floor.position.z = 0
+	// floor := mesh([]Vec3{
+	// 	{-1, 0, -1}, { 1, 0, -1}, { 1, 0,  1},  
+	// 	{ 1, 0,  1}, {-1, 0,  1}, {-1, 0, -1}
+	// })
+	// floor.position.z = 0
 
-	floor.color = color("55f")
-	floor.flags += {.Is_3D}
-	floor.basis.scale.xz = 100
+	// floor.color = color("55f")
+	// floor.flags += {.Is_3D}
+	// floor.basis.scale.xz = 100
 
 	// switch {
 	// case pressure > 5.0/6.0: pressure = 5.0/5.0
