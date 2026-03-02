@@ -36,7 +36,7 @@ GLYPH_COUNT :: 0x058F - 32 // ascii thru Armenian (stops at Hebrew because it's 
 
 ASSET_DIR :: "../assets/"
 CACHE_DIR :: "../cache/"
-USE_BINARY_ASSET_CACHE :: ODIN_DEBUG// && ODIN_OS != .JS
+USE_BINARY_ASSET_CACHE :: #config(USE_BINARY_ASSET_CACHE, true)
 BW_META_NAME    :: "font_atlas_metadata"
 BW_ATLAS_NAME   :: "font_atlas"
 RGBA_META_NAME  :: "texture_atlas_metadata"
@@ -89,11 +89,8 @@ asset_init :: proc () {
 		}
 	}
 
-	when USE_BINARY_ASSET_CACHE && ODIN_OS != .JS {
-		desktop_load_binary_asset_cache()
-	} else {
-		// If this is false, it's a release and we're using compressed assets.
-		// TODO: something similar to above, but add a decompression step after reading ../assets
+	when ODIN_OS != .JS {
+		desktop_bundle_assets(!USE_BINARY_ASSET_CACHE)
 	}
 	bundle := &globals.assets
 	bundle.font_infos = make(map[string]stbtt.fontinfo)
@@ -288,6 +285,6 @@ load_audio :: proc (use_binary: bool) {
 			assert(false)
 		}
 	} else {
-		unimplemented()
+		// unimplemented()
 	}
 }

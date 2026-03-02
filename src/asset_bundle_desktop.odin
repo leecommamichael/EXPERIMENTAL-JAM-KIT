@@ -40,10 +40,10 @@ audio_cache_exists :: proc () -> bool {
 	return len(audio_metadata_bytes) > 0
 }
 
-desktop_load_binary_asset_cache :: proc () {
+desktop_bundle_assets :: proc (compress: bool) {
 	if !font_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
-		bundle_fonts(USE_BINARY_ASSET_CACHE)
+		bundle_fonts(!compress)
 		err: os.Error
 		font_atlas_bytes,          err = os.read_entire_file(FONT_ATLAS_PATH, context.allocator)
 	assert(err == nil)
@@ -52,7 +52,7 @@ desktop_load_binary_asset_cache :: proc () {
 	}
 	if !texture_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
-		bundle_textures(USE_BINARY_ASSET_CACHE)
+		bundle_textures(!compress)
 		err: os.Error
 		texture_atlas_bytes,    err = os.read_entire_file(TEXTURE_ATLAS_PATH, context.allocator)
 	assert(err == nil) // TODO: Occurs when no textures were packed.
@@ -61,7 +61,7 @@ desktop_load_binary_asset_cache :: proc () {
 	}
 	if !audio_cache_exists() {
 		// SCENARIO: First startup, create a cache and read it.
-		bundle_audio()
+		bundle_audio(compress)
 		err: os.Error
 		audio_metadata_bytes, err = os.read_entire_file(AUDIO_METADATA, context.allocator)
 	assert(err == nil)
@@ -550,7 +550,7 @@ log_time("write_textures")
 
 
 // Writes []Audio_Asset as AUDIO_METADATA
-bundle_audio :: proc () {
+bundle_audio :: proc (compress: bool) {
 // TODO: Compressed version. (cbor for metadata, copy ogg to cache for release.)
 	asset_array := make([dynamic]Audio_Asset)
 	log_time("BUNDLE_AUDIO"); defer log_time("BUNDLE_AUDIO")
