@@ -3,7 +3,11 @@ This is my monorepo for portable app development.
 
 My goal is to be self-sufficient in the technique required to write high-quality, portable software. Because this is an ambitious goal, I do currently use the stb libraries for decoding some asset file formats for textures and audio, but there may be a day when I find it personally beneficial to write those myself here in this codebase.
 
-Capabilities:
+### Project Status:
+The project is fairly young. It's good enough for me to use in my game-jams and personal software, but it will take time before it's high-enough quality for others to pick it up. As of now, I'd only vouch for the quality of the Windows and Web platforms, as they're where I do most of my work. 
+<sub> Linux and macOS builds are very spartan as of now. </sub>
+
+### Capabilities:
 - [x] Basic GPU Accelerated 3D lighting
 - [x] Animated Sprites
 - [x] Flexible Row/Column UI library
@@ -17,7 +21,7 @@ Capabilities:
 - [x] Games-oriented Audio interface
 - [x] Games-oriented key-value persistence API
 
-Platforms:
+### Platforms:
 - [x] Windows
 - [x] Web
 - [x] macOS
