@@ -43,7 +43,6 @@ Globals :: struct {
 	gl_standard: GL_Standard,
 	ren:         ^Ren,
 	// Entity Service
-	// ubo_instance_data: Aligned_Array(Any_Instance), // TODO: Unused. Make it lights some day?
 	_debug_name_storage: [max(Entity_ID)][DEBUG_NAME_BYTES]u8,
 	_entity_storage: [max(Entity_ID)]Entity,
 	entities:        [dynamic]^Entity,
@@ -251,6 +250,7 @@ Any_Instance :: struct {
 	model_transform: Mat4,
 	uv_transform:    Vec4,
 	color:           Vec4,
+	blend_normals:   b32, _:Vec3
 }
 
 // Keep synchronized with global constant frame_uniforms :: string

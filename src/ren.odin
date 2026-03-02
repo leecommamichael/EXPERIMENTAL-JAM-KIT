@@ -498,6 +498,13 @@ init_cmd_with_basic_vertex_attributes :: proc (
 			stride = size_of(Any_Instance),
 			offset = entity_offset + offset_of(Any_Instance, color)
 		},
+		{
+			buffer = instance_buffer,
+			rate   = .Instance,
+			type   = .i32,
+			stride = size_of(Any_Instance),
+			offset = entity_offset + offset_of(Any_Instance, blend_normals)
+		},
 	}
 	// TODO: Delete this when I can create commands up-front and "inherit" them.
 	// Purpose 1. Rebinding/copying/templating from existing draws.
@@ -968,6 +975,7 @@ basic_vertex_inputs :: `
 	layout (location = 3) in mat4 i_model_mat;
 	layout (location = 7) in vec4 i_uv_xform;
 	layout (location = 8) in vec4 i_color;
+	layout (location = 9) in int  i_blend_normals;
 `
 
 basic_vertex_shader_source :: vertex_preamble +
@@ -998,10 +1006,16 @@ phong_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 //phongvert
 	out vec4 color;
 	out vec3 world_position;
+	flat out vec3 fnormal;
+	     out vec3 snormal;
+	flat out int blend_normals;
 
 	void main() {
+		blend_normals = i_blend_normals;
 		vec4 position4 = vec4(v_position, 1);
 		world_position = (i_model_mat * position4).xyz;
+		fnormal = normalize(world_position);
+		snormal = normalize(world_position);
 		color.rgb = i_color.rgb * i_color.a; // Convert to PMA
 		color.a = i_color.a; // Convert to PMA
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
@@ -1013,14 +1027,23 @@ phong_fragment_shader_source :: fragment_preamble + `
 //phongfrag
 	in vec4 color;
 	in vec3 world_position;
+	flat in vec3 fnormal;
+	     in vec3 snormal;
+	flat in int blend_normals;
 
 	out vec4 outColor;
 	void main() {
+		vec3 normal;
+		if (blend_normals == 1) {
+			normal = snormal;
+		} else {
+			normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
+		}
 		float ambient_luminance = 0.1;
 		vec3 ambient_light = ambient_luminance * color.xyz;
 
-		vec3 surface_normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
-		vec3 light = vec3(0, 0, 0);
+		vec3 surface_normal = normalize(normal);
+		vec3 light = ambient_light;
 		for (int i = 0; i < frame.num_lights; ++i) {
 			Light _light = frame.lights[i];
 			vec3 surface_to_light = normalize(_light.position - world_position);
@@ -1028,8 +1051,8 @@ phong_fragment_shader_source :: fragment_preamble + `
 			vec3 diffuse_light = diffuse_luminance * _light.power * vec3(1,1,1);
 			light += diffuse_light;
 		}
-
-		outColor = vec4(light, 1.0);
+		outColor = vec4(light*color.w, color.w);
+		// outColor = color;
 	}
 `
 // Basic: Water ////////////////////////////////////////////////////////////////

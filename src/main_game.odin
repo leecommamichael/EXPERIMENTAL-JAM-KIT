@@ -58,8 +58,8 @@ game_init :: proc () {
 		audio.add_source_from_clip(&globals.audio, asset)
 	}
 	// audio.play(&globals.audio, gs.music_sink, "music_flower_duet.ogg")
-		globals.camera.position.y = 1.7
-		globals.camera.position.z = -1.7
+	globals.camera.position.y = 1.7
+	globals.camera.position.z = -1.7
 } // game_init
 
 @export
@@ -166,31 +166,14 @@ game_step :: proc () {
     {-1, 0, -1}, {-1, 1, -1}, {1, 1, -1},
     {-1, 0, -1}, {1, 1, -1}, {1, 0, -1},
 	})
-
 	vehicle.draw_command.program = globals.ren.programs[.Phong]
 	vehicle.basis.scale.xz = 1
 	vehicle.position.z = 0
 	vehicle.flags += {.Is_3D}
 
-	// cylinder
-	@static cm: Geom_Mesh2
-	cylinder, nu := get_entity()
-	if nu {
-		cm = geom_make_cylinder({0,1,0}, context.allocator)
-		cylinder.flags += {.Is_3D}
-		cylinder.draw_command = ren_make_phong_draw_cmd(
-			globals.instance_buffer,
-			cast(int) cylinder.id,
-			cm.vertices[:],
-			cm.indices[:])
-		cylinder.color = color("f44")
-	}
-	cylinder.position = {0,1,1}
-	cylinder.basis.scale.x = 10
-
 	@static cs: Geom_Mesh2
 	sphere, nus := get_entity(); if nus || globals.hot_reloaded_this_frame {
-		cs = geom_make_sphere(sides=48, rings=32, allocator=context.allocator)
+		cs = geom_make_sphere(sides=24, rings=24, allocator=context.allocator)
 		sphere.flags += {.Is_3D}
 		sphere.draw_command = ren_make_phong_draw_cmd(
 			globals.instance_buffer,
@@ -198,8 +181,10 @@ game_step :: proc () {
 			cs.vertices[:],
 			cs.indices[:])
 	}
-	// sphere.draw_command.mode = .Lines
-	sphere.color = color("acf")
+	sphere.blend_normals = true
+	sphere.color = color("f00")
+	// sphere.color.a = 0.55
+	sphere.draw_command.cull_mode = .Front_Faces
 
 	// lx := cos(globals.uptime)
 	// ly := sin(globals.uptime)
@@ -207,14 +192,14 @@ game_step :: proc () {
 	// sphere.position = {lx,1.2,lz}
 	sphere.position = {0,1.75,0}
 	sphere.rotation.y = globals.uptime
-	globals.uniforms.lights[0].position = sphere.position
-	globals.uniforms.lights[0].power = 1.0
-	globals.uniforms.lights[1].position = cylinder.position + {1,0,0}
-	globals.uniforms.lights[1].power = 1.0
+	globals.uniforms.lights[0].position = {0,1.7,0}
+	globals.uniforms.lights[0].power = 0.8
+	globals.uniforms.lights[1].position = {2,1.5,0}
+	globals.uniforms.lights[1].power = 0.15
 	globals.uniforms.lights[2].position = {-200, -200, -200}
-	globals.uniforms.lights[2].power = 0.5
+	globals.uniforms.lights[2].power = 0.05
 	globals.uniforms.lights[3].position = {0,100,0}
-	globals.uniforms.lights[3].power = 0.2
+	globals.uniforms.lights[3].power = 0.05
 	globals.uniforms.num_lights = 4
 
 	// floor := mesh([]Vec3{

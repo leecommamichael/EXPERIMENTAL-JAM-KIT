@@ -3,6 +3,7 @@ package main
 import "core:math"
 import "core:math/linalg"
 import "core:math/linalg/glsl"
+import "core:math/linalg/hlsl"
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 // Types and their idioms.
@@ -121,6 +122,7 @@ dot :: linalg.dot
 cross :: linalg.cross
 abs :: linalg.abs
 round :: linalg.round
+fmod :: hlsl.fmod
 trunc :: glsl.trunc
 ceil :: glsl.ceil
 vec_len :: linalg.length
