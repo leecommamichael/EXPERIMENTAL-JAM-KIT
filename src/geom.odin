@@ -117,6 +117,55 @@ geom_make_cylinder :: proc (
   return mesh
 }
 
+geom_make_arrow :: proc (
+  vector: Vec3,
+  allocator: runtime.Allocator
+) -> Geom_Mesh2 {
+  mesh: Geom_Mesh2 = {
+    make([dynamic]Ren_Vertex_Base, allocator),
+    make([dynamic]u32, allocator),
+  }
+
+  CYLINDER_SIDES :: 12
+  CYLINDER_RADIUS :: 0.1
+  y_axis :: Vec3{0,1,0}
+  axis := normalize(cross(y_axis, vector))
+  // if we got NaN, then the vector is the same in that component.
+  if math.is_nan(axis.x) {
+    axis.x = vector.x
+  }
+  if math.is_nan(axis.y) {
+    axis.y = vector.y
+  }
+  if math.is_nan(axis.z) {
+    axis.z = vector.z
+  }
+  angle := glsl.acos(dot(y_axis, normalize(vector)))
+  // logg.infof("To output a vector pointing to %v, axis is %v, angle is %v", vector, axis, angle)
+
+  // At this time, gizmos start from the origin.
+  // This means the tail can simply be rotated (since it wont translate like the tip.)
+  rotate_tail_ring := glsl.mat4Rotate(axis, angle)
+  _translate_back  := glsl.mat4Translate(vector)
+  // Two identical rings are made, and their transforms define the volume.
+  // The tip's ring is translated away from the origin after rotating.
+  rotate_tip_ring := _translate_back * rotate_tail_ring
+
+  geom_append_ring(&mesh, .Start, 0,{0,0,0}, CYLINDER_SIDES, CYLINDER_RADIUS-0.05, rotate_tail_ring)
+  geom_append_ring(&mesh, .Body,  0,0, CYLINDER_SIDES, CYLINDER_RADIUS-.05, rotate_tip_ring)
+  geom_append_ring_cap_indices(&mesh.indices, 0, CYLINDER_SIDES, .Start)
+  geom_make_faces_between_rings(&mesh.indices, 1, 1+CYLINDER_SIDES*1, CYLINDER_SIDES)
+
+  geom_append_ring(&mesh, .End,   0,{0,.2,0}, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring) // pointy
+  geom_make_faces_between_rings(&mesh.indices, 1+CYLINDER_SIDES, 1+CYLINDER_SIDES*2, CYLINDER_SIDES)
+  geom_append_ring_cap_indices(&mesh.indices, 1+CYLINDER_SIDES*2, CYLINDER_SIDES, .End)
+
+  // Now that the geometry has been baked in position according to the transforms,
+  // We can build an index buffer to from triangles from the points.
+
+  return mesh
+}
+
 // unit-sphere
 geom_make_sphere :: proc (
   sides: int = 36,

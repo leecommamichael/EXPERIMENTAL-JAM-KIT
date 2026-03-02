@@ -153,8 +153,7 @@ game_step :: proc () {
     // Front-Right Wall (to Tip)
     {1, 0, 1}, {1, 1, 1}, {0, 1, 2},
     {1, 0, 1}, {0, 1, 2}, {0, 0, 2},
-
-    // Front-Left Wall (from Tip)
+// Front-Left Wall (from Tip)
     {0, 0, 2}, {0, 1, 2}, {-1, 1, 1},
     {0, 0, 2}, {-1, 1, 1}, {-1, 0, 1},
 
@@ -185,6 +184,22 @@ game_step :: proc () {
 	sphere.color = color("f00")
 	// sphere.color.a = 0.55
 	sphere.draw_command.cull_mode = .Front_Faces
+
+	@static carr: Geom_Mesh2
+	arr, nua := get_entity(); if nua || globals.hot_reloaded_this_frame {
+		carr = geom_make_arrow({0,1,0}, allocator=context.allocator)
+		arr.flags += {.Is_3D}
+		arr.draw_command = ren_make_phong_draw_cmd(
+			globals.instance_buffer,
+			cast(int) arr.id,
+			carr.vertices[:],
+			carr.indices[:])
+	}
+	arr.position.x = 0.6
+	arr.position.y = 1.1
+	arr.blend_normals = true
+	arr.color = {0,1,0,1}
+	// arr.draw_command.mode = .Lines
 
 	// lx := cos(globals.uptime)
 	// ly := sin(globals.uptime)
