@@ -8,13 +8,14 @@ import "sugar"
 // Engine basis vectors (left handed)
 RIGHT: Vec3 : {1, 0, 0} // rotation on this is Pitch (i-hat, X, Pitch)
 UP:    Vec3 : {0, 1, 0} // rotation on this is Yaw   (j-hat, Y, Yaw)
-FRONT: Vec3 : {0, 0,-1} // rotation on this is Roll  (k-hat, Z, Roll)
+FRONT: Vec3 : {0, 0, 1} // rotation on this is Roll  (k-hat, Z, Roll)
 RIGHT4: Vec4 : {1, 0, 0, 0}
 UP4:    Vec4 : {0, 1, 0, 0}
-FRONT4: Vec4 : {0, 0,-1, 0}
+FRONT4: Vec4 : {0, 0, 1, 0}
 //
 LEFT:    Vec3 : {-1, 0, 0}
 DOWN:    Vec3 : {0, -1, 0}
+BACK:    Vec3 : {0,  0,-1}
 
 Camera :: struct {
   fov:       f32,
@@ -32,8 +33,8 @@ tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
 
   move_right    :=  1 if sugar.is_key_pressed(.D) else 0
   move_left     := -1 if sugar.is_key_pressed(.A) else 0
-  move_forward  := -1 if sugar.is_key_pressed(.W) else 0
-  move_backward :=  1 if sugar.is_key_pressed(.S) else 0
+  move_forward  :=  1 if sugar.is_key_pressed(.W) else 0
+  move_backward := -1 if sugar.is_key_pressed(.S) else 0
 
   strafe_vel := dt * move_vel * f32(move_right + move_left) // x
   depth_vel  := dt * move_vel * f32(move_forward + move_backward) // z
@@ -51,7 +52,7 @@ tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
 
   rotate_about_right := glsl.mat4Rotate(right.xyz, camera.right_rad)
   u2 := rotate_about_right * UP4
-  f3 := rotate_about_right * front_xz
+  f3 := -rotate_about_right * front_xz
 
   m: Mat4
   eye := camera.position
