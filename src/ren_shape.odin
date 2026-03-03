@@ -2,15 +2,21 @@ package main
 
 import gl "angle"
 
-mesh :: proc (verts: []Vec3, hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+mesh :: proc {
+	mesh_from_vertices,
+	mesh_from_geom
+}
+
+mesh_from_vertices :: proc (verts: ^[]Vec3, hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := get_entity(hash)
 	// INTENT: Reference comparison.
-	if raw_data(verts) != raw_data(entity._verts) {
+	if verts != entity._data {
 		// They're just getting copied to the GPU, no need to retain.
 		temp_indices := make([dynamic]u32, context.temp_allocator)
 		for i in 0..<len(verts) {
 			append(&temp_indices, cast(u32)i)
 		}
+		
 		temp_verts := make([dynamic]Ren_Vertex_Base, context.temp_allocator)
 		for v in verts {
 			append(&temp_verts, Ren_Vertex_Base{position=v})
@@ -26,7 +32,28 @@ mesh :: proc (verts: []Vec3, hash: Hash = #caller_location) -> (^Entity, bool) #
 				temp_verts[:],
 				temp_indices[:])
 		}
-		entity._verts = verts
+		entity._data = verts
+	}
+	entity.position.z = next_z()
+	return entity, is_new
+}
+
+mesh_from_geom :: proc (mesh: ^Geom_Mesh2, hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+	entity, is_new := get_entity(hash)
+	// INTENT: Reference comparison.
+	if mesh != entity._data {
+		if is_new {
+			entity.draw_command = ren_make_basic_draw_cmd(
+				globals.instance_buffer, cast(int) entity.id,
+				mesh.vertices[:],
+				mesh.indices[:])
+		} else {
+			ren_reuse_basic_draw_cmd(&entity.draw_command,
+				globals.instance_buffer, cast(int) entity.id,
+				mesh.vertices[:],
+				mesh.indices[:])
+		}
+		entity._data = mesh
 	}
 	entity.position.z = next_z()
 	return entity, is_new
@@ -39,6 +66,20 @@ circle :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 		globals.instance_buffer, cast(int) entity.id,
 		globals.unit_circle_mesh.vertices[:],
 		globals.unit_circle_mesh.indices[:])
+	}
+	entity.position.z = next_z()
+	return entity, is_new
+}
+
+sphere :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
+	entity, is_new := get_entity(hash)
+	if is_new {
+		entity.draw_command = ren_make_phong_draw_cmd(
+		globals.instance_buffer, cast(int) entity.id,
+		globals.unit_sphere_mesh.vertices[:],
+		globals.unit_sphere_mesh.indices[:])
+		entity.flags += {.Is_3D}
+		entity.blend_normals = true
 	}
 	entity.position.z = next_z()
 	return entity, is_new

@@ -88,6 +88,7 @@ Globals :: struct {
 	button_focus:  ^Entity,
 	z_cursor: f32,
 	collider_draw_commands: [Collision_Shape]Draw_Command,
+	unit_sphere_mesh:   Geom_Mesh2,
 	unit_circle_mesh:   Geom_Mesh2,
 	unit_rect_mesh:     Geom_Mesh2,
 	unit_quad_mesh:     Geom_Mesh2,
@@ -143,7 +144,7 @@ Entity :: struct {
 	variant:         Entity_Variant,
 	parent:          ^Entity,
 	children:        []^Entity,
-	_verts:          []Vec3,
+	_data:          rawptr,
 }
 // #assert(size_of(Entity) >   512, "INFO:  32MB @ 2^12 entities.")
 //               REFERENCE: 600 ~= Unity's GameObject+Transform

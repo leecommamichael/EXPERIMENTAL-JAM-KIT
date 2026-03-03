@@ -1,6 +1,9 @@
 TODO
 
-general:
+rendering:
+ - Culling .Front is opposite for spheres?
+
+structural/finishing touches:
 	- move create_window to userland (changes initialization a lot.)
 	- raddbg type-views
 	- errors in the GUI
@@ -15,5 +18,10 @@ bundler:
 
 sugar_js
 	- switch_held doesn't work
-	- no audio
 	- no gamepad
+
+sugar_linux
+	- proper Wayland integration
+
+sugar_mac
+	- resizing, other NSWindow type-stuff
