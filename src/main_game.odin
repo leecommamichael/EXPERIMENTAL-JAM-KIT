@@ -29,7 +29,7 @@ hot_reload :: proc (engine_globals: ^Globals, engine_gs: ^Game_State) {
 // STEAM_DECK_RES: Vec2 = {1280, 800}
 RES_X :: 1000
 RES_Y :: 800
-RES_SCALE :: 1
+RES_SCALE :: 2
 
 gs: ^Game_State
 
@@ -179,6 +179,7 @@ game_step :: proc () {
 			cast(int) sphere.id,
 			cs.vertices[:],
 			cs.indices[:])
+		sphere.position = {0,1,0}
 	}
 	sphere.blend_normals = true
 	sphere.color = color("f00")
@@ -195,27 +196,18 @@ game_step :: proc () {
 			carr.vertices[:],
 			carr.indices[:])
 	}
-	arr.position.x = 0.6
-	arr.position.y = 1.1
+
+	// sphere.position = {lx,1.2,lz}
+	globals.uniforms.lights[0].position = {0,2,0}
+	globals.uniforms.lights[0].power = .2
+	globals.uniforms.lights[1].position = {0,-200,0}
+	globals.uniforms.lights[1].power = .2
+	globals.uniforms.num_lights = 2
+
+	arr.position = globals.uniforms.lights[0].position
 	arr.blend_normals = true
 	arr.color = {0,1,0,1}
 	// arr.draw_command.mode = .Lines
-
-	// lx := cos(globals.uptime)
-	// ly := sin(globals.uptime)
-	// lz := sin(globals.uptime)
-	// sphere.position = {lx,1.2,lz}
-	sphere.position = {0,1.75,0}
-	sphere.rotation.y = globals.uptime
-	globals.uniforms.lights[0].position = {0,1.7,0}
-	globals.uniforms.lights[0].power = 0.8
-	globals.uniforms.lights[1].position = {2,1.5,0}
-	globals.uniforms.lights[1].power = 0.15
-	globals.uniforms.lights[2].position = {-200, -200, -200}
-	globals.uniforms.lights[2].power = 0.05
-	globals.uniforms.lights[3].position = {0,100,0}
-	globals.uniforms.lights[3].power = 0.05
-	globals.uniforms.num_lights = 4
 
 	// floor := mesh([]Vec3{
 	// 	{-1, 0, -1}, { 1, 0, -1}, { 1, 0,  1},  
@@ -236,9 +228,9 @@ game_step :: proc () {
 	// case: pressure = 0
 	// }
 
-	if sugar.on_key_release(.Up_Arrow) {
+	if sugar.key_held(.Up_Arrow) {
 	}
-	if sugar.on_key_release(.Down_Arrow) {
+	if sugar.key_held(.Down_Arrow) {
 	}
 } // game step
 

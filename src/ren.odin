@@ -1011,14 +1011,16 @@ phong_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 	flat out int blend_normals;
 
 	void main() {
+		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		blend_normals = i_blend_normals;
 		vec4 position4 = vec4(v_position, 1);
 		world_position = (i_model_mat * position4).xyz;
+		// TODO: This shades everything like a sphere. No bueno. Just populate v_normal.
+		vec3 world_p = (i_model_mat * vec4(v_position,0)).xyz;
 		fnormal = normalize(world_position);
-		snormal = normalize(world_position);
+		snormal = normalize(world_p);
 		color.rgb = i_color.rgb * i_color.a; // Convert to PMA
 		color.a = i_color.a; // Convert to PMA
-		mat4 mvp = frame.projection * frame.view * i_model_mat;
 		gl_Position = mvp * vec4(v_position, 1);
 	}
 `
