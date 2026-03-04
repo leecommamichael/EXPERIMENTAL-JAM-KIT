@@ -34,7 +34,7 @@ mesh_from_vertices :: proc (verts: ^[]Vec3, hash: Hash = #caller_location) -> (^
 		}
 		entity._data = verts
 	}
-	entity.position.z = next_z()
+	// entity.position.z = next_z()
 	return entity, is_new
 }
 
@@ -55,7 +55,7 @@ mesh_from_geom :: proc (mesh: ^Geom_Mesh2, hash: Hash = #caller_location) -> (^E
 		}
 		entity._data = mesh
 	}
-	entity.position.z = next_z()
+	// entity.position.z = next_z()
 	return entity, is_new
 }
 
@@ -81,7 +81,7 @@ sphere :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 		entity.flags += {.Is_3D}
 		entity.blend_normals = true
 	}
-	entity.position.z = next_z()
+	// entity.position.z = next_z()
 	return entity, is_new
 }
 
