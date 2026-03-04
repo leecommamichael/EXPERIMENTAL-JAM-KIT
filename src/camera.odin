@@ -22,6 +22,7 @@ Camera :: struct {
   position:  Vec3,
   right_rad: f32,
   up_rad:    f32,
+
   offset:    Vec3,
   zoom:      f32,
 }
@@ -41,9 +42,8 @@ tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
   hori_rot   := dt * look_vel * globals.sugar.mouse_delta.x
   vert_rot   := dt * look_vel * globals.sugar.mouse_delta.y
 
-  // camera.right_rad += vert_rot // to look vertically, rotate on the side-vector of the orientation.
   camera.right_rad = clamp(camera.right_rad + vert_rot, -glsl.PI/2, glsl.PI/2)
-  camera.up_rad    += hori_rot // to look horizontally, rotate on the up-vector of the orientation.
+  camera.up_rad   += hori_rot // to look horizontally, rotate on the up-vector of the orientation.
   // 1. Consider orientation after looking horizontally.
   right, front_xz := basis_from_yaw(camera.up_rad)
 
@@ -52,17 +52,36 @@ tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
 
   rotate_about_right := glsl.mat4Rotate(right.xyz, camera.right_rad)
   u2 := rotate_about_right * UP4
-  f3 := -rotate_about_right * front_xz
+  f3 := rotate_about_right * front_xz
 
   m: Mat4
   eye := camera.position
-  x_scale := glsl.dot(right.xyz, eye)
-  y_scale := glsl.dot(u2.xyz, eye)
-  z_scale := glsl.dot(f3.xyz, eye)
-  m[0] = { right.x, u2.x, -f3.x, 0 }
-  m[1] = { right.y, u2.y, -f3.y, 0 }
-  m[2] = { right.z, u2.z, -f3.z, 0 }
-  m[3] = { -x_scale, -y_scale, z_scale, 1}
+  x_scale := -glsl.dot(right.xyz, eye)
+  y_scale := -glsl.dot(u2.xyz, eye)
+  z_scale := -glsl.dot(f3.xyz, eye)
+  m[0] = { right.x, u2.x, f3.x, 0 }
+  m[1] = { right.y, u2.y, f3.y, 0 }
+  m[2] = { right.z, u2.z, f3.z, 0 }
+  m[3] = { x_scale, y_scale, z_scale, 1}
+  return m
+}
+
+camera_view_matrix :: proc (camera: ^Camera) -> Mat4 {
+  camera.right_rad = clamp(camera.right_rad, -glsl.PI/2, glsl.PI/2)
+  right, front_xz := basis_from_yaw(camera.up_rad)
+  rotate_about_right := glsl.mat4Rotate(right.xyz, camera.right_rad)
+  u2 := rotate_about_right * UP4
+  f3 := rotate_about_right * front_xz
+
+  m: Mat4
+  eye := camera.position
+  x_scale := -glsl.dot(right.xyz, eye)
+  y_scale := -glsl.dot(u2.xyz, eye)
+  z_scale := -glsl.dot(f3.xyz, eye)
+  m[0] = { right.x, u2.x, f3.x, 0 }
+  m[1] = { right.y, u2.y, f3.y, 0 }
+  m[2] = { right.z, u2.z, f3.z, 0 }
+  m[3] = { x_scale, y_scale, z_scale, 1}
   return m
 }
 

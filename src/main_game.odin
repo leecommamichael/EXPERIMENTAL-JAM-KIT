@@ -5,6 +5,7 @@ import gl "angle"
 import "core:mem/virtual"
 import "core:sys/windows"
 import "core:math/rand"
+import "core:math/linalg/glsl"
 import "core:fmt"
 import "core:time"
 import "core:log"
@@ -58,26 +59,82 @@ game_init :: proc () {
 		audio.add_source_from_clip(&globals.audio, asset)
 	}
 
-	globals.camera.position.y = 1.7
-	globals.camera.position.z = -1.7
 } // game_init
 
 
 @export
 game_step :: proc () {
-	globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
+	gamepad := globals.sugar.input.gamepad
+	rt := precision(gamepad.right_trigger, 2)
+	lt := precision(gamepad.left_trigger, 2)
+	ls := gamepad.left_stick
+	r_input := precision(ls.x, 2)
 
-	sphere, _ := sphere()
-	sphere.position = {0,1,0}
-	sphere.color = color("f00")
-	sphere.draw_command.cull_mode = .Front_Faces
-	// sphere.color.a = 0.55
+	@static facing: Vec3 = {0,0,1}
+	@static v: f32
+	@static r: f32 // radians rotating y
 
-	vehicle := mesh(&boat_mesh)
-	vehicle.draw_command.program = globals.ren.programs[.Phong]
-	vehicle.basis.scale.xz = 1
-	vehicle.position.z = 0
-	vehicle.flags += {.Is_3D}
+	v_max: f32 : 7.0
+	v_min: f32 : -v_max * 0.5
+
+	a_input: f32 = rt - lt
+	a_max: f32 = v_max * globals.tick / 1.0 // K*tick/N = hit K speed after N seconds from rest.
+	a_min: f32 = -a_max
+	a_coast: f32 = -0.66*a_max
+	a: f32 = clamp(a_input, a_min, a_max)
+	if a_input == 0 { // coast
+		if v > 0 { // coast-down
+			a = a_coast
+			if sign(v + a) != sign(v) { v = 0; a = 0 }
+		} else if v < 0 { // coast-up
+			a = -a_coast
+			if sign(v + a) != sign(v) { v = 0; a = 0 }
+		}
+	}
+
+	if a != 0 { // Intent: Disallow steering in-place.
+		steer_rate := globals.tick // radians
+		r += r_input * steer_rate * (a_input < 0 && v < 0 ? -1 : 1)
+		facing = normalize( (FRONT4 * glsl.mat4Rotate(UP,-r)).xyz )
+	}
+
+	v = clamp(v + a, v_min, v_max)
+
+	vehicle, new_vehicle := mesh(&boat_mesh)
+	if new_vehicle {
+		vehicle.flags += {.Is_3D}
+		vehicle.draw_command.program = globals.ren.programs[.Phong]
+		vehicle.position.z = 0.5
+		vehicle.position.y = -0.5
+	}
+	vehicle.position += (v*facing) * globals.tick
+	vehicle.rotation.y = r
+
+	globals.camera.position = vehicle.position + -facing*6
+	globals.camera.position.y = vehicle.position.y + 3
+	globals.camera.up_rad = r
+
+	isle1, _ := sphere()
+	isle1.position = {-10, 0, 10}
+	isle1.scale.xz = 10
+	isle1.scale.y = 2
+	isle2, _ := sphere()
+	isle2.position = { 10, 0, 20}
+	isle2.scale = isle1.scale
+	isle3, _ := sphere()
+	isle3.position = {-10, 0, 30}
+	isle3.scale = isle1.scale
+	isle4, _ := sphere()
+	isle4.position = { 10, 0, 40}
+	isle4.scale = isle1.scale
+
+	water := quad()
+	water.position = 0
+	water.scale.xy = 1000
+	water.rotation.x = PI/2
+	water.flags += {.Is_3D}
+	water.draw_command.program = globals.ren.programs[.Phong]
+	water.color = color("69f")
 
 
 	@static carr: Geom_Mesh2
@@ -105,105 +162,5 @@ game_step :: proc () {
 	}
 	if sugar.key_held(.Down_Arrow) {
 	}
+	globals.perspective_view = camera_view_matrix(&globals.camera)//tick_mouse_camera(&globals.camera, globals.tick)
 } // game step
-
-boat_mesh: []Vec3 = {
-  // --- BOTTOM FACE (y=0) ---
-  {0,0,0}, {1, 0, -1}, {1, 0, 1},
-  {0,0,0}, {-1, 0, -1}, {1, 0, -1},
-  {0,0,0}, {-1, 0, 1}, {-1, 0, -1},
-  {0,0,0}, {-1, 0, 1}, {1, 0, 1}, 
-  {-1, 0, 1}, {1, 0, 1}, {0, 0, 2},
-
-  // --- TOP FACE (y=1) ---
-  {0,1,0}, {1, 1, -1}, {1, 1, 1},
-  {0,1,0}, {-1, 1, -1}, {1, 1, -1},
-  {0,1,0}, {-1, 1, 1}, {-1, 1, -1},
-  {0,1,0}, {-1, 1, 1}, {1, 1, 1}, 
-  {-1, 1, 1}, {1, 1, 1}, {0, 1, 2},
-
-  // --- SIDE WALLS (Connecting y=0 to y=1) ---
-  
-  // Right Wall
-  {1, 0, -1}, {1, 1, -1}, {1, 1, 1},
-  {1, 0, -1}, {1, 1, 1}, {1, 0, 1},
-
-  // Front-Right Wall (to Tip)
-  {1, 0, 1}, {1, 1, 1}, {0, 1, 2},
-  {1, 0, 1}, {0, 1, 2}, {0, 0, 2},
-// Front-Left Wall (from Tip)
-  {0, 0, 2}, {0, 1, 2}, {-1, 1, 1},
-  {0, 0, 2}, {-1, 1, 1}, {-1, 0, 1},
-
-  // Left Wall
-  {-1, 0, 1}, {-1, 1, 1}, {-1, 1, -1},
-  {-1, 0, 1}, {-1, 1, -1}, {-1, 0, -1},
-
-  // Back Wall
-  {-1, 0, -1}, {-1, 1, -1}, {1, 1, -1},
-  {-1, 0, -1}, {1, 1, -1}, {1, 0, -1},
-}
-
-trigger_test :: proc () {
-		defer {
-		txt := text("Trigger Pressure Experiment", .bold_pixel)
-		txt.position.xy = 8
-	}
-
-	gamepad := globals.sugar.input.gamepad
-	pressure := gamepad.right_trigger
-	pressure = precision(pressure, 2) // DENOISE INPUT. 1000 values.
-	@static _pp: f32; defer _pp = pressure
-	@static _pp2: f32; defer _pp2 = _pp
-	prev_pressure := pressure == 0 ? max(_pp, _pp2) : min(_pp, _pp2)
-	d_pressure: f32 = pressure - prev_pressure
-
-
-	shake_debounce :: .030
-	shake_duration :: .150
-	@static since_shake: f32 = 0; since_shake += globals.dt
-	shook: bool
-	can_play := since_shake > shake_debounce
-	shake_alpha: f32 = clamp((shake_duration - since_shake) / shake_duration, 0, 1)
-	@static shake_power: f32 = 0
-
-	if can_play && pressure >= 1 && d_pressure != 0 {
-		shook = true
-		since_shake = 0
-		shake_power = d_pressure
-		sfx := abs(d_pressure) >= 1 ? "LTTP_Text_Done.ogg" : "LTTP_Text_Letter.ogg"
-		audio.play(&globals.audio, gs.sfx_sink, sfx, shake_power)
-	}
-
-	basis: Vec2 = 44
-	if shake_alpha != 0 {
-		basis += {
-			0,
-			6 * shake_power * shake_alpha * sin(shake_alpha)
-		}
-	}
-
-	bg := rect()
-	bg.position.xy = 44 - 11
-	bg.scale = 66
-	bg.color = 0.4
-
-	bg2 := rect()
-	bg2.position.xy = basis
-	bg2.scale = 44
-	bg2.color = 0.6
-
-	curved_fill := rect()
-	curved_fill.position.xy = basis
-	curved_fill.scale.x = 44
-	curved_fill.color.rbg = 0.7
-	curved_fill.scale.y = 44 * midtone(pressure, 2.0)
-
-	@static last_d_pressure: f32
-	if shook {
-		last_d_pressure = d_pressure
-	}
-	pressure_label: string = fmt.tprintf("Shake %2.1f", abs(last_d_pressure))
-	txt := text(pressure_label, .bold_pixel)
-	txt.position.y = 44 + 55 + 4
-	txt.position.x = 44 - 10 }
