@@ -269,6 +269,49 @@ ren_clear :: proc () {
 }
 
 ren_draw :: proc (ren: ^Ren) {
+	ren_draw_colliders :: proc (array: []^Entity, allocator: runtime.Allocator) {
+		mesh := Geom_Mesh2 {
+			vertices = make([dynamic]Ren_Vertex_Base, allocator),
+			indices = make([dynamic]u32, allocator)
+		}
+		for entity in array {
+			if .Collider_Enabled not_in entity.flags || entity.collider.shape == .None {
+				continue
+			}
+			switch entity.collider.shape {
+			case .None:
+			case .Point: fallthrough
+			case .Circle:
+				if .Is_3D in entity.flags {
+					// log.infof("Drawing sphere: %s at %v", entity.debug_name, entity.position)
+					geom_append_sphere(&mesh, 3, 0, entity.position, collider_size(entity).x) // <---| NOTE not interpolated
+				} else {
+					geom_append_circle(&mesh, 16, entity.position, collider_size(entity).x) // <---| NOTE not interpolated
+				}
+			case .AABB:
+				geom_append_quad(&mesh, entity.position, collider_size(entity)) // <-------------| NOTE not interpolated
+			}
+		}
+		if len(mesh.vertices) == 0 do return // INTENT: Silence logs for empty buffer-copies.
+		viz := globals.collider_visualization
+		if viz.draw_command.VAO == 0 {
+			viz.draw_command = ren_make_basic_draw_cmd(
+				globals.instance_buffer,
+				cast(int) viz.id,
+				mesh.vertices[:],
+				mesh.indices[:])
+		} else {
+			ren_reuse_basic_draw_cmd(
+				&viz.draw_command,
+				globals.instance_buffer,
+				cast(int) viz.id,
+				mesh.vertices[:],
+				mesh.indices[:])
+		}
+		gl.BindVertexArray(viz.draw_command.VAO) // TODO: IDK why I need this.
+		// viz.draw_command.mode = .Lines
+		ren_force_draw_entity(globals.ren, viz)
+	}
 	gl.BindBuffer(.ARRAY_BUFFER, globals.instance_buffer)
 	gl.BufferSubData(.ARRAY_BUFFER, 0, globals.instance_staging[:])
 
@@ -276,6 +319,9 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.view = globals.perspective_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
+	if globals.draw_colliders {
+		ren_draw_colliders(globals.entities_3D[:], context.temp_allocator)
+	}
 	for entity in globals.entities_3D {
 		ren_draw_entity(ren, entity)
 	}
@@ -288,46 +334,8 @@ ren_draw :: proc (ren: ^Ren) {
 		if .Is_UI in entity.flags { continue }
 		ren_draw_entity(ren, entity)
 	}
-
 	if globals.draw_colliders {
-		ren_draw_colliders :: proc (allocator: runtime.Allocator) {
-			mesh := Geom_Mesh2 {
-				vertices = make([dynamic]Ren_Vertex_Base, allocator),
-				indices = make([dynamic]u32, allocator)
-			}
-			for entity in globals.entities {
-				if .Collider_Enabled not_in entity.flags || entity.collider.shape == .None {
-					continue
-				}
-				switch entity.collider.shape {
-				case .None:
-				case .Point: fallthrough
-				case .Circle:
-					geom_append_circle(&mesh, 16, entity.position, entity.collider.size.x/2) // <---| NOTE not interpolated
-				case .AABB:
-					geom_append_quad(&mesh, entity.position, entity.collider.size) // <-------------| NOTE not interpolated
-				}
-			}
-			if len(mesh.vertices) == 0 do return // INTENT: Silence logs for empty buffer-copies.
-			viz := globals.collider_visualization
-			if viz.draw_command.VAO == 0 {
-				viz.draw_command = ren_make_basic_draw_cmd(
-					globals.instance_buffer,
-					cast(int) viz.id,
-					mesh.vertices[:],
-					mesh.indices[:])
-			} else {
-				ren_reuse_basic_draw_cmd(
-					&viz.draw_command,
-					globals.instance_buffer,
-					cast(int) viz.id,
-					mesh.vertices[:],
-					mesh.indices[:])
-			}
-			gl.BindVertexArray(viz.draw_command.VAO) // TODO: IDK why I need this.
-			ren_force_draw_entity(globals.ren, viz)
-		}
-		ren_draw_colliders(context.temp_allocator)
+		ren_draw_colliders(globals.entities_2D[:], context.temp_allocator)
 	}
 
 	globals.uniforms.projection = globals.ui_projection

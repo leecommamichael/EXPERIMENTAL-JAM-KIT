@@ -39,12 +39,12 @@ geom_write_ring :: proc (
     // I find it easier to look down at this shape from above,
     // So for my imagination, the sine component is mapped to the Z dimension.
     vertex: Vec4 = {
-      ring_position.x + math.cos(theta) * radius,
-      ring_position.y + 0,
-      ring_position.z + math.sin(theta) * radius,
+      math.cos(theta) * radius,
+      0,
+      math.sin(theta) * radius,
       1
     }
-    vertices[i+bias] = Ren_Vertex_Base{position=(transform * vertex).xyz}
+    vertices[i+bias] = Ren_Vertex_Base{position=(transform * vertex).xyz + ring_position}
   }
 }
 
@@ -52,7 +52,7 @@ Ring_Type :: enum { Body, Start, End }
 
 // RENAME? Really a cone.
 geom_append_ring :: proc (
-  mesh: ^Geom_Mesh2,
+  vertices: ^[dynamic]Ren_Vertex_Base,
   type: Ring_Type,
   ring_position: Vec3 = 0,
   tip_position: Vec3 = 0,
@@ -64,11 +64,11 @@ geom_append_ring :: proc (
   if type != .Body { 
     verts_needed += 1
   }
-  v_len := len(mesh.vertices)
-  resize(&mesh.vertices, v_len + verts_needed)
-  vs := mesh.vertices[v_len:][:verts_needed]
+  v_len := len(vertices)
+  err := resize(vertices, v_len + verts_needed)
+  assert(err == nil)
+  vs := vertices[v_len:][:verts_needed]
   geom_write_ring(vs, type, ring_position, tip_position, sides, radius, transform)
-  // geom_append_ring_cap_indices(&mesh.indices, 0, sides, type)
 }
 
 geom_make_cylinder :: proc (
@@ -105,8 +105,8 @@ geom_make_cylinder :: proc (
   // The tip's ring is translated away from the origin after rotating.
   rotate_tip_ring := _translate_back * rotate_tail_ring
 
-  geom_append_ring(&mesh, .Start, 0,0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
-  geom_append_ring(&mesh, .End, 0,0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
+  geom_append_ring(&mesh.vertices, .Start, 0,0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tail_ring)
+  geom_append_ring(&mesh.vertices, .End, 0,0, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring)
 
   // Now that the geometry has been baked in position according to the transforms,
   // We can build an index buffer to from triangles from the points.
@@ -151,12 +151,12 @@ geom_make_arrow :: proc (
   // The tip's ring is translated away from the origin after rotating.
   rotate_tip_ring := _translate_back * rotate_tail_ring
 
-  geom_append_ring(&mesh, .Start, 0,{0,0,0}, CYLINDER_SIDES, CYLINDER_RADIUS-0.05, rotate_tail_ring)
-  geom_append_ring(&mesh, .Body,  0,0, CYLINDER_SIDES, CYLINDER_RADIUS-.05, rotate_tip_ring)
+  geom_append_ring(&mesh.vertices, .Start, 0,{0,0,0}, CYLINDER_SIDES, CYLINDER_RADIUS-0.05, rotate_tail_ring)
+  geom_append_ring(&mesh.vertices, .Body,  0,0, CYLINDER_SIDES, CYLINDER_RADIUS-.05, rotate_tip_ring)
   geom_append_ring_cap_indices(&mesh.indices, 0, CYLINDER_SIDES, .Start)
   geom_make_faces_between_rings(&mesh.indices, 1, 1+CYLINDER_SIDES*1, CYLINDER_SIDES)
 
-  geom_append_ring(&mesh, .End,   0,{0,.2,0}, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring) // pointy
+  geom_append_ring(&mesh.vertices, .End,   0,{0,.2,0}, CYLINDER_SIDES, CYLINDER_RADIUS, rotate_tip_ring) // pointy
   geom_make_faces_between_rings(&mesh.indices, 1+CYLINDER_SIDES, 1+CYLINDER_SIDES*2, CYLINDER_SIDES)
   geom_append_ring_cap_indices(&mesh.indices, 1+CYLINDER_SIDES*2, CYLINDER_SIDES, .End)
 
@@ -166,54 +166,65 @@ geom_make_arrow :: proc (
   return mesh
 }
 
+geom_append_sphere :: proc (
+  mesh: ^Geom_Mesh2,
+  sides: int = 36,
+  rings: int = 12,
+  position: Vec3 = 0,
+  radius:   f32  = 0.5,
+) {
+  mesh_offset := cast(u32)len(mesh.vertices)
+  sides := u32(sides)
+  rings := u32(rings)
+  pi_step := PI / f32(rings+2)
+  height :: proc (theta, radius: f32) -> f32 {
+    // theta moves from from 0 -> PI by pi_step
+    return -(cos(theta) / 2) * radius
+  }
+  xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({sin(k), 1, sin(k)}) }
+  // xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({k/2, 1+(k*0.15), k/2}) }
+  theta: f32 = 0
+  first_tip := position + Vec3{0,height(theta, radius),0}
+  theta += pi_step
+  first_ring := position + Vec3{0,height(theta, radius),0}
+  t: Mat4 = xform(theta)
+  geom_append_ring(&mesh.vertices, .Start, first_ring,first_tip, sides, radius, t)
+  geom_append_ring_cap_indices(&mesh.indices, mesh_offset, sides, .Start)
+
+  for i in 0..< rings {
+    theta += pi_step
+    t = xform(theta)
+    geom_append_ring(&mesh.vertices, .Body, position+{0,height(theta, radius),0},position, sides, radius, t)
+
+    prev_ring_start := mesh_offset + i*sides + (+1)
+    this_ring_start := prev_ring_start + sides
+    geom_make_faces_between_rings(&mesh.indices, prev_ring_start, this_ring_start, sides)
+  }
+
+  final_ring_start := mesh_offset + (sides*rings) + 1
+  end_cap_start := final_ring_start + sides
+  geom_make_faces_between_rings(&mesh.indices, final_ring_start, end_cap_start, sides)
+
+  theta += pi_step
+  last_ring := position + Vec3{0,height(theta, radius),0}
+  t = xform(theta) 
+  theta += pi_step
+  last_tip := position + Vec3{0,height(theta, radius),0}
+  geom_append_ring(&mesh.vertices, .End, last_ring,last_tip, sides, radius, t)
+  geom_append_ring_cap_indices(&mesh.indices, end_cap_start, sides, .End)
+}
+
 // unit-sphere
 geom_make_sphere :: proc (
   sides: int = 36,
   rings: int = 12,
   allocator: runtime.Allocator
 ) -> Geom_Mesh2 {
-  height :: proc (s: f32) -> f32 {
-    return -(cos(s) / 2)
-  }
-  xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({sin(k), 1, sin(k)}) }
-  // xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({k/2, 1+(k*0.15), k/2}) }
-  sides := u32(sides)
-  rings := u32(rings)
   mesh: Geom_Mesh2 = {
     make([dynamic]Ren_Vertex_Base, allocator),
     make([dynamic]u32, allocator),
   }
-  pi_step := PI / f32(rings+2)
-  theta: f32 = 0
-  first_tip := Vec3{0,height(theta),0}
-  theta += pi_step
-  first_ring := Vec3{0,height(theta),0}
-  t: Mat4 = xform(theta)
-  geom_append_ring(&mesh, .Start, first_ring,first_tip, sides, 0.5, t)
-  geom_append_ring_cap_indices(&mesh.indices, 0, sides, .Start)
-
-  for i in 0..< rings {
-    theta += pi_step
-    t = xform(theta)
-    geom_append_ring(&mesh, .Body, {0,height(theta),0},0, sides, 0.5, t)
-
-    prev_ring_start := i*sides + (+1)
-    this_ring_start := i*sides + (sides+1)
-    geom_make_faces_between_rings(&mesh.indices, prev_ring_start, this_ring_start, sides)
-  }
-
-  final_ring_start := (sides*rings) + 1
-  end_cap_start := final_ring_start + sides
-  geom_make_faces_between_rings(&mesh.indices, final_ring_start, end_cap_start, sides)
-
-  theta += pi_step
-  last_ring := Vec3{0,height(theta),0}
-  t = xform(theta) 
-  theta += pi_step
-  last_tip := Vec3{0,height(theta),0}
-  geom_append_ring(&mesh, .End, last_ring,last_tip, sides, 0.5, t)
-  geom_append_ring_cap_indices(&mesh.indices, end_cap_start, sides, .End)
-
+  geom_append_sphere(&mesh, sides, rings)
   return mesh
 }
 
@@ -259,12 +270,13 @@ geom_append_rect :: proc (
   return nil
 }
 
-geom_make_rect :: proc (size: Vec2, allocator: runtime.Allocator) -> Geom_Mesh2 {
+geom_make_rect :: proc (size: Vec2, allocator: runtime.Allocator) -> (Geom_Mesh2) {
   mesh := Geom_Mesh2 {
     vertices = make([dynamic]Ren_Vertex_Base, allocator),
     indices = make([dynamic]u32, allocator)
   }
-  geom_append_rect(&mesh, position=0, size=size)
+  err := geom_append_rect(&mesh, position=0, size=size)
+  assert(err == nil)
   return mesh
 }
 
@@ -431,17 +443,15 @@ geom_append_ring_cap_indices :: proc (
     append(indices, start_of_mesh + sides_in_mesh)
     // create the rest
     for i in 1 ..< sides_in_mesh {
-      index := (start_of_mesh + i);
-      append(indices, index + 1) // cant be zero.
+      append(indices, start_of_mesh + i + 1) // cant be zero.
       append(indices, start_of_mesh)
-      append(indices, index)
+      append(indices, start_of_mesh + i)
     }
   } else if type == .End {
     for i in 0 ..< sides_in_mesh - 1 {
-      index := (start_of_mesh + i);
-      append(indices, index + 1)
+      append(indices, start_of_mesh + i + 1)
       append(indices, start_of_mesh + sides_in_mesh)
-      append(indices, index)
+      append(indices, start_of_mesh + i)
     }
     append(indices, start_of_mesh + sides_in_mesh - 1)
     append(indices, start_of_mesh + sides_in_mesh)

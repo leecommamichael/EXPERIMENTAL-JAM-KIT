@@ -93,8 +93,8 @@ game_step :: proc () {
 	}
 
 	if a != 0 { // Intent: Disallow steering in-place.
-		steer_rate := globals.tick // radians
-		r += r_input * steer_rate * (a_input < 0 && v < 0 ? -1 : 1)
+		steer_rate := 2*globals.tick // radians
+		r += r_input * steer_rate * (v < 0 ? -1 : 1)
 		facing = normalize( (FRONT4 * glsl.mat4Rotate(UP,-r)).xyz )
 	}
 
@@ -109,33 +109,47 @@ game_step :: proc () {
 	}
 	vehicle.position += (v*facing) * globals.tick
 	vehicle.rotation.y = r
+	vehicle.flags += {.Collider_Enabled}
+	vehicle.collider.shape = .Circle
+	vehicle.collider.size = 1
+	vehicle.flags += {.Hidden}
+	globals.draw_colliders = true
 
 	globals.camera.position = vehicle.position + -facing*6
 	globals.camera.position.y = vehicle.position.y + 3
 	globals.camera.up_rad = r
 
-	isle1, _ := sphere()
+	isle1, _ := get_entity()
+	isle1.color.a = 0.5
 	isle1.position = {-10, 0, 10}
-	isle1.scale.xz = 10
-	isle1.scale.y = 2
-	isle2, _ := sphere()
-	isle2.position = { 10, 0, 20}
-	isle2.scale = isle1.scale
-	isle3, _ := sphere()
-	isle3.position = {-10, 0, 30}
-	isle3.scale = isle1.scale
-	isle4, _ := sphere()
-	isle4.position = { 10, 0, 40}
-	isle4.scale = isle1.scale
+	isle1.basis.scale = 3
+	isle1.scale = 3 // collider
+	isle1.flags += {.Collider_Enabled, .Hidden}
+	isle1.collider.shape = .Circle
+	isle1.collider.size = isle1.collider.size
+
+	// isle2, _ := sphere()
+	// isle2.position = { 10, 0, 20}
+	// isle2.scale = isle1.scale
+	// isle2.flags += {.Collider_Enabled, .Hidden}
+	// isle2.collider.shape = .Circle
+	// isle2.collider.size = isle1.collider.size
+
+	// isle3, _ := sphere()
+	// isle3.position = {-10, 0, 30}
+	// isle3.scale = isle1.scale
+
+	// isle4, _ := sphere()
+	// isle4.position = { 10, 0, 40}
+	// isle4.scale = isle1.scale
 
 	water := quad()
 	water.position = 0
 	water.scale.xy = 1000
 	water.rotation.x = PI/2
-	water.flags += {.Is_3D}
+	water.flags += {.Is_3D,}
 	water.draw_command.program = globals.ren.programs[.Phong]
-	water.color = color("69f")
-
+	water.color = color("69f9")
 
 	@static carr: Geom_Mesh2
 	arr, nua := get_entity(); if nua || globals.hot_reloaded_this_frame {
