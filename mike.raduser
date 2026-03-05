@@ -7,7 +7,7 @@ recent_project: path: game
 window:
 {
   size: 3206 1953
-  pos: 301 124
+  pos: 317 67
   monitor: "\\\\.\\DISPLAY1"
   hint_ui_text: 1
   smooth_code_text: 0
@@ -19,7 +19,7 @@ window:
   {
     0.328123:
     {
-      0.366045:
+      0.483469:
       {
         watch: expression: "query:types"
         watch:
@@ -40,7 +40,7 @@ window:
           }
         }
       }
-      0.296563:
+      0.179139:
       {
         watch: expression: "query:threads"
         watch: selected expression: "query:targets"
@@ -73,7 +73,7 @@ window:
         }
       }
     }
-    0.338539:
+    0.399661:
     {
       selected
       text:
@@ -215,9 +215,9 @@ window:
           input: ""
           cmd: search
         }
-        cursor_line: 344
+        cursor_line: 345
         cursor_column: 1
-        mark_line: 344
+        mark_line: 345
         mark_column: 1
       }
       text:
@@ -225,37 +225,46 @@ window:
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/asset_bundle_desktop.odin\".data"
         project: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.radproj"
         query: input: ""
-        cursor_line: 50
-        cursor_column: 25
-        mark_line: 50
-        mark_column: 25
+        cursor_line: 44
+        cursor_column: 1
+        mark_line: 44
+        mark_column: 1
       }
-      disasm: query: input: ""
       text:
       {
-        selected
         expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/asset_bundle.odin\".data"
         project: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.radproj"
         query:
         {
-          input: asset_cache
+          input: ""
           cmd: search
         }
-        cursor_line: 74
-        cursor_column: 16
-        mark_line: 74
-        mark_column: 16
+        cursor_line: 51
+        cursor_column: 32
+        mark_line: 51
+        mark_column: 32
+      }
+      text:
+      {
+        selected
+        expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/geom.odin\".data"
+        project: "C:\\Users\\thatl\\usr\\Repositories\\EXPERIMENTAL_JAM_KIT\\engine.radproj"
+        query: input: ""
+        cursor_line: 193
+        cursor_column: 1
+        mark_line: 193
+        mark_column: 1
       }
     }
-    0.333333: text:
+    0.272211: text:
     {
       selected
-      expression: "file:\"C:/Users/thatl/usr/Applications (Compilers)/odin/base/runtime/core.odin\".data"
+      expression: "file:\"C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src/ren.odin\".data"
       auto: 1
       query: input: ""
-      cursor_line: 810
+      cursor_line: 287
       cursor_column: 1
-      mark_line: 810
+      mark_line: 287
       mark_column: 1
     }
   }
@@ -379,6 +388,7 @@ keybindings:
   { log_marker m ctrl shift alt }
   { toggle_dev_menu d ctrl shift alt }
   { add_target o ctrl }
+  { geo3d m }
 }
 current_path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/src"
 file_path_map:

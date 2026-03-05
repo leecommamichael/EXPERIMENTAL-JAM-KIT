@@ -119,29 +119,26 @@ game_step :: proc () {
 	globals.camera.position.y = vehicle.position.y + 3
 	globals.camera.up_rad = r
 
-	isle1, _ := get_entity()
+	isle1, _ := sphere()
 	isle1.color.a = 0.5
 	isle1.position = {-10, 0, 10}
 	isle1.basis.scale = 3
 	isle1.scale = 3 // collider
-	isle1.flags += {.Collider_Enabled, .Hidden}
+	isle1.flags += {.Collider_Enabled}
 	isle1.collider.shape = .Circle
-	isle1.collider.size = isle1.collider.size
+	isle1.collider.size = isle1.basis.scale
 
-	// isle2, _ := sphere()
-	// isle2.position = { 10, 0, 20}
-	// isle2.scale = isle1.scale
-	// isle2.flags += {.Collider_Enabled, .Hidden}
-	// isle2.collider.shape = .Circle
-	// isle2.collider.size = isle1.collider.size
+	isle2, _ := sphere()
+	isle2.position = { 10, 0, 20}
+	isle2.scale = isle1.scale
 
-	// isle3, _ := sphere()
-	// isle3.position = {-10, 0, 30}
-	// isle3.scale = isle1.scale
+	isle3, _ := sphere()
+	isle3.position = {-10, 0, 30}
+	isle3.scale = isle1.scale
 
-	// isle4, _ := sphere()
-	// isle4.position = { 10, 0, 40}
-	// isle4.scale = isle1.scale
+	isle4, _ := sphere()
+	isle4.position = { 10, 0, 40}
+	isle4.scale = isle1.scale
 
 	water := quad()
 	water.position = 0

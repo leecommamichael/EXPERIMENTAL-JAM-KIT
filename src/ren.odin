@@ -284,7 +284,7 @@ ren_draw :: proc (ren: ^Ren) {
 			case .Circle:
 				if .Is_3D in entity.flags {
 					// log.infof("Drawing sphere: %s at %v", entity.debug_name, entity.position)
-					geom_append_sphere(&mesh, 3, 0, entity.position, collider_size(entity).x) // <---| NOTE not interpolated
+					geom_append_sphere(&mesh, entity.position, collider_size(entity).x, 16, 16) // <---| NOTE not interpolated
 				} else {
 					geom_append_circle(&mesh, 16, entity.position, collider_size(entity).x) // <---| NOTE not interpolated
 				}

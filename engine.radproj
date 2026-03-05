@@ -1,16 +1,17 @@
 // raddbg 0.9.24 project file
 
+recent_file: path: "src/geom.odin"
+recent_file: path: "src/ren.odin"
+recent_file: path: "src/main_framework.odin"
+recent_file: path: "src/asset_bundle_desktop.odin"
 recent_file: path: "src/asset_bundle.odin"
 recent_file: path: "../../Applications (Compilers)/odin/base/runtime/core.odin"
 recent_file: path: "../../Applications (Compilers)/odin/base/runtime/entry_windows.odin"
 recent_file: path: "src/third-party/odin-aseprite/read_chunk.odin"
 recent_file: path: "../../Applications (Compilers)/odin/core/image/png/png.odin"
-recent_file: path: "src/asset_bundle_desktop.odin"
 recent_file: path: "src/ren_shape.odin"
 recent_file: path: "src/main_entrypoint.odin"
 recent_file: path: "src/angle/interface.odin"
-recent_file: path: "src/main_framework.odin"
-recent_file: path: "src/ren.odin"
 recent_file: path: "src/audio/audio.odin"
 recent_file: path: "src/audio/audio_windows.odin"
 recent_file: path: "../../Applications (Compilers)/odin/core/strconv/decimal/decimal.odin"
@@ -45,7 +46,7 @@ target:
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66208237734703
+  timestamp: 66208450401766
 }
 debug_info:
 {
@@ -77,11 +78,11 @@ debug_info:
 }
 breakpoint:
 {
-  source_location: "src/asset_bundle_desktop.odin:44:1"
+  source_location: "src/asset_bundle_desktop.odin:76:1"
   hit_count: 0
 }
 breakpoint:
 {
-  source_location: "src/asset_bundle_desktop.odin:76:1"
-  hit_count: 0
+  source_location: "src/geom.odin:213:1"
+  hit_count: 1
 }

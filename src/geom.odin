@@ -166,67 +166,73 @@ geom_make_arrow :: proc (
   return mesh
 }
 
-geom_append_sphere :: proc (
-  mesh: ^Geom_Mesh2,
-  sides: int = 36,
-  rings: int = 12,
-  position: Vec3 = 0,
-  radius:   f32  = 0.5,
+geom_append_sphere :: proc(
+    mesh: ^Geom_Mesh2, 
+    position: Vec3 = 0, 
+    radius: f32 = 0.5, 
+    segments: u32 = 36, 
+    rings: u32 = 18
 ) {
-  mesh_offset := cast(u32)len(mesh.vertices)
-  sides := u32(sides)
-  rings := u32(rings)
-  pi_step := PI / f32(rings+2)
-  height :: proc (theta, radius: f32) -> f32 {
-    // theta moves from from 0 -> PI by pi_step
-    return -(cos(theta) / 2) * radius
-  }
-  xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({sin(k), 1, sin(k)}) }
-  // xform :: proc (k: f32) -> Mat4 { return glsl.mat4Scale({k/2, 1+(k*0.15), k/2}) }
-  theta: f32 = 0
-  first_tip := position + Vec3{0,height(theta, radius),0}
-  theta += pi_step
-  first_ring := position + Vec3{0,height(theta, radius),0}
-  t: Mat4 = xform(theta)
-  geom_append_ring(&mesh.vertices, .Start, first_ring,first_tip, sides, radius, t)
-  geom_append_ring_cap_indices(&mesh.indices, mesh_offset, sides, .Start)
+    start_index := cast(u32)len(mesh.vertices)
 
-  for i in 0..< rings {
-    theta += pi_step
-    t = xform(theta)
-    geom_append_ring(&mesh.vertices, .Body, position+{0,height(theta, radius),0},position, sides, radius, t)
+    reserve(&mesh.vertices, len(mesh.vertices) + int((rings + 1) * (segments + 1)))
+    reserve(&mesh.indices, len(mesh.indices) + int(rings * segments * 6))
 
-    prev_ring_start := mesh_offset + i*sides + (+1)
-    this_ring_start := prev_ring_start + sides
-    geom_make_faces_between_rings(&mesh.indices, prev_ring_start, this_ring_start, sides)
-  }
+    for i in 0..=rings {
+        v := f32(i) / f32(rings)
+        theta := v * math.PI // lat
 
-  final_ring_start := mesh_offset + (sides*rings) + 1
-  end_cap_start := final_ring_start + sides
-  geom_make_faces_between_rings(&mesh.indices, final_ring_start, end_cap_start, sides)
+        sin_theta := math.sin(theta)
+        cos_theta := math.cos(theta)
 
-  theta += pi_step
-  last_ring := position + Vec3{0,height(theta, radius),0}
-  t = xform(theta) 
-  theta += pi_step
-  last_tip := position + Vec3{0,height(theta, radius),0}
-  geom_append_ring(&mesh.vertices, .End, last_ring,last_tip, sides, radius, t)
-  geom_append_ring_cap_indices(&mesh.indices, end_cap_start, sides, .End)
+        for j in 0..=segments {
+            u := f32(j) / f32(segments)
+            phi := u * math.PI * 2.0 // lon
+
+            sin_phi := math.sin(phi)
+            cos_phi := math.cos(phi)
+
+            x := cos_phi * sin_theta
+            y := cos_theta
+            z := sin_phi * sin_theta
+
+            pos := position + (Vec3{x, y, z} * radius)
+            
+            append(&mesh.vertices, Ren_Vertex_Base{position = pos}) 
+        }
+    }
+
+    for i in 0..<rings {
+        for j in 0..<segments {
+            first := start_index + (i * (segments + 1)) + j
+            second := first + (segments + 1)
+
+            // Triangle 1
+            append(&mesh.indices, first)
+            append(&mesh.indices, second)
+            append(&mesh.indices, first + 1)
+
+            // Triangle 2
+            append(&mesh.indices, second)
+            append(&mesh.indices, second + 1)
+            append(&mesh.indices, first + 1)
+        }
+    }
 }
 
-// unit-sphere
-geom_make_sphere :: proc (
-  sides: int = 36,
-  rings: int = 12,
-  allocator: runtime.Allocator
+geom_make_sphere :: proc(
+    segments: u32 = 36, 
+    rings: u32 = 18, 
+    allocator := context.allocator
 ) -> Geom_Mesh2 {
-  mesh: Geom_Mesh2 = {
-    make([dynamic]Ren_Vertex_Base, allocator),
-    make([dynamic]u32, allocator),
-  }
-  geom_append_sphere(&mesh, sides, rings)
-  return mesh
+    mesh: Geom_Mesh2 = {
+        make([dynamic]Ren_Vertex_Base, allocator),
+        make([dynamic]u32, allocator),
+    }
+    geom_append_sphere(&mesh, 0, 0.5, segments, rings)
+    return mesh
 }
+
 
 // On the XY plane {0,0,0} is at the bottom left of the rect.
 geom_write_rect :: proc (
