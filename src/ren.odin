@@ -319,11 +319,11 @@ ren_draw :: proc (ren: ^Ren) {
 	globals.uniforms.view = globals.perspective_view
 	gl.BindBuffer(.UNIFORM_BUFFER, ren.frame_UBO)
 	gl.BufferSubData(.UNIFORM_BUFFER, 0, &globals.uniforms)
-	if globals.draw_colliders {
-		ren_draw_colliders(globals.entities_3D[:], context.temp_allocator)
-	}
 	for entity in globals.entities_3D {
 		ren_draw_entity(ren, entity)
+	}
+	if globals.draw_colliders {
+		ren_draw_colliders(globals.entities_3D[:], context.temp_allocator)
 	}
 
 	globals.uniforms.projection = globals.orthographic_projection

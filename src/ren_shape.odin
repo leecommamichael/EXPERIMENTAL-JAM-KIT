@@ -75,11 +75,12 @@ sphere :: proc (hash: Hash = #caller_location) -> (^Entity, bool) #optional_ok {
 	entity, is_new := get_entity(hash)
 	if is_new {
 		entity.draw_command = ren_make_phong_draw_cmd(
-		globals.instance_buffer, cast(int) entity.id,
-		globals.unit_sphere_mesh.vertices[:],
-		globals.unit_sphere_mesh.indices[:])
+			globals.instance_buffer, cast(int) entity.id,
+			globals.unit_sphere_mesh.vertices[:],
+			globals.unit_sphere_mesh.indices[:])
 		entity.flags += {.Is_3D}
 		entity.blend_normals = true
+		entity.draw_command.cull_mode = .Back_Faces
 	}
 	// entity.position.z = next_z()
 	return entity, is_new

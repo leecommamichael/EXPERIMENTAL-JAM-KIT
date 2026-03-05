@@ -76,8 +76,8 @@ framework_init :: proc () {
 	debug_colliders := make_entity()
 	debug_colliders.position.z = NEAR_Z - 10.0 // In front of almost everything.
 	debug_colliders.debug_name = "Collider Visualization"
-	debug_colliders.flags += {.Hidden} // causes it not to be systematically drawn.
-	debug_colliders.draw_command = {}  // this would crash, but ren fills it in.
+	debug_colliders.flags += {.Hidden} // causes it not to be systematically drawn. (only force-drawn)
+	debug_colliders.draw_command = {}  // this would crash, but ren_ fills it in.
 	debug_colliders.color = vec4(0.33, 0.45, 0.9, 0.55)
 	globals.collider_visualization = debug_colliders
 	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.linear_sampler)

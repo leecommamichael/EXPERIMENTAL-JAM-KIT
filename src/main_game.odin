@@ -111,8 +111,7 @@ game_step :: proc () {
 	vehicle.rotation.y = r
 	vehicle.flags += {.Collider_Enabled}
 	vehicle.collider.shape = .Circle
-	vehicle.collider.size = 1
-	vehicle.flags += {.Hidden}
+	vehicle.collider.size = 3
 	globals.draw_colliders = true
 
 	globals.camera.position = vehicle.position + -facing*6
@@ -140,13 +139,13 @@ game_step :: proc () {
 	isle4.position = { 10, 0, 40}
 	isle4.scale = isle1.scale
 
-	water := quad()
-	water.position = 0
-	water.scale.xy = 1000
-	water.rotation.x = PI/2
-	water.flags += {.Is_3D,}
-	water.draw_command.program = globals.ren.programs[.Phong]
-	water.color = color("69f9")
+	// water := quad()
+	// water.position = 0
+	// water.scale.xy = 1000
+	// water.rotation.x = PI/2
+	// water.flags += {.Is_3D,}
+	// water.draw_command.program = globals.ren.programs[.Phong]
+	// water.color = color("69f9")
 
 	@static carr: Geom_Mesh2
 	arr, nua := get_entity(); if nua || globals.hot_reloaded_this_frame {
