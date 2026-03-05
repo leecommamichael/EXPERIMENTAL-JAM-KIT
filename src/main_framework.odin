@@ -74,7 +74,8 @@ framework_init :: proc () {
 	log.info("---------------------------------------- framework initialized.")
 	globals.draw_colliders = false
 	debug_colliders := make_entity()
-	debug_colliders.position.z = NEAR_Z - 10.0 // In front of almost everything.
+	// BROKEN: This is needed in 2D, but breaks 3D collider visualization.
+		// debug_colliders.position.z = NEAR_Z - 10.0 // In front of almost everything.
 	debug_colliders.debug_name = "Collider Visualization"
 	debug_colliders.flags += {.Hidden} // causes it not to be systematically drawn. (only force-drawn)
 	debug_colliders.draw_command = {}  // this would crash, but ren_ fills it in.
