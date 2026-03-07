@@ -59,6 +59,7 @@ game_init :: proc () {
 		audio.add_source_from_clip(&globals.audio, asset)
 	}
 
+	gs.facing = {0,0,1}
 } // game_init
 
 
@@ -70,9 +71,9 @@ game_step :: proc () {
 	ls := gamepad.left_stick
 	r_input := precision(ls.x, 2)
 
-	@static facing: Vec3 = {0,0,1}
-	@static v: f32
-	@static r: f32 // radians rotating y
+	v := gs.v
+	r := gs.r
+	facing := gs.facing
 
 	v_max: f32 : 7.0
 	v_min: f32 : -v_max * 0.5
@@ -94,24 +95,23 @@ game_step :: proc () {
 
 	if a != 0 { // Intent: Disallow steering in-place.
 		steer_rate := 2*globals.tick // radians
-		r += r_input * steer_rate * (v < 0 ? -1 : 1)
-		facing = normalize( (FRONT4 * glsl.mat4Rotate(UP,-r)).xyz )
+		gs.r += r_input * steer_rate * (v < 0 ? -1 : 1)
+		gs.facing = normalize( (FRONT4 * glsl.mat4Rotate(UP,-r)).xyz )
 	}
 
-	v = clamp(v + a, v_min, v_max)
+	gs.v = clamp(v + a, v_min, v_max)
 
 	vehicle, new_vehicle := mesh(&boat_mesh)
 	if new_vehicle {
 		vehicle.flags += {.Is_3D}
 		vehicle.draw_command.program = globals.ren.programs[.Phong]
 		vehicle.position.z = 0.5
-		vehicle.position.y = -0.5
 	}
 	vehicle.position += (v*facing) * globals.tick
 	vehicle.rotation.y = r
 	vehicle.flags += {.Collider_Enabled}
 	vehicle.collider.shape = .Circle
-	vehicle.collider.size = 3
+	vehicle.collider.size = 1.5 // ground-probe
 	globals.draw_colliders = true
 
 	globals.camera.position = vehicle.position + -facing*6
@@ -139,13 +139,13 @@ game_step :: proc () {
 	isle4.position = { 10, 0, 40}
 	isle4.scale = isle1.scale
 
-	// water := quad()
-	// water.position = 0
-	// water.scale.xy = 1000
-	// water.rotation.x = PI/2
-	// water.flags += {.Is_3D,}
-	// water.draw_command.program = globals.ren.programs[.Phong]
-	// water.color = color("69f9")
+	water := quad()
+	water.position = 0
+	water.scale.xy = 1000
+	water.rotation.x = PI/2
+	water.flags += {.Is_3D,}
+	water.draw_command.program = globals.ren.programs[.Phong]
+	water.color = color("69f9")
 
 	@static carr: Geom_Mesh2
 	arr, nua := get_entity(); if nua || globals.hot_reloaded_this_frame {
