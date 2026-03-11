@@ -13,6 +13,63 @@ Geom_Mesh2 :: struct {
   indices:  [dynamic]u32,
 }
 
+geom_make_hexgrid :: proc (
+  rows: int = 512, // vertices
+  cols: int = 512, // vertices
+  hex_radius: f32,
+) -> (mesh: Geom_Mesh2) {
+  verts := rows * cols + (rows/2)
+  mesh = {
+    make([dynamic]Ren_Vertex_Base, verts),
+    make([dynamic]u32, 0, 3*((2*(rows-1)*(cols-1)) + (rows-1)) )
+  }
+  assert(cols > 1)
+  assert(rows > 1)
+  X_GAP: f32 = hex_radius * 1.0
+  Z_GAP: f32 = hex_radius * 0.866025 // sqrt(3)/2 for equilateral
+  long_row: bool = false
+  row: int = 0
+  col: int = 0
+  for i in 0..<verts {
+    if ( long_row && col % (cols+1) == 0  \
+    ||  !long_row && col %  cols    == 0) && col > 0 {
+      col = 0
+      row += 1
+      long_row = !long_row
+    }
+
+    if long_row && col > 0 { // Avoids top and left edges
+      a := u32( i-(cols+1) )
+      b := u32( i-cols )
+      c := u32( i-1 )
+      d := u32( i )
+      e := u32( i+cols )
+      f := u32( i+(cols+1) )
+      if row == rows-1 {
+        if col == cols { // BOTTOM RIGHT EDGE
+          append(&mesh.indices, d,a,c)
+        } else {          // BOTTOM EDGE
+          append(&mesh.indices, d,b,a, d,a,c)
+        }
+      } else {
+        if col == cols { // RIGHT EDGE
+          append(&mesh.indices, d,a,c, d,c,e)
+        } else {           // COMMON CASE
+          append(&mesh.indices, d,b,a, d,a,c)
+          append(&mesh.indices, d,c,e, d,e,f)
+        }
+      }
+    }
+
+    x_inset: f32 = long_row ? -f32(X_GAP) : 0
+    // x_inset: f32 = 0
+    mesh.vertices[i].position.x = x_inset + f32(col) * X_GAP
+    mesh.vertices[i].position.z =           f32(row) * Z_GAP
+    col += 1
+  }
+  return
+}
+
 // RENAME? Really a cone.
 // `len(vertices)` must be == `sides` (or `sides+1` if RingType.Start or .End)
 geom_write_ring :: proc (
