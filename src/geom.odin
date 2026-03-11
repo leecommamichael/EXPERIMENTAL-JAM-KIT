@@ -40,10 +40,10 @@ geom_make_hexgrid :: proc (
 
     if long_row && col > 0 { // Avoids top and left edges
       a := u32( i-(cols+1) )
-      b := u32( i-cols )
-      c := u32( i-1 )
-      d := u32( i )
-      e := u32( i+cols )
+      b := u32( i-cols     )
+      c := u32( i-1        )
+      d := u32( i          )
+      e := u32( i+cols     )
       f := u32( i+(cols+1) )
       if row == rows-1 {
         if col == cols { // BOTTOM RIGHT EDGE
