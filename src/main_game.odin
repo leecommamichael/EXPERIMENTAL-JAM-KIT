@@ -60,6 +60,59 @@ game_init :: proc () {
 	}
 
 	gs.facing = {0,0,1}
+
+	rows :: 512
+	cols :: 512
+	verts :: rows * cols + (rows/2)
+	gs.water_static_verts = {
+		make([dynamic]Ren_Vertex_Base, verts),
+		make([dynamic]u32, 0, 3*((2*(rows-1)*(cols-1)) + (rows-1)) )
+	}
+
+	assert(cols > 1)
+	assert(rows > 1)
+	X_GAP: f32 : 1
+	Z_GAP: f32 : 0.866025 // sqrt(3)/2 for equilateral
+	long_row: bool = false
+	row: int = 0
+	col: int = 0
+	for i in 0..<u32(verts) {
+		if ( long_row && col % (cols+1) == 0  \
+		||  !long_row && col %  cols    == 0) && col > 0 {
+			col = 0
+			row += 1
+			long_row = !long_row
+		}
+
+		if long_row && col > 0 { // Avoids top and left edges
+			a: u32 = i-(cols+1)
+			b: u32 = i-cols
+			c: u32 = i-1
+			d: u32 = i
+			e: u32 = i+cols
+			f: u32 = i+(cols+1)
+			if row == rows-1 {
+				if col == cols { // BOTTOM RIGHT EDGE
+					append(&gs.water_static_verts.indices, d,a,c)
+				} else {          // BOTTOM EDGE
+					append(&gs.water_static_verts.indices, d,b,a, d,a,c)
+				}
+			} else {
+				if col == cols { // RIGHT EDGE
+					append(&gs.water_static_verts.indices, d,a,c, d,c,e)
+				} else {           // COMMON CASE
+					append(&gs.water_static_verts.indices, d,b,a, d,a,c)
+					append(&gs.water_static_verts.indices, d,c,e, d,e,f)
+				}
+			}
+		}
+
+		x_inset: f32 = long_row ? -f32(X_GAP)/2 : 0
+		// x_inset: f32 = 0
+		gs.water_static_verts.vertices[i].position.x = x_inset + f32(col) * X_GAP
+		gs.water_static_verts.vertices[i].position.z =           f32(row) * Z_GAP
+		col += 1
+	}
 } // game_init
 
 
@@ -139,12 +192,10 @@ game_step :: proc () {
 	isle4.position = { 10, 0, 40}
 	isle4.scale = isle1.scale
 
-	water := quad()
+	water := mesh_from_geom(&gs.water_static_verts)
 	water.position = 0
-	water.scale.xy = 1000
-	water.rotation.x = PI/2
 	water.flags += {.Is_3D,}
-	water.draw_command.program = globals.ren.programs[.Phong]
+	water.draw_command.program = globals.ren.programs[.Water]
 	water.color = color("69f9")
 
 	@static carr: Geom_Mesh2

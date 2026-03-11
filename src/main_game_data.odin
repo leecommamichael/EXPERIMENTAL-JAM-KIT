@@ -24,6 +24,7 @@ import "audio"
 Game_State :: struct {
 	sfx_sink:   audio.Sink,
 	music_sink: audio.Sink,
+  water_static_verts: Geom_Mesh2,
   // kart
   facing: Vec3,
   v: f32,
