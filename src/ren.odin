@@ -12,8 +12,8 @@ import gl "angle"
 // Section: Renderer
 //////////////////////////////////////////////////////////////////////
 
-ren_make :: proc () -> ^Ren {
-	ren := new(Ren)
+ren_make :: proc () -> (ren: ^Ren, ok: bool) {
+	ren = new(Ren)
 
 	err: gl.Error
 	err, ren.frame_UBO = gl.CreateBuffer()
@@ -31,13 +31,13 @@ ren_make :: proc () -> ^Ren {
 	gl.BufferData(.ARRAY_BUFFER, globals.glyph_staging[:], .STREAM_DRAW)
 	gl.BindBuffer(.ARRAY_BUFFER, 0)
 
-	ren.programs[Game_Shader.Basic]  = ren_make_basic_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
-	ren.programs[Game_Shader.Water]  = ren_make_basic_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
-	ren.programs[Game_Shader.Text]   = ren_make_basic_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
-	ren.programs[Game_Shader.Image]  = ren_make_basic_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
-	ren.programs[Game_Shader.Sprite] = ren_make_basic_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
-	ren.programs[Game_Shader.Framebuffer_Texture] = ren_make_basic_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
-	ren.programs[Game_Shader.Phong] = ren_make_basic_shader(ren, phong_vertex_shader_source, phong_fragment_shader_source)
+	ren.programs[Game_Shader.Basic], ok  = ren_make_basic_shader(ren, basic_vertex_shader_source, basic_fragment_shader_source)
+	ren.programs[Game_Shader.Water], ok  = ren_make_basic_shader(ren, water_vertex_shader_source, water_fragment_shader_source)
+	ren.programs[Game_Shader.Text], ok   = ren_make_basic_shader(ren, text_vertex_shader_source,  text_fragment_shader_source)
+	ren.programs[Game_Shader.Image], ok  = ren_make_basic_shader(ren, image_vertex_shader_source, image_fragment_shader_source)
+	ren.programs[Game_Shader.Sprite], ok = ren_make_basic_shader(ren, sprite_vertex_shader_source, sprite_fragment_shader_source)
+	ren.programs[Game_Shader.Framebuffer_Texture], ok = ren_make_basic_shader(ren, framebuffer_quad_vertex_shader_source, framebuffer_quad_fragment_shader_source)
+	ren.programs[Game_Shader.Phong], ok = ren_make_basic_shader(ren, phong_vertex_shader_source, phong_fragment_shader_source)
 
 	ren.linear_sampler = gl.CreateSampler()
 	gl.Set_Sampler_Min_Filter(ren.linear_sampler, .LINEAR)
@@ -46,7 +46,7 @@ ren_make :: proc () -> ^Ren {
 	gl.Set_Sampler_Min_Filter(ren.nearest_sampler, .NEAREST)
 	gl.Set_Sampler_Mag_Filter(ren.nearest_sampler, .NEAREST)
 
-	return ren
+	return ren, ok
 }
 
 ren_init :: proc (ren: ^Ren) {
@@ -88,6 +88,7 @@ Texture_Unit :: enum {
 	Font = 1,
 	Texture = 2,
 	Framebuffer_Texture = 3,
+	Heightmap = 4,
 }
 
 // How might a bad-shader cycle happen?
@@ -97,7 +98,7 @@ hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
 	if !globals.hot_reloaded_this_frame { return }
 	if .Shader_Reload_Failed in entity.flags { return }
 
-	new_program, ok := ren_maybe_make_basic_shader(globals.ren, vert, frag)
+	new_program, ok := ren_make_basic_shader(globals.ren, vert, frag)
 	if !ok {
 		log.infof(
 			"[RELOADER] failed to reload a shader for entity %d: %s",
@@ -123,11 +124,12 @@ hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
 	)
 }
 
-ren_maybe_make_basic_shader :: proc (
+ren_make_basic_shader :: proc (
 	ren: ^Ren,
 	vert: string,
 	frag: string,
 	caller := #caller_location,
+	expr := #caller_expression,
 ) -> (program: gl.Program, ok: bool) {
 	// Compile program
 	program, ok = gl.load_shaders_source(vert, frag)
@@ -153,6 +155,11 @@ ren_maybe_make_basic_shader :: proc (
 	if fb_sampler >= 0 {
 		gl.glUniform1i(fb_sampler, cast(int) Texture_Unit.Framebuffer_Texture)
 	}
+
+	heightmap_sampler := gl.GetUniformLocation(program, "heightmap")
+	if heightmap_sampler >= 0 {
+		gl.glUniform1i(heightmap_sampler, cast(int) Texture_Unit.Heightmap)
+	}
 	// Link Uniform Block
 	//   TODO: apparently this is global and only needs to happen once
 	//   if all programs share the same name + layout.
@@ -162,39 +169,6 @@ ren_maybe_make_basic_shader :: proc (
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, FRAME_UNIFORM_INDEX, ren.frame_UBO)
 
 	return program, true
-}
-
-ren_make_basic_shader :: proc (ren: ^Ren, vert, frag: string) -> gl.Program {
-	// Compile program
-	program, ok := gl.load_shaders_source(vert, frag)
-	gl.UseProgram(program)
-	defer gl.UseProgram(0)
-	log.assertf(ok, "A shader failed to compile/link.\n%s\n%s", vert, frag)
-
-	font_atlas_sampler := gl.GetUniformLocation(program, "font_atlas")
-	if font_atlas_sampler != -1 {
-		gl.glUniform1i(font_atlas_sampler, cast(int) Texture_Unit.Font)
-		assert(gl.GetError() == .NO_ERROR)
-	}
-	texture_atlas_sampler := gl.GetUniformLocation(program, "texture_atlas")
-	if texture_atlas_sampler != -1 {
-		gl.glUniform1i(texture_atlas_sampler, cast(int) Texture_Unit.Texture)
-		assert(gl.GetError() == .NO_ERROR)
-	}
-	fb_sampler := gl.GetUniformLocation(program, "framebuffer_color")
-	if fb_sampler != -1 {
-		gl.glUniform1i(fb_sampler, cast(int) Texture_Unit.Framebuffer_Texture)
-		assert(gl.GetError() == .NO_ERROR)
-	}
-	// Link Uniform Block
-	//   TODO: apparently this is global and only needs to happen once
-	//   if all programs share the same name + layout.
-	uniform_index := gl.GetUniformBlockIndex(program, "Frame_Uniforms")
-	assert(uniform_index != gl.INVALID_INDEX)
-	gl.UniformBlockBinding(program, uniform_index, FRAME_UNIFORM_INDEX)
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, FRAME_UNIFORM_INDEX, ren.frame_UBO)
-
-	return program
 }
 
 ren_bind_or_reuse_draw_command :: proc (entity: ^Entity) {
@@ -847,9 +821,19 @@ bind_texture_to_unit :: proc (texture_unit: u32, texture: GPU_Texture) {
 	gl.BindTexture(texture.target, texture.texture)
 }
 
-init_and_upload_texture :: proc (texture_unit: u32, texture: ^GPU_Texture, pixels: []$T, size_px: [2]int) -> bool {
+set_texture_unit :: proc (tu: Texture_Unit) {
+	gl.glActiveTexture(gl.TEXTURE0 + cast(u32) tu)
+}
+
+// inits the GPU_Texture with size_px and texture
+//
+// side-effect: binds texture to texture-unit
+// side-effect: copies pixels to gpu
+// side-effect: sets filters/LOD/wrap
+//
+// Just fill in the target,format, and properties on the GPU_Texture.
+init_and_upload_texture :: proc (texture_unit: u32, texture: ^GPU_Texture, pixels: []u8, size_px: [2]int) -> bool {
 	assert(texture.texture == 0)
-	assert(pixels != nil)
 	when ODIN_OS != .JS do assert(gl.glGenTextures != nil)
 	err, new_texture_name := gl.CreateTexture()
 	if err != nil { return false }
@@ -871,22 +855,22 @@ init_and_upload_texture :: proc (texture_unit: u32, texture: ^GPU_Texture, pixel
 	if err != nil { return false }
 
 	set_texture_state(texture^)
+	set_texture_unit(.Swap)	
 	return true
 }
 
 // TODO casts in this function
 upload_pixels_to_texture :: proc (texture: ^GPU_Texture, pixels: []u8, size_px: [2]int) {
 	info: gl.Color_Format_Info = gl.Internal_Format_Infos[texture.format]
-	gl.TexSubImage2D(
-		auto_cast texture.target, // TODO
+	gl.TexImage2D(
+		auto_cast texture.target, // TODO auto_cast
 		texture.level,
-		0,0, // offset into image
+		cast(int) texture.format,
 		size_px.x,
 		size_px.y,
 		cast(u32) info.format,
 		cast(u32) info.type,
-		pixels
-	)
+		pixels)
 }
 
 // TODO: Can't set to defaults using nil, could enable a path for that?
@@ -1077,15 +1061,15 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 	uniform sampler2D heightmap;
 
 	void main() {
-		vec2 heightmap_size   = vec2(textureSize(heightmap, 0));
-		vec2 heightmap_here   = v_position.xz / heightmap_size;
-		// vec2 heightmap_next_x = v_position.xz + vec2(1,0) / heightmap_size;
-		// vec2 heightmap_next_z = v_position.xz + vec2(0,1) / heightmap_size;
-		float height_here = texture(heightmap, heightmap_here).r;
-		// float height_next_x = texture(heightmap, heightmap_next_x).r;
-		// float height_next_z = texture(heightmap, heightmap_next_z).r;
 		color = i_color;
 		raw_surface_normal = v_normal;
+		vec2 heightmap_size   = vec2(textureSize(heightmap, 0));
+		vec2 heightmap_here   = v_position.xz / heightmap_size;
+			// vec2 heightmap_next_x = v_position.xz + vec2(1,0) / heightmap_size;
+			// vec2 heightmap_next_z = v_position.xz + vec2(0,1) / heightmap_size;
+		float height_here = texture(heightmap, heightmap_here).r;
+			// float height_next_x = texture(heightmap, heightmap_next_x).r;
+			// float height_next_z = texture(heightmap, heightmap_next_z).r;
 
 		vec4 position4 = vec4(v_position, 1);
 		position4.y = height_here;

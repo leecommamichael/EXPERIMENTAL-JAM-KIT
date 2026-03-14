@@ -229,7 +229,7 @@ Ren :: struct {
 	prev_cmd:  Draw_Command,
 	frame_UBO: gl.Buffer,
 	programs:  [Game_Shader]gl.Program,
-	textures:  [16]GPU_Texture,
+	// textures:  [16]GPU_Texture,
 	linear_sampler:  gl.Sampler,
 	nearest_sampler: gl.Sampler,
 }

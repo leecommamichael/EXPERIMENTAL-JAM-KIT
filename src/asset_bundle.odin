@@ -129,6 +129,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		format = .R8,
 	}
 	bw := globals.assets.bw_atlas_image
+	assert(bw.pixels.buf != nil)
 	init_and_upload_texture(cast(u32) Texture_Unit.Font, &globals.assets.font_atlas, bw.pixels.buf[:], {bw.width, bw.height})
 	globals.assets.images[FONT_ATLAS_PATH] = Image_Asset {
 		FONT_ATLAS_PATH,
@@ -146,6 +147,7 @@ asset_upload :: proc (use_binary: bool = USE_BINARY_ASSET_CACHE) {
 		format = .RGBA8,
 	}
 	rgba := globals.assets.rgba_atlas_image
+	assert(rgba.pixels.buf != nil)
 	init_and_upload_texture(cast(u32) Texture_Unit.Texture, &globals.assets.texture_atlas, rgba.pixels.buf[:], {rgba.width, rgba.height})
 	globals.assets.images[TEXTURE_ATLAS_PATH] = Image_Asset {
 		TEXTURE_ATLAS_PATH,

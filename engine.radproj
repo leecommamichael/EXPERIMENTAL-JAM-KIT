@@ -46,7 +46,7 @@ target:
 debug_info:
 {
   path: "C:/Users/thatl/usr/Repositories/EXPERIMENTAL_JAM_KIT/engine.pdb"
-  timestamp: 66208450401766
+  timestamp: 66209302805573
 }
 debug_info:
 {
@@ -80,9 +80,4 @@ breakpoint:
 {
   source_location: "src/asset_bundle_desktop.odin:76:1"
   hit_count: 0
-}
-breakpoint:
-{
-  source_location: "src/geom.odin:213:1"
-  hit_count: 1
 }

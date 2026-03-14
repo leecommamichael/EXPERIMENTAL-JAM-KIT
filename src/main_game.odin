@@ -61,11 +61,76 @@ game_init :: proc () {
 
 	gs.facing = {0,0,1}
 	gs.water_static_verts = geom_make_hexgrid(512,512,0.3)
+	
+	gs.heightmap_texture = {
+		target = .TEXTURE_2D,
+		format = .R32F,
+	}
+	
+	tex_ok := init_and_upload_texture(
+		cast(u32) Texture_Unit.Heightmap,
+		&gs.heightmap_texture,
+		nil,
+		{size, size})
+	assert(tex_ok)
 } // game_init
-
 
 @export
 game_step :: proc () {
+	for i in 0..<size*size {
+
+		gs.heightmap[i] = f32(3*i)/f32(size*size)
+	}
+
+	set_texture_unit(.Heightmap)	
+	upload_pixels_to_texture(
+		&gs.heightmap_texture,
+		to_bytes(gs.heightmap[:]),
+		{size, size})
+	set_texture_unit(.Swap)	
+
+	r := rect()
+	r.basis.scale.xy = { 512, 512 }
+	r.position.xy = 10
+	hot_reloaded_shader(r,
+		vert= vertex_preamble + basic_vertex_inputs + `
+		out vec4 color;
+		out vec3 raw_surface_normal;
+		out vec3 world_position;
+		out vec2 uv;
+
+		void main() {
+			color = i_color;
+			raw_surface_normal = v_normal;
+			uv = v_position.xy;
+			vec4 position4 = vec4(v_position, 1);
+			world_position = (i_model_mat * position4).xyz;
+			mat4 mvp = frame.projection * frame.view * i_model_mat;
+			gl_Position = mvp * position4;
+		}`,
+		frag= fragment_preamble + `
+		in vec4 color;
+		in vec3 raw_surface_normal;
+		in vec3 world_position;
+		in vec2 uv;
+		uniform sampler2D heightmap;
+
+		out vec4 outColor;
+		void main() {
+			// vec2 heightmap_size   = vec2(textureSize(heightmap, 0));
+			// vec2 heightmap_here   = uv / heightmap_size;
+			float texel = texture(heightmap, uv).r;
+			outColor.xyz = vec3(texel);
+			outColor.a = texel;
+			// outColor = vec4(uv.x, uv.y, 0.0, 1.0);
+			// outColor.b = texel;
+		}`
+	)
+}
+
+
+// @export
+boat_step :: proc () {
 	gamepad := globals.sugar.input.gamepad
 	rt := precision(gamepad.right_trigger, 2)
 	lt := precision(gamepad.left_trigger, 2)

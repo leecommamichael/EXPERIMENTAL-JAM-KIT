@@ -21,10 +21,15 @@ import "audio"
 // Types
 ////////////////////////////////////////////////////////////////////////////////
 
+size :: 512
+
 Game_State :: struct {
 	sfx_sink:   audio.Sink,
 	music_sink: audio.Sink,
+  // water
   water_static_verts: Geom_Mesh2,
+  heightmap_texture: GPU_Texture,
+  heightmap: [size*size]f32,
   // kart
   facing: Vec3,
   v: f32,

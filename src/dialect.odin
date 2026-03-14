@@ -21,6 +21,8 @@ contains :: slice.contains
 Empty_Struct :: struct {}
 Allocator :: runtime.Allocator
 
+to_bytes :: slice.to_bytes
+
 // Returns a slice of the `n` elements from the end of `slice`.
 slice_end :: proc "contextless" (slice: $Indistinct/[]$T, n: int) -> []T {
 	slclen := len(slice)
