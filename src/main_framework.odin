@@ -124,58 +124,58 @@ framework_step :: proc (dt: f32) {
 // - Only reloads the game_step: proc.
 // - You need a rebuild if Source Files are newer than DLL, with the exception
 //   that if engine is newer than the DLL, Then just use the static exe proc.
-// when ODIN_DEBUG && !sugar.platform_calls_step { // When !web
-// 	engine_stat, engine_err := sugar.stat("../engine.exe", context.temp_allocator)
-// 	ensure(engine_err == nil)
-// 	source_stat, source_err := sugar.stat("./main_game.odin", context.temp_allocator)
-// 	ensure(source_err == nil)
-// 	dll_stat, dll_err := sugar.stat("../game.dll", context.temp_allocator)
-// 	ensure(dll_err == nil || dll_err == .Not_Exist)
-// 	no_dll := dll_err == .Not_Exist
-// 	code_newer_than_dll := dll_stat.modification_time._nsec < source_stat.modification_time._nsec
-// 	code_newer_than_engine := engine_stat.modification_time._nsec < source_stat.modification_time._nsec
-// 	if (no_dll || code_newer_than_dll) && code_newer_than_engine {
-// 		if d,err := sugar.get_working_directory(context.temp_allocator); err == nil {
-// 			log.infof("Running from %s", d)
-// 		}
-// 		// 1. emit a new DLL, if that works, swap it out.
-// 		state, stdout, stderr, compile_err := sugar.process_exec({
-// 			working_dir="..", // intended to be  .. from src
-// 			command={"reload.bat", ".", "new_game"},
-// 		}, context.temp_allocator)
-// 		if compile_err != nil {
-// 			log.infof("[RELOADER::STDerr] %s", stderr)
-// 			log.panicf("[RELOADER] compilation failed. %v", compile_err)
-// 		} else {
-// 			log.infof("[RELOADER::STDerr] %s", stderr)
-// 			log.infof("[RELOADER::STDOUT] %s", stdout)
-// 		}
+when ODIN_DEBUG && !sugar.platform_calls_step { // When !web
+	engine_stat, engine_err := sugar.stat("../engine.exe", context.temp_allocator)
+	ensure(engine_err == nil)
+	source_stat, source_err := sugar.stat("./main_game.odin", context.temp_allocator)
+	ensure(source_err == nil)
+	dll_stat, dll_err := sugar.stat("../game.dll", context.temp_allocator)
+	ensure(dll_err == nil || dll_err == .Not_Exist)
+	no_dll := dll_err == .Not_Exist
+	code_newer_than_dll := dll_stat.modification_time._nsec < source_stat.modification_time._nsec
+	code_newer_than_engine := engine_stat.modification_time._nsec < source_stat.modification_time._nsec
+	if (no_dll || code_newer_than_dll) && code_newer_than_engine {
+		if d,err := sugar.get_working_directory(context.temp_allocator); err == nil {
+			log.infof("Running from %s", d)
+		}
+		// 1. emit a new DLL, if that works, swap it out.
+		state, stdout, stderr, compile_err := sugar.process_exec({
+			working_dir="..", // intended to be  .. from src
+			command={"reload.bat", ".", "new_game"},
+		}, context.temp_allocator)
+		if compile_err != nil {
+			log.infof("[RELOADER::STDerr] %s", stderr)
+			log.panicf("[RELOADER] compilation failed. %v", compile_err)
+		} else {
+			log.infof("[RELOADER::STDerr] %s", stderr)
+			log.infof("[RELOADER::STDOUT] %s", stdout)
+		}
 
-// 		if state.exit_code == 0 { // new_game.dll emitted.
-// 			if globals.game_dll != nil {
-// 				dynlib.unload_library(globals.game_dll)
-// 				globals.game_dll = nil
-// 			}
-// 			mv_err := sugar.rename("../new_game.dll", "../game.dll")
-// 			if mv_err != nil do log.panicf("%v", mv_err)
-// 		  lib, lib_ok := dynlib.load_library(`./game.dll`)
-// 		  ensure(lib_ok)
-// 		  new_game_step, gs_ok := dynlib.symbol_address(lib, "game_step")
-// 		  ensure(gs_ok)
-// 		  new_hot_reload, hr_ok := dynlib.symbol_address(lib, "hot_reload")
-// 		  ensure(hr_ok)
-// 			globals.game_dll = lib
-// 			globals.game_step = auto_cast new_game_step
-// 			globals.hot_reload = auto_cast new_hot_reload
-// 			globals.hot_reload(globals, gs)
-// 			log.infof("Hot reloaded the game.")
-// 		} else {
-// 			log.errorf("Failed to compile new DLL.")
-// 		}
-// 	} else {
-// 		// log.infof("DLL:%v, Code:%v", dll_stat.modification_time, source_stat.modification_time)
-// 	}
-// }
+		if state.exit_code == 0 { // new_game.dll emitted.
+			if globals.game_dll != nil {
+				dynlib.unload_library(globals.game_dll)
+				globals.game_dll = nil
+			}
+			mv_err := sugar.rename("../new_game.dll", "../game.dll")
+			if mv_err != nil do log.panicf("%v", mv_err)
+		  lib, lib_ok := dynlib.load_library(`./game.dll`)
+		  ensure(lib_ok)
+		  new_game_step, gs_ok := dynlib.symbol_address(lib, "game_step")
+		  ensure(gs_ok)
+		  new_hot_reload, hr_ok := dynlib.symbol_address(lib, "hot_reload")
+		  ensure(hr_ok)
+			globals.game_dll = lib
+			globals.game_step = auto_cast new_game_step
+			globals.hot_reload = auto_cast new_hot_reload
+			globals.hot_reload(globals, gs)
+			log.infof("Hot reloaded the game.")
+		} else {
+			log.errorf("Failed to compile new DLL.")
+		}
+	} else {
+		// log.infof("DLL:%v, Code:%v", dll_stat.modification_time, source_stat.modification_time)
+	}
+}
 	globals.game_step()
 	globals.hot_reloaded_this_frame = false
 	fbrect := framebuffer_quad(from = globals.ren.canvas.fbo, to = 0)

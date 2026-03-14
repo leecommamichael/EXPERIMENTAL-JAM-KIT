@@ -78,8 +78,7 @@ game_init :: proc () {
 @export
 game_step :: proc () {
 	for i in 0..<size*size {
-
-		gs.heightmap[i] = f32(3*i)/f32(size*size)
+		gs.heightmap[i] = f32(i)/f32(size*size)
 	}
 
 	set_texture_unit(.Heightmap)	
@@ -121,7 +120,7 @@ game_step :: proc () {
 			// vec2 heightmap_here   = uv / heightmap_size;
 			float texel = texture(heightmap, uv).r;
 			outColor.xyz = vec3(texel);
-			outColor.a = texel;
+			outColor.a = 1.0;
 			// outColor = vec4(uv.x, uv.y, 0.0, 1.0);
 			// outColor.b = texel;
 		}`
