@@ -141,7 +141,8 @@ game_step :: proc () {
 	isle4.scale = isle1.scale
 
 	water := mesh_from_geom(&gs.water_static_verts)
-	water.position = 0
+	water.position.x = -256*0.3
+	water.position.z = -64*0.3
 	water.flags += {.Is_3D,}
 	water.draw_command.program = globals.ren.programs[.Water]
 	water.color = color("69f9")
