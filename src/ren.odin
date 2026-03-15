@@ -94,7 +94,7 @@ Texture_Unit :: enum {
 // How might a bad-shader cycle happen?
 // If I never let a compilation failure run, then I guess it's fine.
 hot_reloaded_shader :: proc (entity: ^Entity, vert: string, frag: string) {
-	when !ODIN_DEBUG do return
+	// when !ODIN_DEBUG do return
 	if !globals.hot_reloaded_this_frame { return }
 	if .Shader_Reload_Failed in entity.flags { return }
 

@@ -218,3 +218,17 @@ precision :: proc (f: f32, digits: int) -> f32 {
 midtone :: proc (x, k: f32) -> f32 {
 	return (k+1)*x/(1+k*x)
 }
+
+when ODIN_OS == .Windows {
+	foreign import libc "system:libucrt.lib"
+} else when ODIN_OS == .Darwin {
+	foreign import libc "system:System"
+} else {
+	foreign import libc "system:c"
+}
+
+@(default_calling_convention="c")
+foreign libc {
+	// Bessel function
+	@(link_name="_j0") bessel :: proc(x: f64) -> f64 ---
+}

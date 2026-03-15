@@ -60,7 +60,7 @@ game_init :: proc () {
 	}
 
 	gs.facing = {0,0,1}
-	gs.water_static_verts = geom_make_hexgrid(512,512,0.3)
+	gs.water_static_verts = geom_make_hexgrid(WAVE_MAP_SIZE_X,WAVE_MAP_SIZE_Z,0.3)
 	
 	gs.heightmap_texture = {
 		target = .TEXTURE_2D,
@@ -71,25 +71,92 @@ game_init :: proc () {
 		cast(u32) Texture_Unit.Heightmap,
 		&gs.heightmap_texture,
 		nil,
-		{size, size})
+		{WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z})
 	assert(tex_ok)
+	init_kernel(&gs.kernel)
 } // game_init
+
+init_kernel :: proc (kernel: ^[13][13]f32) {
+	dk:    f32 = 0.01
+	sigma: f32 = 1.0
+	norm:  f32 = 0.0
+	for k: f32 = 0; k < 10; k += dk { // k/dk iterations
+		norm += k*k*exp(-sigma*k*k)
+	}
+	for i in -6..=6 do for j in -6..=6 {
+		r: f32 = sqrt(f32(i*i) + f32(j*j))
+		kern: f32 = 0
+		for k: f32 = 0; k < 10; k += dk { // k/dk iterations
+			kern += k*k*exp(-sigma*k*k) * f32(bessel(f64(r*k)))
+		}
+		kernel[i+6][j+6] = kern/norm
+	}
+}
+
+step_partial_derivative :: proc (
+	w, h: int,
+	kernel: [13][13]f32,
+	height:               [WAVE_MAP_SIZE]f32,
+	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
+) {
+	for ix in 6..<w-6 do for iy in 6..<h-6 {
+		i := ix + w * iy
+		vd: f32
+		for iix in -6..=6 do for iiy in -6..=6 {
+			_i := ix + iix + w*(iy+iiy)
+			vd += kernel[iix+6][iiy+6] * height[_i]
+		}
+		vertical_derivative[i] = vd
+	}
+}
+
+step_wave_height :: proc (
+	w, h: int,
+	kernel:             [13][13]f32,
+	height:              ^[WAVE_MAP_SIZE]f32,
+	prev_height:         ^[WAVE_MAP_SIZE]f32,
+	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
+) {
+	dt: f32 = globals.tick
+	alpha :: 0.3
+	gravity := 9.8 * dt * dt
+	step_partial_derivative(w, h, kernel, height^, vertical_derivative)
+	adt := alpha * dt
+	adt2 := 1/(1+adt)
+	for i in 0..<WAVE_MAP_SIZE {
+		temp := height[i]
+		defer prev_height[i] = temp
+		height[i] = height[i]*(2-adt) - prev_height[i] - gravity*vertical_derivative[i]
+		height[i] *= adt2
+		@static ctr: int = -WAVE_MAP_SIZE*51/100
+		if ctr < 0 { ctr += 1
+			x := i / WAVE_MAP_SIZE_X
+			y := i % WAVE_MAP_SIZE_Z
+			if x == WAVE_MAP_SIZE_X / 2 && y > 100 && y < WAVE_MAP_SIZE_Z - 100 {
+				height[i] += 1
+			}
+		}
+	}
+}
 
 @export
 game_step :: proc () {
-	for i in 0..<size*size {
-		gs.heightmap[i] = f32(i)/f32(size*size)
-	}
+	step_wave_height(WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z,
+		gs.kernel, &gs.height, &gs.prev_height, &gs.vertical_derivative)
 
 	set_texture_unit(.Heightmap)	
 	upload_pixels_to_texture(
 		&gs.heightmap_texture,
-		to_bytes(gs.heightmap[:]),
-		{size, size})
+		to_bytes(gs.height[:]),
+		{WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z})
 	set_texture_unit(.Swap)	
 
+	b := rect()
+	b.basis.scale.xy = { 2*WAVE_MAP_SIZE_X+8, 2*WAVE_MAP_SIZE_Z+8 }
+	b.position.xy = 10-4
+	b.color = color("222")
 	r := rect()
-	r.basis.scale.xy = { 512, 512 }
+	r.basis.scale.xy = { 2*WAVE_MAP_SIZE_X, 2*WAVE_MAP_SIZE_Z }
 	r.position.xy = 10
 	hot_reloaded_shader(r,
 		vert= vertex_preamble + basic_vertex_inputs + `
@@ -116,13 +183,8 @@ game_step :: proc () {
 
 		out vec4 outColor;
 		void main() {
-			// vec2 heightmap_size   = vec2(textureSize(heightmap, 0));
-			// vec2 heightmap_here   = uv / heightmap_size;
 			float texel = texture(heightmap, uv).r;
-			outColor.xyz = vec3(texel);
-			outColor.a = 1.0;
-			// outColor = vec4(uv.x, uv.y, 0.0, 1.0);
-			// outColor.b = texel;
+			outColor = vec4(texel) + 0.5;
 		}`
 	)
 }

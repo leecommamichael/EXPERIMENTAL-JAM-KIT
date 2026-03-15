@@ -21,7 +21,9 @@ import "audio"
 // Types
 ////////////////////////////////////////////////////////////////////////////////
 
-size :: 512
+WAVE_MAP_SIZE_X :: 256
+WAVE_MAP_SIZE_Z :: 256
+WAVE_MAP_SIZE :: WAVE_MAP_SIZE_X * WAVE_MAP_SIZE_Z
 
 Game_State :: struct {
 	sfx_sink:   audio.Sink,
@@ -29,7 +31,11 @@ Game_State :: struct {
   // water
   water_static_verts: Geom_Mesh2,
   heightmap_texture: GPU_Texture,
-  heightmap: [size*size]f32,
+  prev_height: [WAVE_MAP_SIZE]f32,
+  height:      [WAVE_MAP_SIZE]f32,
+  kernel:      [13][13]f32,
+  vertical_derivative: [WAVE_MAP_SIZE]f32,
+
   // kart
   facing: Vec3,
   v: f32,
