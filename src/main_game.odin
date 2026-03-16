@@ -120,31 +120,22 @@ step_wave_height :: #force_inline proc (
 	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
 ) #no_bounds_check {
 	dt: f32 = globals.tick
-	alpha :: 0.80 // lower is slower and spreads more
+	alpha :: 1.00 // lower is slower and spreads more
 	gravity := 9.8 * dt * dt
 	step_partial_derivative(w, h, kernel, height^, vertical_derivative)
 	adt := alpha * dt
-	adt2 := 1/(1+adt)
+	adt2 := 1.0/(1+adt)
 	for i in 0..<WAVE_MAP_SIZE {
 		temp := height[i]
 		defer prev_height[i] = temp
 		height[i] = height[i]*(2-adt) - prev_height[i] - gravity*vertical_derivative[i]
 		height[i] *= adt2
-		// @static ctr0: int = -5
-		// if ctr0 < 0 {
-		// 	x := i / WAVE_MAP_SIZE_X
-		// 	z := i % WAVE_MAP_SIZE_Z
-		// 	xr, zr :=  rand.int_range(0,WAVE_MAP_SIZE_X), rand.int_range(0,WAVE_MAP_SIZE_Z)
-		// 	if x == xr && z == zr {
-		// 		ctr0 += 1
-		// 		height[i] = 1.00
-		// 	}
-		// }
+		
 		x := i / WAVE_MAP_SIZE_X
 		z := i % WAVE_MAP_SIZE_Z
 		xz: Vec2 = array_cast([2]int{x,z}, f32)
-		if is_nearly(gs.kart.position.zx*(1.0/DENSITY), xz, 1.0) {
-			height[i] += 0.01
+		if is_nearly(gs.kart.position.zx*(1.0/DENSITY), xz, 1.5) {
+			height[i] += 0.010
 		}
 	}
 }
