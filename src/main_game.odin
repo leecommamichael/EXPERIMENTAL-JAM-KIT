@@ -120,7 +120,7 @@ step_wave_height :: #force_inline proc (
 	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
 ) #no_bounds_check {
 	dt: f32 = globals.tick
-	alpha :: 0.31
+	alpha :: 1.00 // lower is slower and spreads more
 	gravity := 9.8 * dt * dt
 	step_partial_derivative(w, h, kernel, height^, vertical_derivative)
 	adt := alpha * dt
@@ -144,7 +144,6 @@ step_wave_height :: #force_inline proc (
 		z := i % WAVE_MAP_SIZE_Z
 		xz: Vec2 = array_cast([2]int{x,z}, f32)
 		if is_nearly(gs.kart.position.zx*10, xz, 1.0) {
-			log.infof("%v", gs.kart.position.xz)
 			height[i] = 0.05
 		}
 	}

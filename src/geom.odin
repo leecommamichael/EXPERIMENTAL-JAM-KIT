@@ -61,7 +61,7 @@ geom_make_hexgrid :: proc (
       }
     }
 
-    x_inset: f32 = long_row ? -f32(X_GAP) : 0
+    x_inset: f32 = long_row ? -0.5 * f32(X_GAP) : 0.0
     // x_inset: f32 = 0
     mesh.vertices[i].position.x = x_inset + f32(col) * X_GAP
     mesh.vertices[i].position.z =           f32(row) * Z_GAP

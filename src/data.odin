@@ -262,7 +262,7 @@ Uniforms :: struct #align(16) {
 	tau_time:       f32,  // 1 slot
 	canvas_size_px: Vec2, // 2 slots
 	lights:         [MAX_LIGHTS]Light,
-	num_lights:     i32
+	num_lights:     i32,
 }
 
 MAX_LIGHTS :: 10
