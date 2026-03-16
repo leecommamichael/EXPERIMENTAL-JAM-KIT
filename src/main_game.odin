@@ -38,6 +38,7 @@ game_init :: proc () {
 	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.nearest_sampler)
 	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
 	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Heightmap,           globals.ren.nearest_sampler)
 	globals.cursor = make_entity()
 	globals.cursor.flags += {.Hidden}
 	globals.cursor.position.xy = globals.mouse_position.xy
@@ -60,7 +61,7 @@ game_init :: proc () {
 	}
 
 	gs.facing = {0,0,1}
-	gs.water_static_verts = geom_make_hexgrid(WAVE_MAP_SIZE_X,WAVE_MAP_SIZE_Z,0.3)
+	gs.water_static_verts = geom_make_hexgrid(WAVE_MAP_SIZE_X,WAVE_MAP_SIZE_Z,DENSITY)
 	
 	gs.heightmap_texture = {
 		target = .TEXTURE_2D,
@@ -93,12 +94,12 @@ init_kernel :: proc (kernel: ^[13][13]f32) {
 	}
 }
 
-step_partial_derivative :: proc (
+step_partial_derivative :: #force_inline proc (
 	w, h: int,
 	kernel: [13][13]f32,
 	height:               [WAVE_MAP_SIZE]f32,
 	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
-) {
+) #no_bounds_check {
 	for ix in 6..<w-6 do for iy in 6..<h-6 {
 		i := ix + w * iy
 		vd: f32
@@ -110,15 +111,16 @@ step_partial_derivative :: proc (
 	}
 }
 
-step_wave_height :: proc (
+
+step_wave_height :: #force_inline proc (
 	w, h: int,
 	kernel:             [13][13]f32,
 	height:              ^[WAVE_MAP_SIZE]f32,
 	prev_height:         ^[WAVE_MAP_SIZE]f32,
 	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
-) {
+) #no_bounds_check {
 	dt: f32 = globals.tick
-	alpha :: 0.3
+	alpha :: 0.31
 	gravity := 9.8 * dt * dt
 	step_partial_derivative(w, h, kernel, height^, vertical_derivative)
 	adt := alpha * dt
@@ -128,19 +130,27 @@ step_wave_height :: proc (
 		defer prev_height[i] = temp
 		height[i] = height[i]*(2-adt) - prev_height[i] - gravity*vertical_derivative[i]
 		height[i] *= adt2
-		@static ctr: int = -WAVE_MAP_SIZE*51/100
-		if ctr < 0 { ctr += 1
-			x := i / WAVE_MAP_SIZE_X
-			y := i % WAVE_MAP_SIZE_Z
-			if x == WAVE_MAP_SIZE_X / 2 && y > 100 && y < WAVE_MAP_SIZE_Z - 100 {
-				height[i] += 1
-			}
+		// @static ctr0: int = -5
+		// if ctr0 < 0 {
+		// 	x := i / WAVE_MAP_SIZE_X
+		// 	z := i % WAVE_MAP_SIZE_Z
+		// 	xr, zr :=  rand.int_range(0,WAVE_MAP_SIZE_X), rand.int_range(0,WAVE_MAP_SIZE_Z)
+		// 	if x == xr && z == zr {
+		// 		ctr0 += 1
+		// 		height[i] = 1.00
+		// 	}
+		// }
+		x := i / WAVE_MAP_SIZE_X
+		z := i % WAVE_MAP_SIZE_Z
+		xz: Vec2 = array_cast([2]int{x,z}, f32)
+		if is_nearly(gs.kart.position.zx*10, xz, 1.0) {
+			log.infof("%v", gs.kart.position.xz)
+			height[i] = 0.05
 		}
 	}
 }
 
-@export
-game_step :: proc () {
+_2d_demo_step :: proc () {
 	step_wave_height(WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z,
 		gs.kernel, &gs.height, &gs.prev_height, &gs.vertical_derivative)
 
@@ -152,12 +162,16 @@ game_step :: proc () {
 	set_texture_unit(.Swap)	
 
 	b := rect()
-	b.basis.scale.xy = { 2*WAVE_MAP_SIZE_X+8, 2*WAVE_MAP_SIZE_Z+8 }
+	b.basis.scale.xy = { WAVE_MAP_SIZE_X+8, WAVE_MAP_SIZE_Z+8 }
 	b.position.xy = 10-4
 	b.color = color("222")
 	r := rect()
-	r.basis.scale.xy = { 2*WAVE_MAP_SIZE_X, 2*WAVE_MAP_SIZE_Z }
+	r.basis.scale.xy = { WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z }
 	r.position.xy = 10
+
+	// b.basis.scale.xy *= 2
+	// r.basis.scale.xy *= 2
+
 	hot_reloaded_shader(r,
 		vert= vertex_preamble + basic_vertex_inputs + `
 		out vec4 color;
@@ -190,8 +204,8 @@ game_step :: proc () {
 }
 
 
-// @export
-boat_step :: proc () {
+@export
+game_step :: proc () {
 	gamepad := globals.sugar.input.gamepad
 	rt := precision(gamepad.right_trigger, 2)
 	lt := precision(gamepad.left_trigger, 2)
@@ -230,6 +244,7 @@ boat_step :: proc () {
 
 	vehicle, new_vehicle := mesh(&boat_mesh)
 	if new_vehicle {
+		gs.kart = vehicle
 		vehicle.flags += {.Is_3D}
 		vehicle.draw_command.program = globals.ren.programs[.Phong]
 		vehicle.position.z = 0.5
@@ -267,32 +282,62 @@ boat_step :: proc () {
 	isle4.scale = isle1.scale
 
 	water := mesh_from_geom(&gs.water_static_verts)
-	water.position.x = -256*0.3
-	water.position.z = -64*0.3
+	// water.position.x = -128/2*DENSITY
+	// water.position.z = -6/2*DENSITY
+	// water.basis.scale.xz = 10
 	water.flags += {.Is_3D,}
 	water.draw_command.program = globals.ren.programs[.Water]
-	water.color = color("69f9")
+	water.color = color("69f")
+	water.blend_normals = true
 
-	@static carr: Geom_Mesh2
-	arr, nua := get_entity(); if nua || globals.hot_reloaded_this_frame {
-		carr = geom_make_arrow({0,1,0}, allocator=context.allocator)
-		arr.flags += {.Is_3D}
-		arr.draw_command = ren_make_phong_draw_cmd(
-			globals.instance_buffer,
-			cast(int) arr.id,
-			carr.vertices[:],
-			carr.indices[:])
-	}
+		step_wave_height(WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z,
+			gs.kernel, &gs.height, &gs.prev_height, &gs.vertical_derivative)
 
-	globals.uniforms.lights[0].position = {0,2,0}
-	globals.uniforms.lights[0].power = .2
-	globals.uniforms.lights[1].position = {0,-200,0}
+		set_texture_unit(.Heightmap)	
+		upload_pixels_to_texture(
+			&gs.heightmap_texture,
+			to_bytes(gs.height[:]),
+			{WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z})
+		set_texture_unit(.Swap)	
+
+		// hot_reloaded_shader(water,
+		// 	vert= vertex_preamble + basic_vertex_inputs + `
+		// 	out vec4 color;
+		// 	out vec3 raw_surface_normal;
+		// 	out vec3 world_position;
+		// 	uniform sampler2D heightmap;
+
+		// 	void main() {
+		// 		vec2 uv = v_position.xz / vec2(128);
+		// 		float heightmap_texel = texture(heightmap, uv).r;
+		// 		color = i_color;
+		// 		raw_surface_normal = v_normal;
+		// 		vec4 position4 = vec4(v_position, 1);
+		// 		position4.y += heightmap_texel;
+		// 		world_position = (i_model_mat * position4).xyz;
+		// 		mat4 mvp = frame.projection * frame.view * i_model_mat;
+		// 		gl_Position = mvp * position4;
+		// 	}`,
+		// 	frag= fragment_preamble + `
+		// 	in vec4 color;
+		// 	in vec3 raw_surface_normal;
+		// 	in vec3 world_position;
+
+		// 	out vec4 outColor;
+		// 	void main() {
+		// 		outColor = color;
+		// 		outColor.a = 1.0;
+		// 	}`
+		// )
+
+	globals.uniforms.lights[0].position = {0,1,2}
+	globals.uniforms.lights[0].power = .4
+	globals.uniforms.lights[1].position = {10,1,10}
 	globals.uniforms.lights[1].power = .2
+	globals.uniforms.lights[2].position = {0,200,0}
+	globals.uniforms.lights[2].power = .05
 	globals.uniforms.num_lights = 2
 
-	arr.position = globals.uniforms.lights[0].position
-	arr.blend_normals = true
-	arr.color = {0,1,0,1}
 
 	if sugar.key_held(.Up_Arrow) {
 	}

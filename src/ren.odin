@@ -1014,7 +1014,7 @@ phong_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 		snormal = normalize(world_p);
 		color.rgb = i_color.rgb * i_color.a; // Convert to PMA
 		color.a = i_color.a; // Convert to PMA
-		gl_Position = mvp * vec4(v_position, 1);
+		gl_Position = mvp * position4;
 	}
 `
 
@@ -1054,52 +1054,76 @@ phong_fragment_shader_source :: fragment_preamble + `
 water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 `
 //watervert
-	out vec4 color;
-	out vec3 raw_surface_normal;
-	out vec3 world_position;
-
 	uniform sampler2D heightmap;
 
-	void main() {
-		color = i_color;
-		raw_surface_normal = v_normal;
-		vec2 heightmap_size   = vec2(textureSize(heightmap, 0));
-		vec2 heightmap_here   = v_position.xz / heightmap_size;
-			// vec2 heightmap_next_x = v_position.xz + vec2(1,0) / heightmap_size;
-			// vec2 heightmap_next_z = v_position.xz + vec2(0,1) / heightmap_size;
-		float height_here = texture(heightmap, heightmap_here).r;
-			// float height_next_x = texture(heightmap, heightmap_next_x).r;
-			// float height_next_z = texture(heightmap, heightmap_next_z).r;
+	out vec4 color;
+	out vec3 world_position;
+	flat out vec3 fnormal;
+	     out vec3 snormal;
+	flat out int blend_normals;
 
-		vec4 position4 = vec4(v_position, 1);
-		position4.y = height_here;
-		world_position = (i_model_mat * position4).xyz;
+	void main() {
+		float DENSITY = 0.1;
+		vec2 heightmap_size = vec2(textureSize(heightmap, 0));
+		vec2 heightmap_uv   = (v_position.xz / DENSITY) / heightmap_size;
+		float height_here   = texture(heightmap, heightmap_uv).r;
 
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
+		blend_normals = i_blend_normals;
+		vec4 position4 = vec4(v_position, 1);
+		position4.y += height_here;
+		world_position = (i_model_mat * position4).xyz;
+		vec3 world_p = (i_model_mat * position4).xyz;
+
+		vec2 texel_size = 1.0/heightmap_size;
+		float hL = texture(heightmap, heightmap_uv + vec2(-texel_size.x, 0.0)).r;
+		float hR = texture(heightmap, heightmap_uv + vec2(texel_size.x, 0.0)).r;
+		float hD = texture(heightmap, heightmap_uv + vec2(0.0, -texel_size.y)).r;
+		float hU = texture(heightmap, heightmap_uv + vec2(0.0, texel_size.y)).r;
+		float WATER_WORLD_SIZE_X = heightmap_size.x;
+		float WATER_WORLD_SIZE_Z = heightmap_size.y;
+		float height_scale = 1.0;
+		float dHdx = ((hR - hL) * height_scale) / (2.0 * texel_size.x * WATER_WORLD_SIZE_X);
+		float dHdz = ((hU - hD) * height_scale) / (2.0 * texel_size.y * WATER_WORLD_SIZE_Z);
+
+    fnormal = normalize(vec3(-dHdx, 1.0, -dHdz));
+		snormal = fnormal;
+		color.rgb = i_color.rgb * i_color.a; // Convert to PMA
+		color.a = i_color.a; // Convert to PMA
 		gl_Position = mvp * position4;
 	}
+
 `
 
 water_fragment_shader_source :: fragment_preamble + `
 //waterfrag
 	in vec4 color;
-	in vec3 raw_surface_normal;
 	in vec3 world_position;
+	flat in vec3 fnormal;
+	     in vec3 snormal;
+	flat in int blend_normals;
 
 	out vec4 outColor;
 	void main() {
+		vec3 normal;
+		if (blend_normals == 1) {
+			normal = snormal;
+		} else {
+			normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
+		}
 		float ambient_luminance = 0.1;
 		vec3 ambient_light = ambient_luminance * color.xyz;
 
-		vec3 surface_normal = normalize(raw_surface_normal);
-
-		surface_normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
-		vec3 surface_to_light = normalize(vec3(1, 10, 1) - world_position);
-		float diffuse_luminance = max(dot(surface_normal, surface_to_light), 0.0);
-		vec3 diffuse_light = diffuse_luminance * vec3(1,1,1);
-
-		vec3 light = (ambient_light + diffuse_light) * color.xyz;
-		outColor = vec4(light, 1.0);
+		vec3 surface_normal = normalize(normal);
+		vec3 light = ambient_light;
+		for (int i = 0; i < frame.num_lights; ++i) {
+			Light _light = frame.lights[i];
+			vec3 surface_to_light = normalize(_light.position - world_position);
+			float diffuse_luminance = max(dot(surface_normal, surface_to_light), 0.0);
+			vec3 diffuse_light = diffuse_luminance * _light.power * vec3(1,1,1);
+			light += diffuse_light;
+		}
+		outColor = vec4(light*color.w, color.w);
 	}
 `
 // Text ////////////////////////////////////////////////////////////////////////

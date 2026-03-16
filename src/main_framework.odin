@@ -34,7 +34,7 @@ framework_init :: proc () {
 	globals.hot_reloaded_this_frame = true // INTENT: load live shaders
 	globals.hot_reload = hot_reload
 	globals.game_step = game_step
-	globals.tick = 1./120.
+	globals.tick = 1./60.
 	globals.canvas_scale = 1
 	globals.canvas_scaling = .None
 	globals.canvas_stretch = 1

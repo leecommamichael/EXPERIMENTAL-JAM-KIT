@@ -21,8 +21,9 @@ import "audio"
 // Types
 ////////////////////////////////////////////////////////////////////////////////
 
-WAVE_MAP_SIZE_X :: 256
-WAVE_MAP_SIZE_Z :: 256
+DENSITY :: 0.1
+WAVE_MAP_SIZE_X :: 128
+WAVE_MAP_SIZE_Z :: 128
 WAVE_MAP_SIZE :: WAVE_MAP_SIZE_X * WAVE_MAP_SIZE_Z
 
 Game_State :: struct {
@@ -37,6 +38,7 @@ Game_State :: struct {
   vertical_derivative: [WAVE_MAP_SIZE]f32,
 
   // kart
+  kart: ^Entity,
   facing: Vec3,
   v: f32,
   r: f32, // radians rotating y
