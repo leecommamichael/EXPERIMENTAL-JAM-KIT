@@ -21,7 +21,7 @@ import "audio"
 // Types
 ////////////////////////////////////////////////////////////////////////////////
 
-DENSITY :: 0.1
+DENSITY :: 0.29
 WAVE_MAP_SIZE_X :: 128
 WAVE_MAP_SIZE_Z :: 128
 WAVE_MAP_SIZE :: WAVE_MAP_SIZE_X * WAVE_MAP_SIZE_Z

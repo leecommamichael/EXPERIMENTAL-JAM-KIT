@@ -61,7 +61,7 @@ game_init :: proc () {
 	}
 
 	gs.facing = {0,0,1}
-	gs.water_static_verts = geom_make_hexgrid(WAVE_MAP_SIZE_X,WAVE_MAP_SIZE_Z,DENSITY)
+	gs.water_static_verts = geom_make_hexgrid(WAVE_MAP_SIZE_X/2, WAVE_MAP_SIZE_Z/2, DENSITY)
 	
 	gs.heightmap_texture = {
 		target = .TEXTURE_2D,
@@ -120,7 +120,7 @@ step_wave_height :: #force_inline proc (
 	vertical_derivative: ^[WAVE_MAP_SIZE]f32,
 ) #no_bounds_check {
 	dt: f32 = globals.tick
-	alpha :: 1.00 // lower is slower and spreads more
+	alpha :: 0.80 // lower is slower and spreads more
 	gravity := 9.8 * dt * dt
 	step_partial_derivative(w, h, kernel, height^, vertical_derivative)
 	adt := alpha * dt
@@ -143,8 +143,8 @@ step_wave_height :: #force_inline proc (
 		x := i / WAVE_MAP_SIZE_X
 		z := i % WAVE_MAP_SIZE_Z
 		xz: Vec2 = array_cast([2]int{x,z}, f32)
-		if is_nearly(gs.kart.position.zx*10, xz, 1.0) {
-			height[i] = 0.05
+		if is_nearly(gs.kart.position.zx*(1.0/DENSITY), xz, 1.0) {
+			height[i] += 0.01
 		}
 	}
 }

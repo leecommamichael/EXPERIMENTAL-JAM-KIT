@@ -13,61 +13,62 @@ Geom_Mesh2 :: struct {
   indices:  [dynamic]u32,
 }
 
-geom_make_hexgrid :: proc (
-  rows: int = 512, // vertices
-  cols: int = 512, // vertices
-  hex_radius: f32,
+geom_make_hexgrid :: proc(
+    rows: int = 256, // hexes per row
+    cols: int = 256, // hexes per col
+    hex_radius: f32,
 ) -> (mesh: Geom_Mesh2) {
-  verts := rows * cols + (rows/2)
-  mesh = {
-    make([dynamic]Ren_Vertex_Base, verts),
-    make([dynamic]u32, 0, 3*((2*(rows-1)*(cols-1)) + (rows-1)) )
-  }
-  assert(cols > 1)
-  assert(rows > 1)
-  X_GAP: f32 = hex_radius * 1.0
-  Z_GAP: f32 = hex_radius * 0.866025 // sqrt(3)/2 for equilateral
-  long_row: bool = false
-  row: int = 0
-  col: int = 0
-  for i in 0..<verts {
-    if ( long_row && col % (cols+1) == 0  \
-    ||  !long_row && col %  cols    == 0) && col > 0 {
-      col = 0
-      row += 1
-      long_row = !long_row
+    assert(cols > 0 && rows > 0)
+
+    SQRT_3 :: 1.7320508
+    col_spacing := hex_radius * SQRT_3
+    row_spacing := hex_radius * 1.5
+
+    verts_per_hex   := 7
+    indices_per_hex := 18
+
+    total_verts   := rows * cols * verts_per_hex
+    total_indices := rows * cols * indices_per_hex
+
+    mesh = {
+        make([dynamic]Ren_Vertex_Base, total_verts),
+        make([dynamic]u32, total_indices),
     }
 
-    if long_row && col > 0 { // Avoids top and left edges
-      a := u32( i-(cols+1) )
-      b := u32( i-cols     )
-      c := u32( i-1        )
-      d := u32( i          )
-      e := u32( i+cols     )
-      f := u32( i+(cols+1) )
-      if row == rows-1 {
-        if col == cols { // BOTTOM RIGHT EDGE
-          append(&mesh.indices, d,a,c)
-        } else {          // BOTTOM EDGE
-          append(&mesh.indices, d,b,a, d,a,c)
-        }
-      } else {
-        if col == cols { // RIGHT EDGE
-          append(&mesh.indices, d,a,c, d,c,e)
-        } else {           // COMMON CASE
-          append(&mesh.indices, d,b,a, d,a,c)
-          append(&mesh.indices, d,c,e, d,e,f)
-        }
-      }
-    }
+    corner_x := [6]f32{ 0.8660254, 0.0, -0.8660254, -0.8660254,  0.0,  0.8660254}
+    corner_z := [6]f32{ 0.5,       1.0,  0.5,       -0.5,       -1.0, -0.5      }
 
-    x_inset: f32 = long_row ? -0.5 * f32(X_GAP) : 0.0
-    // x_inset: f32 = 0
-    mesh.vertices[i].position.x = x_inset + f32(col) * X_GAP
-    mesh.vertices[i].position.z =           f32(row) * Z_GAP
-    col += 1
-  }
-  return
+    for row in 0..<rows {
+        for col in 0..<cols {
+            x := f32(col) * col_spacing
+            
+            if row % 2 == 1 {
+                x += col_spacing * 0.5
+            }
+            z := f32(row) * row_spacing
+
+            hex_idx    := row * cols + col
+            base_v_int := hex_idx * verts_per_hex
+            base_v_u32 := u32(base_v_int)
+            base_i     := hex_idx * indices_per_hex
+
+            mesh.vertices[base_v_int].position.x = x
+            mesh.vertices[base_v_int].position.z = z
+
+            for i in 0..<6 {
+                mesh.vertices[base_v_int + 1 + i].position.x = x + corner_x[i] * hex_radius
+                mesh.vertices[base_v_int + 1 + i].position.z = z + corner_z[i] * hex_radius
+            }
+
+            for i in 0..<6 {
+                mesh.indices[base_i + i*3 + 0] = base_v_u32
+                mesh.indices[base_i + i*3 + 1] = base_v_u32 + 1 + u32(i)
+                mesh.indices[base_i + i*3 + 2] = base_v_u32 + 1 + u32((i + 1) % 6)
+            }
+        }
+    }
+    
+    return
 }
 
 // RENAME? Really a cone.

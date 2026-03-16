@@ -1063,7 +1063,7 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 	flat out int blend_normals;
 
 	void main() {
-		float DENSITY = 0.1;
+		float DENSITY = 0.29;
 		vec2 heightmap_size = vec2(textureSize(heightmap, 0));
 		vec2 heightmap_uv   = (v_position.xz / DENSITY) / heightmap_size;
 		float height_here   = texture(heightmap, heightmap_uv).r;
