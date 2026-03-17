@@ -940,6 +940,9 @@ frame_uniforms :: `
 		vec2  canvas_size_px;
 		Light lights[10];
 		int   num_lights;
+		float heightmap_hex_radius;
+		vec2  _pad;
+		vec3  view_pos;   // where the camera is
 	} frame;
 `
 
@@ -1034,7 +1037,7 @@ phong_fragment_shader_source :: fragment_preamble + `
 		} else {
 			normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
 		}
-		float ambient_luminance = 0.1;
+		float ambient_luminance = 0.5;
 		vec3 ambient_light = ambient_luminance * color.xyz;
 
 		vec3 surface_normal = normalize(normal);
@@ -1044,7 +1047,7 @@ phong_fragment_shader_source :: fragment_preamble + `
 			vec3 surface_to_light = normalize(_light.position - world_position);
 			float diffuse_luminance = max(dot(surface_normal, surface_to_light), 0.0);
 			vec3 diffuse_light = diffuse_luminance * _light.power * vec3(1,1,1);
-			light += diffuse_light;
+			light *= diffuse_light;
 		}
 		outColor = vec4(light*color.w, color.w);
 		// outColor = color;
@@ -1063,9 +1066,8 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 	flat out int blend_normals;
 
 	void main() {
-		float DENSITY = 0.29;
 		vec2 heightmap_size = vec2(textureSize(heightmap, 0));
-		vec2 heightmap_uv   = (v_position.xz / DENSITY) / heightmap_size;
+		vec2 heightmap_uv   = (v_position.xz / frame.heightmap_hex_radius) / heightmap_size;
 		float height_here   = texture(heightmap, heightmap_uv).r;
 
 		mat4 mvp = frame.projection * frame.view * i_model_mat;
@@ -1073,7 +1075,6 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 		vec4 position4 = vec4(v_position, 1);
 		position4.y += height_here;
 		world_position = (i_model_mat * position4).xyz;
-		vec3 world_p = (i_model_mat * position4).xyz;
 
 		vec2 texel_size = 1.0/heightmap_size;
 		float hL = texture(heightmap, heightmap_uv + vec2(-texel_size.x, 0.0)).r;
@@ -1085,7 +1086,6 @@ water_vertex_shader_source :: vertex_preamble + basic_vertex_inputs +
 		float height_scale = 1.0;
 		float dHdx = ((hR - hL) * height_scale) / (2.0 * texel_size.x * WATER_WORLD_SIZE_X);
 		float dHdz = ((hU - hD) * height_scale) / (2.0 * texel_size.y * WATER_WORLD_SIZE_Z);
-
     fnormal = normalize(vec3(-dHdx, 1.0, -dHdz));
 		snormal = fnormal;
 		color.rgb = i_color.rgb * i_color.a; // Convert to PMA
@@ -1104,26 +1104,38 @@ water_fragment_shader_source :: fragment_preamble + `
 	flat in int blend_normals;
 
 	out vec4 outColor;
+	#define WHITE3 vec3(1.0, 1.0, 1.0)
 	void main() {
 		vec3 normal;
 		if (blend_normals == 1) {
-			normal = snormal;
+			normal = normalize(snormal);
 		} else {
 			normal = -normalize(cross( dFdx(world_position), dFdy(world_position) ));
 		}
+		vec3  light_color = WHITE3;
+		float specular_strength = 0.5;
 		float ambient_luminance = 0.1;
-		vec3 ambient_light = ambient_luminance * color.xyz;
 
-		vec3 surface_normal = normalize(normal);
-		vec3 light = ambient_light;
+		vec3 surface_normal = normal;
+		vec3 total_diffuse = vec3(0.0);
+		vec3 total_specular = vec3(0.0);
 		for (int i = 0; i < frame.num_lights; ++i) {
 			Light _light = frame.lights[i];
-			vec3 surface_to_light = normalize(_light.position - world_position);
+			vec3  surface_to_light = normalize(_light.position - world_position);
 			float diffuse_luminance = max(dot(surface_normal, surface_to_light), 0.0);
-			vec3 diffuse_light = diffuse_luminance * _light.power * vec3(1,1,1);
-			light += diffuse_light;
+			vec3  diffuse_light = diffuse_luminance * _light.power * light_color;
+			total_diffuse += diffuse_light;
+
+			vec3 surface_to_eye = normalize(frame.view_pos - world_position);
+			vec3 light_bounce = reflect(-surface_to_light, normal);
+			float shine = 1024.0;
+			float specular = pow( max(dot(surface_to_eye, light_bounce),0.0), shine);
+			total_specular += specular_strength * specular * light_color;
 		}
-		outColor = vec4(light*color.w, color.w);
+		vec3 ambient_light = ambient_luminance * light_color;
+		outColor.xyz = (ambient_light + total_diffuse + total_specular) * color.xyz;
+		outColor.w   = color.w;
+		outColor.xyz = (outColor.xyz)*outColor.w; // PMA
 	}
 `
 // Text ////////////////////////////////////////////////////////////////////////

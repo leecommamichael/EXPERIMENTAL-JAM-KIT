@@ -263,6 +263,9 @@ Uniforms :: struct #align(16) {
 	canvas_size_px: Vec2, // 2 slots
 	lights:         [MAX_LIGHTS]Light,
 	num_lights:     i32,
+	heightmap_hex_radius: f32,
+	_pad: Vec2,
+	view_pos: Vec3,
 }
 
 MAX_LIGHTS :: 10

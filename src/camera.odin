@@ -67,6 +67,7 @@ tick_mouse_camera :: proc(camera: ^Camera, dt: f32) -> Mat4 {
 }
 
 camera_view_matrix :: proc (camera: ^Camera) -> Mat4 {
+  globals.uniforms.view_pos = camera.position;
   camera.right_rad = clamp(camera.right_rad, -glsl.PI/2, glsl.PI/2)
   right, front_xz := basis_from_yaw(camera.up_rad)
   rotate_about_right := glsl.mat4Rotate(right.xyz, camera.right_rad)

@@ -38,7 +38,7 @@ game_init :: proc () {
 	gl.BindSampler(cast(u32) Texture_Unit.Framebuffer_Texture, globals.ren.nearest_sampler)
 	gl.BindSampler(cast(u32) Texture_Unit.Texture,             globals.ren.nearest_sampler)
 	gl.BindSampler(cast(u32) Texture_Unit.Font,                globals.ren.nearest_sampler)
-	gl.BindSampler(cast(u32) Texture_Unit.Heightmap,           globals.ren.nearest_sampler)
+	gl.BindSampler(cast(u32) Texture_Unit.Heightmap,           globals.ren.linear_sampler)
 	globals.cursor = make_entity()
 	globals.cursor.flags += {.Hidden}
 	globals.cursor.position.xy = globals.mouse_position.xy
@@ -111,7 +111,6 @@ step_partial_derivative :: #force_inline proc (
 	}
 }
 
-
 step_wave_height :: #force_inline proc (
 	w, h: int,
 	kernel:             [13][13]f32,
@@ -130,69 +129,15 @@ step_wave_height :: #force_inline proc (
 		defer prev_height[i] = temp
 		height[i] = height[i]*(2-adt) - prev_height[i] - gravity*vertical_derivative[i]
 		height[i] *= adt2
-		
+
 		x := i / WAVE_MAP_SIZE_X
 		z := i % WAVE_MAP_SIZE_Z
 		xz: Vec2 = array_cast([2]int{x,z}, f32)
 		if is_nearly(gs.kart.position.zx*(1.0/DENSITY), xz, 1.5) {
-			height[i] += 0.010
+			height[i] += 0.015
 		}
 	}
 }
-
-_2d_demo_step :: proc () {
-	step_wave_height(WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z,
-		gs.kernel, &gs.height, &gs.prev_height, &gs.vertical_derivative)
-
-	set_texture_unit(.Heightmap)	
-	upload_pixels_to_texture(
-		&gs.heightmap_texture,
-		to_bytes(gs.height[:]),
-		{WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z})
-	set_texture_unit(.Swap)	
-
-	b := rect()
-	b.basis.scale.xy = { WAVE_MAP_SIZE_X+8, WAVE_MAP_SIZE_Z+8 }
-	b.position.xy = 10-4
-	b.color = color("222")
-	r := rect()
-	r.basis.scale.xy = { WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z }
-	r.position.xy = 10
-
-	// b.basis.scale.xy *= 2
-	// r.basis.scale.xy *= 2
-
-	hot_reloaded_shader(r,
-		vert= vertex_preamble + basic_vertex_inputs + `
-		out vec4 color;
-		out vec3 raw_surface_normal;
-		out vec3 world_position;
-		out vec2 uv;
-
-		void main() {
-			color = i_color;
-			raw_surface_normal = v_normal;
-			uv = v_position.xy;
-			vec4 position4 = vec4(v_position, 1);
-			world_position = (i_model_mat * position4).xyz;
-			mat4 mvp = frame.projection * frame.view * i_model_mat;
-			gl_Position = mvp * position4;
-		}`,
-		frag= fragment_preamble + `
-		in vec4 color;
-		in vec3 raw_surface_normal;
-		in vec3 world_position;
-		in vec2 uv;
-		uniform sampler2D heightmap;
-
-		out vec4 outColor;
-		void main() {
-			float texel = texture(heightmap, uv).r;
-			outColor = vec4(texel) + 0.5;
-		}`
-	)
-}
-
 
 @export
 game_step :: proc () {
@@ -290,42 +235,14 @@ game_step :: proc () {
 			{WAVE_MAP_SIZE_X, WAVE_MAP_SIZE_Z})
 		set_texture_unit(.Swap)	
 
-		// hot_reloaded_shader(water,
-		// 	vert= vertex_preamble + basic_vertex_inputs + `
-		// 	out vec4 color;
-		// 	out vec3 raw_surface_normal;
-		// 	out vec3 world_position;
-		// 	uniform sampler2D heightmap;
-
-		// 	void main() {
-		// 		vec2 uv = v_position.xz / vec2(128);
-		// 		float heightmap_texel = texture(heightmap, uv).r;
-		// 		color = i_color;
-		// 		raw_surface_normal = v_normal;
-		// 		vec4 position4 = vec4(v_position, 1);
-		// 		position4.y += heightmap_texel;
-		// 		world_position = (i_model_mat * position4).xyz;
-		// 		mat4 mvp = frame.projection * frame.view * i_model_mat;
-		// 		gl_Position = mvp * position4;
-		// 	}`,
-		// 	frag= fragment_preamble + `
-		// 	in vec4 color;
-		// 	in vec3 raw_surface_normal;
-		// 	in vec3 world_position;
-
-		// 	out vec4 outColor;
-		// 	void main() {
-		// 		outColor = color;
-		// 		outColor.a = 1.0;
-		// 	}`
-		// )
-
-	globals.uniforms.lights[0].position = {0,1,2}
-	globals.uniforms.lights[0].power = .4
-	globals.uniforms.lights[1].position = {10,1,10}
-	globals.uniforms.lights[1].power = .2
-	globals.uniforms.lights[2].position = {0,200,0}
-	globals.uniforms.lights[2].power = .05
+	globals.uniforms.heightmap_hex_radius = DENSITY
+	lights := &globals.uniforms.lights
+	lights[0].position = {10,3,10}
+	lights[0].power = 1.0
+	// lights[0].position = {10*(1+cos(globals.uniforms.tau_time)),2.2,10*(1+sin(globals.uniforms.tau_time))}
+	lights[1].position = lights[0].position
+	lights[1].position.y *= -1
+	lights[1].power = lights[0].power*0.2
 	globals.uniforms.num_lights = 2
 
 
@@ -333,5 +250,6 @@ game_step :: proc () {
 	}
 	if sugar.key_held(.Down_Arrow) {
 	}
-	globals.perspective_view = camera_view_matrix(&globals.camera)//tick_mouse_camera(&globals.camera, globals.tick)
+	globals.perspective_view = camera_view_matrix(&globals.camera)
+	// globals.perspective_view = tick_mouse_camera(&globals.camera, globals.tick)
 } // game step
