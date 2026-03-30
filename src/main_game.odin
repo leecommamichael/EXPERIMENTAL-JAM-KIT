@@ -237,12 +237,12 @@ game_step :: proc () {
 
 	globals.uniforms.heightmap_hex_radius = DENSITY
 	lights := &globals.uniforms.lights
-	lights[0].position = {10,3,10}
+	lights[0].position = {10,5,10}
 	lights[0].power = 1.0
 	// lights[0].position = {10*(1+cos(globals.uniforms.tau_time)),2.2,10*(1+sin(globals.uniforms.tau_time))}
 	lights[1].position = lights[0].position
-	lights[1].position.y *= -1
-	lights[1].power = lights[0].power*0.2
+	lights[1].position.y = -3
+	lights[1].power = lights[0].power*0.5
 	globals.uniforms.num_lights = 2
 
 

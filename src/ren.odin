@@ -1117,7 +1117,7 @@ water_fragment_shader_source :: fragment_preamble + `
 		float ambient_luminance = 0.1;
 
 		vec3 surface_normal = normal;
-		vec3 total_diffuse = vec3(0.0);
+		vec3 total_diffuse  = vec3(0.0);
 		vec3 total_specular = vec3(0.0);
 		for (int i = 0; i < frame.num_lights; ++i) {
 			Light _light = frame.lights[i];
